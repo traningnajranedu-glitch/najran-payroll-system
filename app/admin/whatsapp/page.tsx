@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, FileText, MessageCircle, RefreshCw, Send, Users, Building2 } from 'lucide-react';
+import { ArrowRight, FileText, MessageCircle, RefreshCw, Send, Users, Building2, AlertCircle } from 'lucide-react';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name?: string | null; whatsapp_number?: string | null };
-
 type TargetMode = 'all' | 'single';
+type SendError = { school_name?: string; error: string };
 
 export default function WhatsAppSchoolsPage() {
   const sb = supabaseBrowser();
@@ -20,9 +20,10 @@ export default function WhatsAppSchoolsPage() {
   const [documentUrl, setDocumentUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [sendErrors, setSendErrors] = useState<SendError[]>([]);
 
   async function load() {
-    setLoading(true); setNotice('');
+    setLoading(true); setNotice(''); setSendErrors([]);
     const { data: { user } } = await sb.auth.getUser();
     if (!user) { location.href = '/'; return; }
     const { data: admin } = await sb.from('admin_users').select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle();
@@ -41,7 +42,7 @@ export default function WhatsAppSchoolsPage() {
   const targetCount = useMemo(() => mode === 'single' ? (phone || selectedSchool?.whatsapp_number ? 1 : 0) : schools.filter(s => s.whatsapp_number).length, [mode, phone, selectedSchool, schools]);
 
   async function send() {
-    setNotice('');
+    setNotice(''); setSendErrors([]);
     if (!message.trim()) return setNotice('اكتب نص التعميم أو الخطاب أولاً.');
     if (mode === 'single' && !phone.trim() && !selectedSchool?.whatsapp_number) return setNotice('أدخل رقم واتساب المدرسة.');
     if (mode === 'all' && !schools.some(s => s.whatsapp_number)) return setNotice('لا توجد أرقام واتساب مسجلة للمدارس حتى الآن.');
@@ -54,6 +55,7 @@ export default function WhatsAppSchoolsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'تعذر إرسال الرسالة');
       setNotice(`تم إرسال الرسالة بنجاح إلى ${data.sent} مدرسة${data.failed ? `، وتعذر الإرسال إلى ${data.failed}` : ''}.`);
+      setSendErrors(Array.isArray(data.errors) ? data.errors : []);
     } catch (e: any) {
       setNotice(e?.message || 'حدث خطأ أثناء الإرسال.');
     } finally { setBusy(false); }
@@ -70,6 +72,13 @@ export default function WhatsAppSchoolsPage() {
       </div>
 
       {notice && <div className="bg-blue-50 text-blue-800 border border-blue-100 rounded-xl px-4 py-3 mb-5">{notice}</div>}
+
+      {sendErrors.length > 0 && <div className="bg-red-50 text-red-800 border border-red-200 rounded-xl px-4 py-4 mb-5">
+        <div className="font-bold flex items-center gap-2"><AlertCircle size={19}/> تفاصيل تعذر الإرسال</div>
+        <div className="mt-3 space-y-2">
+          {sendErrors.map((item, index) => <div key={index} className="bg-white/70 rounded-lg px-3 py-2 text-sm"><b>{item.school_name || 'المدرسة'}</b><div className="mt-1">{item.error}</div></div>)}
+        </div>
+      </div>}
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="card p-5 lg:col-span-1">
