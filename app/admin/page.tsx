@@ -223,6 +223,17 @@ export default function AdminPage() {
     }
   }
 
+  async function handleTeachersExcel(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
+      setError('اختر ملف Excel بصيغة XLSX أو XLS أو CSV.');
+      return;
+    }
+    await importTeachersFromExcel(file);
+  }
+
   async function addTeacher(){
     setMessage('');setError('');
     if(!teacherForm.school_id||!teacherForm.full_name.trim()||!/^\d{10}$/.test(teacherForm.national_id.trim())){setError('اختر المدرسة وأدخل اسم الموظف ورقم هوية/سجل مدني من 10 أرقام.');return;}
