@@ -5,9 +5,33 @@ import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, P
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
-type Period = { id: string; period_name: string; start_date: string; end_date: string; is_open: boolean; allow_edit: boolean };
+type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; notes: string | null; status: string; approved_at?: string | null };
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null };
+
+function hijriKey(value: string): number | null {
+  const m = value.trim().match(/^(\\d{4})[\\/]([01]\\d)[\\/]([0-3]\\d)$/);
+  if (!m) return null;
+  return Number(m[1] + m[2] + m[3]);
+}
+
+function currentHijriKey(): number | null {
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Riyadh'
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return hijriKey(`${get('year')}/${get('month')}/${get('day')}`);
+}
+
+function periodIsOpen(p: Period): boolean {
+  if (p.auto_open_close && p.start_hijri && p.end_hijri) {
+    const today = currentHijriKey();
+    const start = hijriKey(p.start_hijri);
+    const end = hijriKey(p.end_hijri);
+    return today !== null && start !== null && end !== null && today >= start && today <= end;
+  }
+  return !!p.is_open;
+}
 
 function gregorianToHijri(value: string): string {
   if (!value) return '';
@@ -107,7 +131,7 @@ export default function Dashboard() {
 
     const { data: p } = await sb.from('payroll_periods').select('*').order('start_date', { ascending: false });
     setPeriods(p || []);
-    const active = (p || []).find((x: Period) => x.is_open) || p?.[0];
+    const active = (p || []).find((x: Period) => periodIsOpen(x as Period)) || p?.[0];
     if (active) {
       setPeriod(active);
       await loadRecords(su.school_id, active.id);
@@ -133,7 +157,7 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const editable = !!period?.is_open && !!period?.allow_edit;
+  const editable = !!period && periodIsOpen(period) && !!period.allow_edit;
   const approved = teachers.length > 0 && teachers.every(t => rows[t.id]?.status === 'تم الاعتماد');
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
 
@@ -237,7 +261,7 @@ export default function Dashboard() {
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <div className="card p-5"><Users/><div className="text-2xl font-bold mt-3">{teachers.length}</div><div className="text-gray-500 text-sm">عدد الموظفين</div></div>
           <div className="card p-5"><CalendarDays/><div className="font-bold mt-3">{period?.period_name || 'لا توجد فترة'}</div><div className="text-gray-500 text-sm">الفترة الحالية</div></div>
-          <div className="card p-5"><Lock/><div className="font-bold mt-3">{period?.is_open ? 'مفتوح للتعبئة' : 'مغلق'}</div><div className="text-gray-500 text-sm">حالة الفترة</div></div>
+          <div className="card p-5"><Lock/><div className="font-bold mt-3">{period && periodIsOpen(period) ? 'مفتوح للتعبئة' : 'مغلق'}</div><div className="text-gray-500 text-sm">حالة الفترة</div></div>
           <div className="card p-5"><CheckCircle2/><div className="text-2xl font-bold mt-3">{savedCount}</div><div className="text-gray-500 text-sm">السجلات المحفوظة</div></div>
         </div>
 
@@ -261,7 +285,7 @@ export default function Dashboard() {
               <button type="button" onClick={load} className="border rounded-xl p-2"><RefreshCw size={18}/></button>
             </div>
           </div>
-          {!editable && <div className="bg-amber-50 text-amber-800 px-5 py-3 flex gap-2 items-center text-sm"><Lock size={17}/> الفترة مغلقة حاليًا، لا يمكن تعديل المسير.</div>}
+          {!editable && <div className="bg-amber-50 text-amber-800 px-5 py-3 flex gap-2 items-center text-sm"><Lock size={17}/> الفترة مغلقة حاليًا حسب التاريخ الهجري المحدد أو إعدادات الفترة، لا يمكن تعديل المسير.</div>}
           {approved && <div className="bg-green-50 text-green-800 px-5 py-3 flex gap-2 items-center text-sm"><ShieldCheck size={18}/> تم اعتماد المسير — يمكنك الآن طباعته.</div>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
