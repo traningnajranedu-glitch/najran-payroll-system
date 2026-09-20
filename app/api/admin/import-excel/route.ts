@@ -61,6 +61,17 @@ function cleanSchoolCode(value: string) {
   return value.replace(/\.0$/, '').trim();
 }
 
+function normalizeSchoolName(value: string) {
+  return value
+    .replace(/\uFEFF/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/^بتدائية\b/, 'ابتدائية')
+    .replace(/ثثانوية/g, 'ثانوية');
+}
+
 function cleanNationalId(value: string) {
   return value.replace(/\.0$/, '').replace(/\s+/g, '').trim();
 }
@@ -95,19 +106,26 @@ async function importSchools(client: any, rows: Row[]) {
 async function importTeachers(client: any, rows: Row[]) {
   let added = 0, updated = 0, skipped = 0;
   const errors: string[] = [];
-  const { data: schools } = await client.from('schools').select('id,school_code');
-  const schoolMap = new Map((schools || []).map((s: any) => [String(s.school_code), s.id]));
+  const { data: schools } = await client.from('schools').select('id,school_code,school_name');
+  const schoolMap = new Map<string, string>();
+  for (const s of schools || []) {
+    const code = cleanSchoolCode(String(s.school_code ?? ''));
+    const name = normalizeSchoolName(String(s.school_name ?? ''));
+    if (code) schoolMap.set('code:' + code, s.id);
+    if (name) schoolMap.set('name:' + name, s.id);
+  }
   const roles = new Set(['مدير','معلم','إداري','مستخدم','حارس']);
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i], line = i + 2;
-    const schoolCode = cleanSchoolCode(text(row,'school_code','رمز المدرسة','كود المدرسة'));
-    const schoolId = schoolMap.get(schoolCode);
+    const schoolCode = cleanSchoolCode(text(row,'school_code','رمز المدرسة','كود المدرسة','رقم المدرسة','school code','code'));
+    const schoolName = normalizeSchoolName(text(row,'school_name','اسم المدرسة','المدرسة','school name','school'));
+    const schoolId = (schoolCode && schoolMap.get('code:' + schoolCode)) || (schoolName && schoolMap.get('name:' + schoolName));
     const full_name = text(row,'full_name','اسم الموظف','الاسم');
-    const national_id = cleanNationalId(text(row,'national_id','رقم الهوية','السجل المدني','رقم الهوية / السجل المدني'));
-    const job_role = text(row,'job_role','الوظيفة','المسمى الوظيفي') || 'معلم';
+    const national_id = cleanNationalId(text(row,'national_id','رقم الهوية','السجل المدني','رقم الهوية / السجل المدني','رقم الهوية/السجل المدني','الهوية'));
+    const job_role = text(row,'job_role','الوظيفة','المسمى الوظيفي','نوع الوظيفة','العمل') || 'معلم';
     if (!schoolId || !full_name || !/^\d{10}$/.test(national_id) || !roles.has(job_role)) {
       skipped++;
-      errors.push(`صف ${line}: تحقق من رمز المدرسة والاسم والسجل المدني (10 أرقام) والوظيفة.`);
+      errors.push(`صف ${line}: تحقق من المدرسة (بالرمز أو الاسم) والاسم والسجل المدني (10 أرقام) والوظيفة.`);
       continue;
     }
     const payload = { school_id: schoolId, full_name, national_id, job_role, specialization: text(row,'specialization','التخصص') || null, is_active: bool(row,'is_active','الحالة') };
