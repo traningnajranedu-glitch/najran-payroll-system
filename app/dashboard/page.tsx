@@ -10,7 +10,7 @@ type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string |
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null };
 
 function hijriKey(value: string): number | null {
-  const m = value.trim().match(/^(\\d{4})[\\/]([01]\\d)[\\/]([0-3]\\d)$/);
+  const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
   if (!m) return null;
   return Number(m[1] + m[2] + m[3]);
 }
@@ -45,8 +45,8 @@ function gregorianToHijri(value: string): string {
 }
 
 function hijriToGregorian(value: string): string | null {
-  const normalized = value.trim().replace(/[-.]/g, '/').replace(/\\s+/g, '');
-  const match = normalized.match(/^(\\d{4})[\\/]([0-1]?\\d)[\\/]([0-3]?\\d)$/);
+  const normalized = value.trim().replace(/[-.]/g, '/').replace(/\s+/g, '');
+  const match = normalized.match(/^(\d{4})[\/]([0-1]?\d)[\/]([0-3]?\d)$/);
   if (!match) return null;
   const hy = Number(match[1]), hm = Number(match[2]), hd = Number(match[3]);
   if (hm < 1 || hm > 12 || hd < 1 || hd > 30) return null;
@@ -77,7 +77,7 @@ function hijriToGregorian(value: string): string | null {
 }
 
 function formatHijriInput(value: string): string {
-  const digits = value.replace(/\\D/g, '').slice(0, 8);
+  const digits = value.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 4) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`;
   return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6)}`;
@@ -98,7 +98,7 @@ function hijriMonthDays(year:number,month:number){
   return result;
 }
 function HijriDatePicker({value,onChange,disabled=false}:{value:string;onChange:(value:string)=>void;disabled?:boolean}) {
-  const parsed=value.match(/^(\\d{4})\\/(\\d{2})\\/(\\d{2})$/), today=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
+  const parsed=value.match(/^(\d{4})\/(\d{2})\/(\d{2})$/), today=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
   const initial=parsed?{year:Number(parsed[1]),month:Number(parsed[2])}:(today?{year:today.year,month:today.month}:{year:1448,month:1});
   const [open,setOpen]=useState(false),[ym,setYm]=useState(initial);
   useEffect(()=>{if(open&&parsed)setYm({year:Number(parsed[1]),month:Number(parsed[2])});},[open,value]);
