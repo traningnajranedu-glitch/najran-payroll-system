@@ -193,76 +193,34 @@ export default function AdminPage() {
   async function importTeachersFromExcel(file: File) {
     setMessage(''); setError(''); setImportingTeachers(true); setBusy(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      if (!firstSheet) throw new Error('ملف Excel لا يحتوي على ورقة بيانات.');
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
-      if (!rows.length) throw new Error('ملف Excel فارغ.');
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) throw new Error('جلسة الدخول غير صالحة. سجل الخروج ثم ادخل مرة أخرى.');
 
-      const parsed = rows.map((row, index) => ({
-        rowNumber: index + 2,
-        school: pickExcelValue(row, ['المدرسة','اسم المدرسة','school','school_name','school name']),
-        full_name: pickExcelValue(row, ['الاسم','اسم الموظف','اسم المعلم','الاسم الرباعي','full_name','full name','employee name','teacher name']),
-        national_id: pickExcelValue(row, ['رقم الهوية','الهوية','السجل المدني','رقم السجل المدني','رقم الهوية الوطنية','national_id','national id','civil id']),
-        job_role: pickExcelValue(row, ['الوظيفة','المسمى الوظيفي','الوظيفة الحالية','job_role','job role']) || 'معلم',
-        specialization: pickExcelValue(row, ['التخصص','التخصص الحالي','specialization']),
-      })).filter(row => row.full_name || row.national_id || row.school);
+      const form = new FormData();
+      form.append('file', file);
+      form.append('mode', 'teachers');
 
-      if (!parsed.length) throw new Error('لم يتم العثور على بيانات الموظفين.');
-      const missing = parsed.find(row => !row.school || !row.full_name || !/^\d{10}$/.test(row.national_id));
-      if (missing) throw new Error('الصف ' + missing.rowNumber + ' يجب أن يحتوي على المدرسة والاسم ورقم هوية/سجل مدني من 10 أرقام.');
-
-      const { data: currentSchools, error: schoolsError } = await sb.from('schools').select('id,school_code,school_name,is_active');
-      if (schoolsError) throw schoolsError;
-      const schoolMap = new Map<string, School>();
-      for (const s of currentSchools || []) {
-        schoolMap.set(normalizeHeader(s.school_name), s as School);
-        schoolMap.set(normalizeHeader(s.school_code), s as School);
-      }
-
-      const assignments = parsed.map(row => {
-        const school = schoolMap.get(normalizeHeader(row.school));
-        if (!school) throw new Error('المدرسة غير موجودة في النظام: ' + row.school);
-        if (!school.is_active) throw new Error('المدرسة موقوفة: ' + row.school);
-        const role = roles.includes(row.job_role) ? row.job_role : 'معلم';
-        return { school_id: school.id, full_name: row.full_name, national_id: row.national_id, job_role: role, specialization: row.specialization || null, is_active: true };
+      const response = await fetch('/api/admin/import-excel', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token },
+        body: form,
       });
 
-      const { data: existing, error: existingError } = await sb.from('teachers').select('id,national_id');
-      if (existingError) throw existingError;
-      const existingIds = new Set((existing || []).map(row => String(row.national_id)));
-      const toInsert = assignments.filter(row => !existingIds.has(row.national_id));
-      const toUpdate = assignments.filter(row => existingIds.has(row.national_id));
+      const raw = await response.text();
+      let result: any = {};
+      try { result = raw ? JSON.parse(raw) : {}; } catch { result = { error: raw || 'استجابة غير صالحة من الخادم.' }; }
 
-      let inserted = 0, updated = 0;
-      for (let i = 0; i < toInsert.length; i += 100) {
-        const chunk = toInsert.slice(i, i + 100);
-        if (!chunk.length) continue;
-        const { error } = await sb.from('teachers').insert(chunk);
-        if (error) throw error;
-        inserted += chunk.length;
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || result.message || ('HTTP ' + response.status));
       }
-      for (const row of toUpdate) {
-        const { error } = await sb.from('teachers').update({ school_id: row.school_id, full_name: row.full_name, job_role: row.job_role, specialization: row.specialization, is_active: row.is_active }).eq('national_id', row.national_id);
-        if (error) throw error;
-        updated++;
-      }
+
+      setMessage('تم استيراد ' + (result.added || 0) + ' موظف جديد وتحديث ' + (result.updated || 0) + ' موظف موجود. تم ربط الموظفين بالمدارس المحددة في الملف.');
       await load();
-      setMessage('تم استيراد ' + inserted + ' موظف جديد وتحديث ' + updated + ' موظف موجود. تم ربط كل موظف بالمدرسة المحددة في الملف.');
     } catch (err) {
-      setError('تعذر استيراد ملف Excel: ' + (err instanceof Error ? err.message : 'خطأ غير معروف'));
+      setError('تعذر استيراد ملف Excel: ' + (err instanceof Error ? err.message : 'حدث خطأ غير متوقع.'));
     } finally {
       setImportingTeachers(false); setBusy(false);
     }
-  }
-
-  async function handleTeachersExcel(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) { setError('اختر ملف Excel بصيغة XLSX أو XLS أو CSV.'); return; }
-    await importTeachersFromExcel(file);
   }
 
   async function addTeacher(){
