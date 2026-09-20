@@ -20,8 +20,8 @@ export default function Home(){
     if(!userId){setError('تعذر تحديد نوع الحساب.');setLoading(false);return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',userId).eq('is_active',true).maybeSingle();
     if(admin){window.location.href='/admin';return;}
-    const {data:schoolUser}=await sb.from('school_users').select('id,school_id,is_active').eq('auth_user_id',userId).eq('is_active',true).maybeSingle();
-    if(schoolUser){window.location.href='/dashboard';return;}
+    const {data:schoolUser}=await sb.from('school_users').select('id,school_id,is_active,must_change_password').eq('auth_user_id',userId).eq('is_active',true).maybeSingle();
+    if(schoolUser){window.location.href=schoolUser.must_change_password?'/change-password':'/dashboard';return;}
     await sb.auth.signOut();setError('بيانات الدخول غير صحيحة أو حساب المدرسة غير مفعّل.');setLoading(false);
   }
 
