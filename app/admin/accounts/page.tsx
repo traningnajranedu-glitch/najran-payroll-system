@@ -27,6 +27,7 @@ type SchoolUser = {
   username: string;
   display_name: string | null;
   is_active: boolean;
+  must_change_password?: boolean;
 };
 
 type EditForm = {
@@ -126,6 +127,33 @@ export default function SchoolAccountsPage() {
     }
 
     return session.access_token;
+  }
+
+  async function createDefaultAccounts() {
+    setMessage('');
+    setError('');
+    setBusy(true);
+    setMessage('جاري إنشاء حسابات المدارس غير الموجودة…');
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) return;
+      const response = await fetch('/api/admin/school-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
+        body: JSON.stringify({ mode: 'bulk-default' }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || 'تعذر إنشاء حسابات المدارس.');
+        return;
+      }
+      setMessage('تم إنشاء ' + (result.created || 0) + ' حساب مدرسة جديد. الحسابات الجديدة تستخدم رمز المدرسة كاسم مستخدم وكلمة المرور المؤقتة Aa123456، ويجب تغييرها عند أول دخول.');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createAccount() {
@@ -439,7 +467,7 @@ export default function SchoolAccountsPage() {
                   })
                 }
                 className="border rounded-xl px-4 py-3 w-full"
-                placeholder="مثال: school101"
+                placeholder="رمز المدرسة مثل: 101"
                 dir="ltr"
               />
             </label>
@@ -459,7 +487,7 @@ export default function SchoolAccountsPage() {
                   })
                 }
                 className="border rounded-xl px-4 py-3 w-full"
-                placeholder="8 أحرف على الأقل"
+                placeholder="Aa123456"
                 dir="ltr"
               />
             </label>
@@ -484,6 +512,7 @@ export default function SchoolAccountsPage() {
 
           </div>
 
+          <div className="flex flex-wrap gap-3 mt-5">
           <button
             type="button"
             disabled={busy}
@@ -496,10 +525,18 @@ export default function SchoolAccountsPage() {
               ? 'جاري الإنشاء…'
               : 'إنشاء حساب المدرسة'}
           </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={createDefaultAccounts}
+            className="border border-[var(--navy)] text-[var(--navy)] rounded-xl px-6 py-3 font-bold disabled:opacity-50"
+          >
+            إنشاء حسابات جميع المدارس
+          </button>
+          </div>
 
           <p className="text-xs text-gray-500 mt-3">
-            كلمة المرور لا تُحفظ في قاعدة البيانات، ويستخدم
-            الحساب Supabase Auth بشكل آمن.
+            الحسابات المنشأة تلقائيًا تستخدم رمز المدرسة كاسم مستخدم وكلمة مرور مؤقتة Aa123456، ثم يُطلب من مسؤول المدرسة تغييرها عند أول دخول. كلمة المرور لا تُحفظ في قاعدة البيانات، ويستخدم الحساب Supabase Auth بشكل آمن.
           </p>
 
         </section>
@@ -655,7 +692,7 @@ export default function SchoolAccountsPage() {
                 </h2>
 
                 <p className="text-sm text-gray-500 mt-1">
-                  يمكنك تعديل بيانات الحساب أو إيقافه.
+                  يمكنك تعديل بيانات الحساب أو إيقافه. إذا غيّرت كلمة المرور سيُطلب من المدرسة تغييرها عند الدخول التالي.
                 </p>
               </div>
 
