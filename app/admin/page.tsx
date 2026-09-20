@@ -81,21 +81,21 @@ function hijriMonthDays(year:number,month:number){
   for(let i=-2;i<40;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const g=d.toISOString().slice(0,10);const h=hijriPartsFromGregorian(g);if(h&&h.year===year&&h.month===month)result.push({hijri:year+'/'+String(month).padStart(2,'0')+'/'+String(h.day).padStart(2,'0'),day:h.day,weekday:d.getUTCDay()});}
   return result;
 }
-function HijriDatePicker({value,onChange,placeholder='اختر التاريخ الهجري'}:{value:string;onChange:(value:string)=>void;placeholder?:string}){
-  const parsed=value.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+function HijriDatePicker({value,onChange,placeholder='اختر التاريخ الهجري'}:{value:string;onChange:(value:string)=>void;placeholder?:string}) {
+  const parsed=value.match(/^(\\d{4})\\/(\\d{2})\\/(\\d{2})$/);
   const todayParts=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
   const initial=parsed?{year:Number(parsed[1]),month:Number(parsed[2])}:(todayParts?{year:todayParts.year,month:todayParts.month}:{year:1448,month:1});
-  const [open,setOpen]=useState(false); const [ym,setYm]=useState(initial);
+  const [open,setOpen]=useState(false),[ym,setYm]=useState(initial);
   useEffect(()=>{if(open&&parsed)setYm({year:Number(parsed[1]),month:Number(parsed[2])});},[open,value]);
-  const days=hijriMonthDays(ym.year,ym.month), leading=days.length?days[0].weekday:0;
-  const cells=[...Array(leading).fill(null),...days]; while(cells.length%7)cells.push(null);
+  const days=hijriMonthDays(ym.year,ym.month),leading=days.length?days[0].weekday:0;
+  const cells=[...Array(leading).fill(null),...days];while(cells.length%7)cells.push(null);
   function move(delta:number){let y=ym.year,m=ym.month+delta;if(m<1){m=12;y--;}if(m>12){m=1;y++;}setYm({year:y,month:m});}
   return <div className="relative">
     <div className="flex gap-2">
-      <input value={value} onChange={e=>onChange(e.target.value.replace(/\D/g,'').slice(0,8).replace(/^(\d{4})(\d{2})(\d{2})$/,'$1/$2/$3'))} onFocus={()=>setOpen(true)} inputMode="numeric" className="border rounded-xl px-4 py-3 w-full" placeholder={placeholder}/>
-      <button type="button" onClick={()=>setOpen(v=>!v)} className="border rounded-xl px-4 py-3 bg-white" title="فتح التقويم الهجري"><CalendarDays size={18}/></button>
+      <input value={value} onChange={e=>onChange(e.target.value.replace(/\\D/g,'').slice(0,8).replace(/^(\\d{4})(\\d{2})(\\d{2})$/,'$1/$2/$3'))} onFocus={()=>setOpen(true)} inputMode="numeric" className="border rounded-xl px-4 py-3 w-full" placeholder={placeholder}/>
+      <button type="button" onClick={()=>setOpen(v=>!v)} className="border rounded-xl px-4 py-3 bg-white shrink-0" title="فتح التقويم الهجري"><CalendarDays size={18}/></button>
     </div>
-    {open&&<div className="absolute z-50 mt-2 w-[330px] rounded-2xl border bg-white shadow-xl p-4">
+    {open&&<div className="absolute z-[100] right-0 mt-2 w-[330px] rounded-2xl border bg-white shadow-2xl p-4">
       <div className="flex items-center justify-between mb-3"><button type="button" onClick={()=>move(-1)} className="border rounded-lg px-3 py-1">‹</button><b>{hijriMonths[ym.month-1]} {ym.year} هـ</b><button type="button" onClick={()=>move(1)} className="border rounded-lg px-3 py-1">›</button></div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">{weekDays.map(x=><div key={x} className="py-1">{x.slice(0,2)}</div>)}</div>
       <div className="grid grid-cols-7 gap-1">{cells.map((cell:any,i:number)=>cell?<button type="button" key={cell.hijri} onClick={()=>{onChange(cell.hijri);setOpen(false)}} className={value===cell.hijri?'rounded-lg bg-[var(--navy)] text-white py-2 font-bold':'rounded-lg hover:bg-slate-100 py-2'}>{cell.day}</button>:<div key={'empty-'+i}/>)}</div>
@@ -452,8 +452,8 @@ async function editPeriodDates(p:Period){
     <p className="text-sm text-gray-500 mb-5">حدد تاريخ فتح المسير وتاريخ إغلاقه بالهجري. النظام يحولهما داخليًا للميلادي للتحقق، لكن صلاحية التعبئة تعتمد على التاريخ الهجري وفق تقويم أم القرى.</p>
     <div className="grid md:grid-cols-4 gap-4">
       <label><span className="block text-sm font-semibold mb-2">اسم الفترة</span><input value={periodForm.period_name} onChange={e=>setPeriodForm({...periodForm,period_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: مسير شهر ربيع الأول"/></label>
-      <label><span className="block text-sm font-semibold mb-2">تاريخ الفتح الهجري</span><input value={periodForm.start_hijri} onChange={e=>setPeriodForm({...periodForm,start_hijri:e.target.value.replace(/\\D/g,'').slice(0,8).replace(/^(\\d{4})(\\d{2})(\\d{2})$/,'$1/$2/$3')})} inputMode="numeric" className="border rounded-xl px-4 py-3 w-full" placeholder="1448/03/01"/></label>
-      <label><span className="block text-sm font-semibold mb-2">تاريخ الإغلاق الهجري</span><input value={periodForm.end_hijri} onChange={e=>setPeriodForm({...periodForm,end_hijri:e.target.value.replace(/\\D/g,'').slice(0,8).replace(/^(\\d{4})(\\d{2})(\\d{2})$/,'$1/$2/$3')})} inputMode="numeric" className="border rounded-xl px-4 py-3 w-full" placeholder="1448/03/10"/></label>
+      <label><span className="block text-sm font-semibold mb-2">تاريخ الفتح الهجري</span><HijriDatePicker value={periodForm.start_hijri} onChange={value=>setPeriodForm({...periodForm,start_hijri:value})}/></label>
+      <label><span className="block text-sm font-semibold mb-2">تاريخ الإغلاق الهجري</span><HijriDatePicker value={periodForm.end_hijri} onChange={value=>setPeriodForm({...periodForm,end_hijri:value})}/></label>
       <label className="flex items-center gap-2 pt-8"><input type="checkbox" checked={periodForm.allow_edit} onChange={e=>setPeriodForm({...periodForm,allow_edit:e.target.checked})}/><span className="text-sm font-semibold">السماح للمدرسة بالتعبئة</span></label>
     </div>
     <button disabled={busy} onClick={addPeriod} className="mt-5 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold">إنشاء الفترة وبدء التحكم التلقائي</button>
