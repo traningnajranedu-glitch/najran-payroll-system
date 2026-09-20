@@ -440,19 +440,20 @@ async function editPeriodDates(p:Period){
 }
 
 async function deletePeriod(p:Period){
-  if(!confirm('سيتم حذف فترة المسير «'+p.period_name+'». لا يمكن التراجع عن الحذف. هل تريد المتابعة؟'))return;
+  if(!confirm('سيتم حذف فترة المسير «'+p.period_name+'» وجميع سجلات المسير المرتبطة بها. لا يمكن التراجع عن الحذف. هل تريد المتابعة؟'))return;
   setBusy(true); setMessage(''); setError('');
   const {count,error:countError}=await sb.from('payroll_records').select('id',{count:'exact',head:true}).eq('period_id',p.id);
   if(countError){setError('تعذر التحقق من سجلات الفترة: '+countError.message);setBusy(false);return;}
-  if((count||0)>0){
-    setError('لا يمكن حذف فترة المسير لأنها تحتوي على '+count+' سجلًا في المسيرات. احذف سجلات المسير أولًا إذا كان الحذف مطلوبًا.');
-    setBusy(false);return;
-  }
+
+  // علاقة period_id في قاعدة البيانات مضبوطة على ON DELETE CASCADE،
+  // لذلك حذف الفترة يحذف سجلاتها المرتبطة تلقائيًا.
   const {error}=await sb.from('payroll_periods').delete().eq('id',p.id);
   if(error)setError('تعذر حذف فترة المسير: '+error.message);
   else {
     if(periodId===p.id)setPeriodId('');
-    setMessage('تم حذف فترة المسير بنجاح.');
+    setMessage((count||0)>0
+      ? 'تم حذف فترة المسير وحذف '+count+' سجل مرتبط بها بنجاح.'
+      : 'تم حذف فترة المسير بنجاح.');
     await load();
   }
   setBusy(false);
