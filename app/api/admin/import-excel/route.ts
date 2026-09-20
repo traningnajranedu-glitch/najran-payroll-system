@@ -29,7 +29,7 @@ function normalizeHeader(value: unknown) {
     .replace(/^\uFEFF/, '')
     .trim()
     .toLowerCase()
-    .replace(/[\\s_-]+/g, '');
+    .replace(/[\s_-]+/g, '');
 }
 
 function text(row: Row, ...keys: string[]) {
@@ -136,7 +136,7 @@ async function importAccounts(client: any, rows: Row[]) {
   }
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i], line = i + 2;
-    const schoolCode = text(row,'school_code','رمز المدرسة','كود المدرسة');
+    const schoolCode = cleanSchoolCode(text(row,'school_code','رمز المدرسة','كود المدرسة'));
     const school = schoolMap.get(schoolCode);
     const username = text(row,'username','اسم المستخدم').toLowerCase();
     const password = text(row,'password','كلمة المرور');
