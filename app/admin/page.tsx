@@ -409,6 +409,10 @@ export default function AdminPage() {
 }
 
 async function editPeriodDates(p:Period){
+  setMessage(''); setError('');
+  const name=prompt('اسم فترة المسير', p.period_name);
+  if(name===null)return;
+  if(!name.trim()){setError('اسم الفترة مطلوب.');return;}
   const start=prompt('تاريخ بداية المسير الهجري (أم القرى) بصيغة 1448/02/04', p.start_hijri || gregorianToHijri(p.start_date));
   if(start===null)return;
   const end=prompt('تاريخ نهاية المسير الهجري (أم القرى) بصيغة 1448/02/09', p.end_hijri || gregorianToHijri(p.end_date));
@@ -421,12 +425,33 @@ async function editPeriodDates(p:Period){
   const today=currentHijriKey();
   const autoOpen=auto && today!==null && today>=sk && today<=ek;
   const {error}=await sb.from('payroll_periods').update({
-    start_hijri:start.replace(/-/g,'/'), end_hijri:end.replace(/-/g,'/'),
+    period_name:name.trim(),
+    start_hijri:start.replace(/[-.]/g,'/'), end_hijri:end.replace(/[-.]/g,'/'),
     start_date:startG, end_date:endG, auto_open_close:auto,
     is_open:auto ? autoOpen : p.is_open,
     allow_edit:auto ? autoOpen : p.allow_edit
   }).eq('id',p.id);
-  if(error)setError('تعذر تحديث الفترة: '+error.message); else {setMessage('تم حفظ الفترة الهجرية وإعداد فتح/إغلاق المسير.'); await load();}
+  if(error)setError('تعذر تعديل فترة المسير: '+error.message);
+  else {setMessage('تم تعديل فترة المسير بنجاح.'); await load();}
+  setBusy(false);
+}
+
+async function deletePeriod(p:Period){
+  if(!confirm('سيتم حذف فترة المسير «'+p.period_name+'». لا يمكن التراجع عن الحذف. هل تريد المتابعة؟'))return;
+  setBusy(true); setMessage(''); setError('');
+  const {count,error:countError}=await sb.from('payroll_records').select('id',{count:'exact',head:true}).eq('period_id',p.id);
+  if(countError){setError('تعذر التحقق من سجلات الفترة: '+countError.message);setBusy(false);return;}
+  if((count||0)>0){
+    setError('لا يمكن حذف فترة المسير لأنها تحتوي على '+count+' سجلًا في المسيرات. احذف سجلات المسير أولًا إذا كان الحذف مطلوبًا.');
+    setBusy(false);return;
+  }
+  const {error}=await sb.from('payroll_periods').delete().eq('id',p.id);
+  if(error)setError('تعذر حذف فترة المسير: '+error.message);
+  else {
+    if(periodId===p.id)setPeriodId('');
+    setMessage('تم حذف فترة المسير بنجاح.');
+    await load();
+  }
   setBusy(false);
 }
 
@@ -464,7 +489,7 @@ async function editPeriodDates(p:Period){
     </div>
     <button disabled={busy} onClick={addPeriod} className="mt-5 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold">إنشاء الفترة وبدء التحكم التلقائي</button>
   </div>
-  <div className="card p-6"><h2 className="text-xl font-bold mb-2">فترات المسيرات</h2><p className="text-sm text-gray-500 mb-5">داخل التاريخ المحدد تكون الفترة مفتوحة، وخارجها مغلقة تلقائيًا.</p>{periods.map(p=>{const open=periodIsOpen(p);const sh=p.start_hijri||gregorianToHijri(p.start_date);const eh=p.end_hijri||gregorianToHijri(p.end_date);return <div key={p.id} className="border rounded-xl p-4 mb-3"><div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3"><div><b>{p.period_name}</b><div className="text-sm text-gray-600 mt-1">فتح: {sh} — إغلاق: {eh}</div><div className="mt-2 text-sm"><span className={open?'text-green-700':'text-amber-700'}>{open?'مفتوح للتعبئة':'مغلق'}</span> — {p.auto_open_close?'تلقائي حسب التاريخ الهجري':'تحكم يدوي'}</div></div><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>editPeriodDates(p)} className="border rounded-lg px-4 py-2">تعديل التواريخ</button><button disabled={busy||!!p.auto_open_close} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2 disabled:opacity-50">{p.is_open&&p.allow_edit?'إغلاق يدوي':'فتح يدوي'}</button></div></div></div>})}</div>
+  <div className="card p-6"><h2 className="text-xl font-bold mb-2">فترات المسيرات</h2><p className="text-sm text-gray-500 mb-5">داخل التاريخ المحدد تكون الفترة مفتوحة، وخارجها مغلقة تلقائيًا.</p>{periods.map(p=>{const open=periodIsOpen(p);const sh=p.start_hijri||gregorianToHijri(p.start_date);const eh=p.end_hijri||gregorianToHijri(p.end_date);return <div key={p.id} className="border rounded-xl p-4 mb-3"><div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3"><div><b>{p.period_name}</b><div className="text-sm text-gray-600 mt-1">فتح: {sh} — إغلاق: {eh}</div><div className="mt-2 text-sm"><span className={open?'text-green-700':'text-amber-700'}>{open?'مفتوح للتعبئة':'مغلق'}</span> — {p.auto_open_close?'تلقائي حسب التاريخ الهجري':'تحكم يدوي'}</div></div><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>editPeriodDates(p)} className="border rounded-lg px-4 py-2">تعديل الفترة</button><button disabled={busy||!!p.auto_open_close} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2 disabled:opacity-50">{p.is_open&&p.allow_edit?'إغلاق يدوي':'فتح يدوي'}</button><button disabled={busy} onClick={()=>deletePeriod(p)} className="border border-red-200 text-red-700 rounded-lg px-4 py-2">حذف</button></div></div></div>})}</div>
 </div>}
 
         {tab==='payroll'&&<div className="space-y-5"><div className="card p-5 grid md:grid-cols-3 gap-3"><select value={periodId} onChange={e=>setPeriodId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">اختر الفترة</option>{periods.map(p=><option key={p.id} value={p.id}>{p.period_name}</option>)}</select><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><button disabled={busy||!schoolId||!periodId} onClick={generate} className="bg-[var(--navy)] text-white rounded-xl px-4 py-3 font-bold">تجهيز مسير المدرسة</button></div><div className="card overflow-hidden"><div className="p-5 border-b"><b>{school?.school_name||'كل المدارس'}</b> — {period?.period_name||''}</div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">تاريخ المباشرة</th><th className="p-3 text-right">الحالة</th></tr></thead><tbody>{records.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id),s=schools.find(x=>x.id===r.school_id);return <tr className="border-t" key={r.id}><td className="p-3">{t?.full_name||'—'}</td><td className="p-3">{s?.school_name||'—'}</td><td className="p-3">{r.direct_start_date||'—'}</td><td className="p-3"><select value={r.status} disabled={busy} onChange={e=>status(r.id,e.target.value)} className="border rounded-lg px-2 py-1"><option>لم يبدأ</option><option>مفتوح للتعبئة</option><option>تم الحفظ</option><option>تم الاعتماد</option><option>مغلق</option></select></td></tr>})}</tbody></table></div></div></div>}
