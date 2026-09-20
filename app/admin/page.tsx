@@ -59,7 +59,7 @@ export default function AdminPage() {
   }
 
   function normalizeHeader(value: unknown): string {
-    return cleanExcelValue(value).toLowerCase().replace(/[\\s_\\-./\\\\]+/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه');
+    return cleanExcelValue(value).toLowerCase().replace(/[\s_\-./\\]+/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه');
   }
 
   function pickExcelValue(row: Record<string, unknown>, aliases: string[]): string {
