@@ -19,7 +19,7 @@ export default function AdminPage() {
   const [schoolId,setSchoolId]=useState(''), [periodId,setPeriodId]=useState(''), [message,setMessage]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
   const [schoolForm,setSchoolForm]=useState({school_code:'',school_name:'',manager_name:''});
   const [teacherForm,setTeacherForm]=useState({school_id:'',full_name:'',national_id:'',job_role:'معلم',specialization:''});
-  const [importingSchools,setImportingSchools]=useState(false);
+  const [importingSchools,setImportingSchools]=useState(false), [importingTeachers,setImportingTeachers]=useState(false);
 
   async function load(){
     setLoading(true); setError('');
@@ -152,6 +152,82 @@ export default function AdminPage() {
     setBusy(false);
   }
 
+
+  async function importTeachersFromExcel(file: File) {
+    setMessage(''); setError(''); setImportingTeachers(true); setBusy(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!firstSheet) throw new Error('ملف Excel لا يحتوي على ورقة بيانات.');
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
+      if (!rows.length) throw new Error('ملف Excel فارغ.');
+
+      const parsed = rows.map((row, index) => ({
+        rowNumber: index + 2,
+        school: pickExcelValue(row, ['المدرسة','اسم المدرسة','school','school_name','school name']),
+        full_name: pickExcelValue(row, ['الاسم','اسم الموظف','اسم المعلم','الاسم الرباعي','full_name','full name','employee name','teacher name']),
+        national_id: pickExcelValue(row, ['رقم الهوية','الهوية','السجل المدني','رقم السجل المدني','رقم الهوية الوطنية','national_id','national id','civil id']),
+        job_role: pickExcelValue(row, ['الوظيفة','المسمى الوظيفي','الوظيفة الحالية','job_role','job role']) || 'معلم',
+        specialization: pickExcelValue(row, ['التخصص','التخصص الحالي','specialization']),
+      })).filter(row => row.full_name || row.national_id || row.school);
+
+      if (!parsed.length) throw new Error('لم يتم العثور على بيانات الموظفين.');
+      const missing = parsed.find(row => !row.school || !row.full_name || !/^\d{10}$/.test(row.national_id));
+      if (missing) throw new Error('الصف ' + missing.rowNumber + ' يجب أن يحتوي على المدرسة والاسم ورقم هوية/سجل مدني من 10 أرقام.');
+
+      const { data: currentSchools, error: schoolsError } = await sb.from('schools').select('id,school_code,school_name,is_active');
+      if (schoolsError) throw schoolsError;
+      const schoolMap = new Map<string, School>();
+      for (const s of currentSchools || []) {
+        schoolMap.set(normalizeHeader(s.school_name), s as School);
+        schoolMap.set(normalizeHeader(s.school_code), s as School);
+      }
+
+      const assignments = parsed.map(row => {
+        const school = schoolMap.get(normalizeHeader(row.school));
+        if (!school) throw new Error('المدرسة غير موجودة في النظام: ' + row.school);
+        if (!school.is_active) throw new Error('المدرسة موقوفة: ' + row.school);
+        const role = roles.includes(row.job_role) ? row.job_role : 'معلم';
+        return { school_id: school.id, full_name: row.full_name, national_id: row.national_id, job_role: role, specialization: row.specialization || null, is_active: true };
+      });
+
+      const { data: existing, error: existingError } = await sb.from('teachers').select('id,national_id');
+      if (existingError) throw existingError;
+      const existingIds = new Set((existing || []).map(row => String(row.national_id)));
+      const toInsert = assignments.filter(row => !existingIds.has(row.national_id));
+      const toUpdate = assignments.filter(row => existingIds.has(row.national_id));
+
+      let inserted = 0, updated = 0;
+      for (let i = 0; i < toInsert.length; i += 100) {
+        const chunk = toInsert.slice(i, i + 100);
+        if (!chunk.length) continue;
+        const { error } = await sb.from('teachers').insert(chunk);
+        if (error) throw error;
+        inserted += chunk.length;
+      }
+      for (const row of toUpdate) {
+        const { error } = await sb.from('teachers').update({ school_id: row.school_id, full_name: row.full_name, job_role: row.job_role, specialization: row.specialization, is_active: row.is_active }).eq('national_id', row.national_id);
+        if (error) throw error;
+        updated++;
+      }
+      await load();
+      setMessage('تم استيراد ' + inserted + ' موظف جديد وتحديث ' + updated + ' موظف موجود. تم ربط كل موظف بالمدرسة المحددة في الملف.');
+    } catch (err) {
+      setError('تعذر استيراد ملف Excel: ' + (err instanceof Error ? err.message : 'خطأ غير معروف'));
+    } finally {
+      setImportingTeachers(false); setBusy(false);
+    }
+  }
+
+  async function handleTeachersExcel(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) { setError('اختر ملف Excel بصيغة XLSX أو XLS أو CSV.'); return; }
+    await importTeachersFromExcel(file);
+  }
+
   async function addTeacher(){
     setMessage('');setError('');
     if(!teacherForm.school_id||!teacherForm.full_name.trim()||!/^\d{10}$/.test(teacherForm.national_id.trim())){setError('اختر المدرسة وأدخل اسم الموظف ورقم هوية/سجل مدني من 10 أرقام.');return;}
@@ -193,7 +269,7 @@ export default function AdminPage() {
 
         {tab==='schools'&&<div className="space-y-5"><div className="card p-6"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5"><div><h1 className="text-2xl font-bold">إدارة المدارس</h1><p className="text-sm text-gray-500 mt-1">أضف المدارس يدويًا أو استوردها دفعة واحدة من Excel.</p></div><label className="bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold inline-flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"><FileSpreadsheet size={18}/>{importingSchools?'جاري الاستيراد…':'استيراد المدارس من Excel'}<input type="file" accept=".xlsx,.xls,.csv" onChange={handleSchoolsExcel} disabled={busy} className="hidden"/></label></div><div className="bg-slate-50 border rounded-xl p-4 text-sm text-gray-600"><b className="text-gray-800">تنسيق الملف:</b> استخدم أعمدة <span className="font-semibold">رمز المدرسة</span> و<span className="font-semibold">اسم المدرسة</span>، ويمكن إضافة <span className="font-semibold">مدير المدرسة</span>. يتم منع التكرار اعتمادًا على رمز المدرسة.</div><div className="grid md:grid-cols-3 gap-4"><label><span className="block text-sm font-semibold mb-2">رمز المدرسة</span><input value={schoolForm.school_code} onChange={e=>setSchoolForm({...schoolForm,school_code:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: 101"/></label><label><span className="block text-sm font-semibold mb-2">اسم المدرسة</span><input value={schoolForm.school_name} onChange={e=>setSchoolForm({...schoolForm,school_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="اسم المدرسة"/></label><label><span className="block text-sm font-semibold mb-2">اسم قائد/مدير المدرسة</span><input value={schoolForm.manager_name} onChange={e=>setSchoolForm({...schoolForm,manager_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="اختياري"/></label></div><button disabled={busy} onClick={addSchool} className="mt-4 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2 disabled:opacity-50"><Plus size={18}/> إضافة المدرسة</button></div><div className="card overflow-hidden"><div className="p-5 border-b"><b>المدارس المسجلة ({schools.length})</b></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الرمز</th><th className="p-3 text-right">اسم المدرسة</th><th className="p-3 text-right">مدير المدرسة</th><th className="p-3 text-right">الحالة</th><th className="p-3 text-right">إجراء</th></tr></thead><tbody>{schools.map(s=><tr className="border-t" key={s.id}><td className="p-3">{s.school_code}</td><td className="p-3 font-semibold">{s.school_name}</td><td className="p-3">{s.manager_name||'—'}</td><td className="p-3">{s.is_active?'نشطة':'موقوفة'}</td><td className="p-3"><button disabled={busy} onClick={()=>toggleSchool(s)} className="border rounded-lg px-3 py-2 inline-flex items-center gap-1"><Power size={15}/>{s.is_active?'إيقاف':'تفعيل'}</button></td></tr>)}</tbody></table></div></div></div>}
 
-        {tab==='teachers'&&<div className="space-y-5"><div className="card p-6"><h1 className="text-2xl font-bold mb-5">إضافة وإسناد الموظفين</h1><div className="grid md:grid-cols-2 gap-4"><label><span className="block text-sm font-semibold mb-2">المدرسة</span><select value={teacherForm.school_id} onChange={e=>setTeacherForm({...teacherForm,school_id:e.target.value})} className="border rounded-xl px-4 py-3 w-full"><option value="">اختر المدرسة</option>{schools.filter(s=>s.is_active).map(s=><option key={s.id} value={s.id}>{s.school_name} — {s.school_code}</option>)}</select></label><label><span className="block text-sm font-semibold mb-2">اسم الموظف</span><input value={teacherForm.full_name} onChange={e=>setTeacherForm({...teacherForm,full_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="الاسم رباعيًا"/></label><label><span className="block text-sm font-semibold mb-2">رقم الهوية / السجل المدني</span><input value={teacherForm.national_id} onChange={e=>setTeacherForm({...teacherForm,national_id:e.target.value.replace(/\D/g,'').slice(0,10)})} className="border rounded-xl px-4 py-3 w-full" inputMode="numeric" maxLength={10} placeholder="10 أرقام"/></label><label><span className="block text-sm font-semibold mb-2">الوظيفة</span><select value={teacherForm.job_role} onChange={e=>setTeacherForm({...teacherForm,job_role:e.target.value})} className="border rounded-xl px-4 py-3 w-full">{roles.map(r=><option key={r}>{r}</option>)}</select></label><label className="md:col-span-2"><span className="block text-sm font-semibold mb-2">التخصص</span><input value={teacherForm.specialization} onChange={e=>setTeacherForm({...teacherForm,specialization:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="التخصص — اختياري"/></label></div><button disabled={busy} onClick={addTeacher} className="mt-5 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2 disabled:opacity-50"><UserPlus size={18}/> إضافة الموظف وإسناده</button></div><div className="card overflow-hidden"><div className="p-5 border-b flex justify-between items-center"><b>الموظفون وإسنادهم للمدارس</b><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-3 py-2"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الاسم</th><th className="p-3 text-right">الهوية</th><th className="p-3 text-right">الوظيفة</th><th className="p-3 text-right">التخصص</th><th className="p-3 text-right">المدرسة المسند إليها</th></tr></thead><tbody>{teachers.filter(t=>!schoolId||t.school_id===schoolId).map(t=><tr className="border-t" key={t.id}><td className="p-3 font-semibold">{t.full_name}</td><td className="p-3">{t.national_id}</td><td className="p-3">{t.job_role}</td><td className="p-3">{t.specialization||'—'}</td><td className="p-3"><select disabled={busy} value={t.school_id} onChange={e=>moveTeacher(t,e.target.value)} className="border rounded-lg px-3 py-2">{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></td></tr>)}</tbody></table></div></div></div>}
+        {tab==='teachers'&&<div className="space-y-5"><div className="card p-6"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5"><div><h1 className="text-2xl font-bold">إضافة وإسناد الموظفين</h1><p className="text-sm text-gray-500 mt-1">يمكنك الإضافة يدويًا أو استيراد الموظفين من Excel وربطهم بالمدرسة.</p></div><label className="bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold inline-flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"><FileSpreadsheet size={18}/>{importingTeachers?"جاري الاستيراد…":"استيراد الموظفين من Excel"}<input type="file" accept=".xlsx,.xls,.csv" onChange={handleTeachersExcel} disabled={busy} className="hidden"/></label></div><div className="bg-slate-50 border rounded-xl p-4 text-sm text-gray-600 mb-5"><b className="text-gray-800">تنسيق الملف:</b> الأعمدة المطلوبة: <span className="font-semibold">المدرسة، الاسم، رقم الهوية/السجل المدني</span>. ويمكن إضافة <span className="font-semibold">الوظيفة والتخصص</span>. يجب أن تكون المدرسة مسجلة في النظام، ويتم التحديث تلقائيًا عند وجود نفس رقم الهوية.</div><div className="grid md:grid-cols-2 gap-4"><label><span className="block text-sm font-semibold mb-2">المدرسة</span><select value={teacherForm.school_id} onChange={e=>setTeacherForm({...teacherForm,school_id:e.target.value})} className="border rounded-xl px-4 py-3 w-full"><option value="">اختر المدرسة</option>{schools.filter(s=>s.is_active).map(s=><option key={s.id} value={s.id}>{s.school_name} — {s.school_code}</option>)}</select></label><label><span className="block text-sm font-semibold mb-2">اسم الموظف</span><input value={teacherForm.full_name} onChange={e=>setTeacherForm({...teacherForm,full_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="الاسم رباعيًا"/></label><label><span className="block text-sm font-semibold mb-2">رقم الهوية / السجل المدني</span><input value={teacherForm.national_id} onChange={e=>setTeacherForm({...teacherForm,national_id:e.target.value.replace(/\D/g,'').slice(0,10)})} className="border rounded-xl px-4 py-3 w-full" inputMode="numeric" maxLength={10} placeholder="10 أرقام"/></label><label><span className="block text-sm font-semibold mb-2">الوظيفة</span><select value={teacherForm.job_role} onChange={e=>setTeacherForm({...teacherForm,job_role:e.target.value})} className="border rounded-xl px-4 py-3 w-full">{roles.map(r=><option key={r}>{r}</option>)}</select></label><label className="md:col-span-2"><span className="block text-sm font-semibold mb-2">التخصص</span><input value={teacherForm.specialization} onChange={e=>setTeacherForm({...teacherForm,specialization:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="التخصص — اختياري"/></label></div><button disabled={busy} onClick={addTeacher} className="mt-5 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2 disabled:opacity-50"><UserPlus size={18}/> إضافة الموظف وإسناده</button></div><div className="card overflow-hidden"><div className="p-5 border-b flex justify-between items-center"><b>الموظفون وإسنادهم للمدارس</b><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-3 py-2"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الاسم</th><th className="p-3 text-right">الهوية</th><th className="p-3 text-right">الوظيفة</th><th className="p-3 text-right">التخصص</th><th className="p-3 text-right">المدرسة المسند إليها</th></tr></thead><tbody>{teachers.filter(t=>!schoolId||t.school_id===schoolId).map(t=><tr className="border-t" key={t.id}><td className="p-3 font-semibold">{t.full_name}</td><td className="p-3">{t.national_id}</td><td className="p-3">{t.job_role}</td><td className="p-3">{t.specialization||'—'}</td><td className="p-3"><select disabled={busy} value={t.school_id} onChange={e=>moveTeacher(t,e.target.value)} className="border rounded-lg px-3 py-2">{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></td></tr>)}</tbody></table></div></div></div>}
 
         {tab==='periods'&&<div className="card p-6"><h1 className="text-2xl font-bold mb-5">فترات المسيرات</h1>{periods.map(p=><div key={p.id} className="border rounded-xl p-4 mb-3 flex justify-between items-center"><div><b>{p.period_name}</b><div className="text-sm text-gray-500">{p.start_date} إلى {p.end_date}</div></div><button disabled={busy} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2">{p.is_open&&p.allow_edit?'إغلاق الفترة':'فتح للتعبئة'}</button></div>)}</div>}
 
