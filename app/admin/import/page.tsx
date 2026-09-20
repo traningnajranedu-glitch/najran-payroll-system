@@ -42,9 +42,21 @@ export default function ImportPage() {
     const {data:{session}}=await sb.auth.getSession();
     if(!session?.access_token){setError('انتهت جلسة الدخول.');setBusy(false);return;}
     const fd=new FormData();fd.append('file',file);fd.append('mode',mode);
-    const res=await fetch('/api/admin/import-excel',{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`},body:fd});
-    const result=await res.json();
-    if(!res.ok){setError(result.error||'تعذر الاستيراد.');setMessage('');}
+    try {
+      const res=await fetch('/api/admin/import-excel',{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`},body:fd});
+      const raw=await res.text();
+      let result: any = {};
+      try { result = raw ? JSON.parse(raw) : {}; } catch { result = { error: raw || `استجابة غير صالحة من الخادم (HTTP ${res.status}).` }; }
+      if(!res.ok){setError(result.error||result.message||`تعذر الاستيراد (HTTP ${res.status}).`);setMessage('');}
+      else{
+        setMessage(`تمت العملية. جديد: ${result.added} — محدث: ${result.updated} — متجاوز: ${result.skipped}${result.errors?.length?' — توجد ملاحظات في القائمة أدناه.':''}`);
+        if(result.errors?.length)setError(result.errors.slice(0,20).join(' | '));
+        setFile(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر الاتصال بخدمة الاستيراد.');
+      setMessage('');
+    }
     else{
       setMessage(`تمت العملية. جديد: ${result.added} — محدث: ${result.updated} — متجاوز: ${result.skipped}${result.errors?.length?' — توجد ملاحظات في القائمة أدناه.':''}`);
       if(result.errors?.length)setError(result.errors.slice(0,20).join(' | '));
