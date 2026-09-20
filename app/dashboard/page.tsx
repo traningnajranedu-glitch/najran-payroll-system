@@ -9,6 +9,56 @@ type Period = { id: string; period_name: string; start_date: string; end_date: s
 type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; notes: string | null; status: string; approved_at?: string | null };
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null };
 
+function gregorianToHijri(value: string): string {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date(Date.UTC(y, m - 1, d)));
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return `${get('year')}/${get('month')}/${get('day')}`;
+}
+
+function hijriToGregorian(value: string): string | null {
+  const normalized = value.trim().replace(/[-.]/g, '/').replace(/\\s+/g, '');
+  const match = normalized.match(/^(\\d{4})[\\/]([0-1]?\\d)[\\/]([0-3]?\\d)$/);
+  if (!match) return null;
+  const hy = Number(match[1]), hm = Number(match[2]), hd = Number(match[3]);
+  if (hm < 1 || hm > 12 || hd < 1 || hd > 30) return null;
+
+  // Start from the arithmetic Islamic-calendar approximation, then search
+  // nearby Gregorian dates so the conversion follows Saudi Umm al-Qura.
+  const jd = Math.floor((11 * hy + 3) / 30) + 354 * hy + 30 * hm
+    - Math.floor((hm - 1) / 2) + hd + 1948440 - 385;
+  const l = jd + 68569;
+  const n = Math.floor((4 * l) / 146097);
+  const l2 = l - Math.floor((146097 * n + 3) / 4);
+  const y = Math.floor((4000 * (l2 + 1)) / 1461001);
+  const l3 = l2 - Math.floor((1461 * y) / 4) + 31;
+  const m = Math.floor((80 * l3) / 2447);
+  const d = l3 - Math.floor((2447 * m) / 80);
+  const y2 = y + Math.floor(m / 11);
+  const m2 = m + 2 - 12 * Math.floor(m / 14);
+
+  const base = new Date(Date.UTC(y2, m2 - 1, d));
+  const target = `${hy}/${String(hm).padStart(2, '0')}/${String(hd).padStart(2, '0')}`;
+  for (let offset = -10; offset <= 10; offset++) {
+    const candidate = new Date(base);
+    candidate.setUTCDate(candidate.getUTCDate() + offset);
+    const formatted = gregorianToHijri(candidate.toISOString().slice(0, 10));
+    if (formatted === target) return candidate.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+function formatHijriInput(value: string): string {
+  const digits = value.replace(/\\D/g, '').slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}/${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6)}`;
+}
+
 export default function Dashboard() {
   const sb = supabaseBrowser();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -218,7 +268,23 @@ export default function Dashboard() {
               <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">الهوية</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">تاريخ المباشرة</th><th className="p-4 text-right">ملاحظات</th><th className="p-4 text-right">الحالة</th></tr></thead>
               <tbody>{teachers.map((t, i) => { const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' }; return <tr key={t.id} className="border-t">
                 <td className="p-4">{i + 1}</td><td className="p-4 font-semibold">{t.full_name}</td><td className="p-4">{t.national_id}</td><td className="p-4">{t.job_role}</td><td className="p-4">{t.specialization || '—'}</td>
-                <td className="p-4"><input disabled={!editable || r.status === 'تم الاعتماد'} type="date" value={r.direct_start_date || ''} onChange={e => setRows(x => ({ ...x, [t.id]: { ...r, direct_start_date: e.target.value } }))} className="border rounded-lg px-2 py-2" /></td>
+                <td className="p-4">
+                  <input
+                    disabled={!editable || r.status === 'تم الاعتماد'}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="1447/04/01"
+                    value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''}
+                    onChange={e => {
+                      const hijri = formatHijriInput(e.target.value);
+                      const gregorian = hijriToGregorian(hijri);
+                      setRows(x => ({ ...x, [t.id]: { ...r, direct_start_date: gregorian || null } }));
+                    }}
+                    className="border rounded-lg px-2 py-2 w-[145px]"
+                    title="أدخل التاريخ الهجري بصيغة سنة/شهر/يوم"
+                  />
+                  <div className="text-[11px] text-gray-400 mt-1">هجري (أم القرى)</div>
+                </td>
                 <td className="p-4"><input disabled={!editable || r.status === 'تم الاعتماد'} value={r.notes || ''} onChange={e => setRows(x => ({ ...x, [t.id]: { ...r, notes: e.target.value } }))} className="border rounded-lg px-3 py-2" placeholder="اختياري" /></td>
                 <td className="p-4"><span className={`px-2.5 py-1.5 rounded-full text-xs ${r.status === 'تم الاعتماد' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{r.status || 'لم يبدأ'}</span></td>
               </tr>; })}</tbody>
@@ -243,7 +309,7 @@ export default function Dashboard() {
         </div>
         <table className="w-full border-collapse text-xs">
           <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">الملاحظات</th></tr></thead>
-          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.direct_start_date || '—'}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
+          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
         </table>
         <div className="mt-10" style={{ direction: 'ltr', display: 'flex', justifyContent: 'flex-start' }}>
           <div className="text-center w-[300px]">
