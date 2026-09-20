@@ -7,10 +7,62 @@ import { supabaseBrowser } from '../../lib/supabase';
 
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name?: string | null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null; is_active: boolean };
-type Period = { id: string; period_name: string; start_date: string; end_date: string; is_open: boolean; allow_edit: boolean };
+type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type RecordRow = { id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; notes: string | null };
 
 const roles = ['مدير','معلم','إداري','مستخدم','حارس'];
+
+function hijriKey(value: string): number | null {
+  const m = value.trim().match(/^(\\d{4})[\\/]([01]\\d)[\\/]([0-3]\\d)$/);
+  if (!m) return null;
+  return Number(m[1] + m[2] + m[3]);
+}
+
+function currentHijriKey(): number | null {
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Riyadh'
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return hijriKey(`${get('year')}/${get('month')}/${get('day')}`);
+}
+
+function gregorianToHijri(value: string): string {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Riyadh'
+  }).formatToParts(new Date(Date.UTC(y, m - 1, d, 12)));
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return `${get('year')}/${get('month')}/${get('day')}`;
+}
+
+function hijriToGregorian(value: string): string | null {
+  const m = value.trim().replace(/[-.]/g,'/').match(/^(\\d{4})[\\/]([01]?\\d)[\\/]([0-3]?\\d)$/);
+  if (!m) return null;
+  const hy=Number(m[1]), hm=Number(m[2]), hd=Number(m[3]);
+  if (hm<1||hm>12||hd<1||hd>30) return null;
+  const jd=Math.floor((11*hy+3)/30)+354*hy+30*hm-Math.floor((hm-1)/2)+hd+1948440-385;
+  const l=jd+68569, n=Math.floor(4*l/146097), l2=l-Math.floor((146097*n+3)/4);
+  const y=Math.floor(4000*(l2+1)/1461001), l3=l2-Math.floor(1461*y/4)+31;
+  const mm=Math.floor(80*l3/2447), dd=l3-Math.floor(2447*mm/80), yy=y+Math.floor(mm/11);
+  const mo=mm+2-12*Math.floor(mm/14);
+  const base=new Date(Date.UTC(yy,mo-1,dd,12));
+  const target=`${hy}/${String(hm).padStart(2,'0')}/${String(hd).padStart(2,'0')}`;
+  for(let offset=-10;offset<=10;offset++){
+    const candidate=new Date(base); candidate.setUTCDate(candidate.getUTCDate()+offset);
+    if(gregorianToHijri(candidate.toISOString().slice(0,10))===target)return candidate.toISOString().slice(0,10);
+  }
+  return null;
+}
+
+function periodIsOpen(p: Period): boolean {
+  if (p.auto_open_close && p.start_hijri && p.end_hijri) {
+    const today=currentHijriKey(), start=hijriKey(p.start_hijri), end=hijriKey(p.end_hijri);
+    return today!==null && start!==null && end!==null && today>=start && today<=end;
+  }
+  return !!p.is_open && !!p.allow_edit;
+}
 
 export default function AdminPage() {
   const sb = supabaseBrowser();
@@ -282,7 +334,35 @@ export default function AdminPage() {
 
   async function generate(){if(!schoolId||!periodId)return;setBusy(true);const {error}=await sb.rpc('generate_school_payroll',{p_school_id:schoolId,p_period_id:periodId});if(error)setError('تعذر تجهيز المسير: '+error.message);else{setMessage('تم تجهيز مسير المدرسة بنجاح');loadRecords()}setBusy(false)}
   async function status(id:string,status:string){setBusy(true);const {error}=await sb.rpc('set_payroll_status',{p_record_id:id,p_status:status});if(error)setError(error.message);else loadRecords();setBusy(false)}
-  async function periodState(p:Period){setBusy(true);const open=!(p.is_open&&p.allow_edit);const {error}=await sb.rpc('set_period_state',{p_period_id:p.id,p_is_open:open,p_allow_edit:open});if(error)setError(error.message);else load();setBusy(false)}
+  async function periodState(p:Period){
+  setBusy(true); setError('');
+  const open=!(p.is_open&&p.allow_edit);
+  const {error}=await sb.rpc('set_period_state',{p_period_id:p.id,p_is_open:open,p_allow_edit:open});
+  if(error)setError(error.message); else await load();
+  setBusy(false);
+}
+
+async function editPeriodDates(p:Period){
+  const start=prompt('تاريخ بداية المسير الهجري (أم القرى) بصيغة 1448/02/04', p.start_hijri || gregorianToHijri(p.start_date));
+  if(start===null)return;
+  const end=prompt('تاريخ نهاية المسير الهجري (أم القرى) بصيغة 1448/02/09', p.end_hijri || gregorianToHijri(p.end_date));
+  if(end===null)return;
+  const startG=hijriToGregorian(start), endG=hijriToGregorian(end);
+  const sk=hijriKey(start), ek=hijriKey(end);
+  if(!startG||!endG||sk===null||ek===null||sk>ek){setError('تواريخ الفترة الهجرية غير صحيحة أو تاريخ البداية بعد النهاية.');return;}
+  const auto=confirm('هل تريد أن يفتح ويغلق المسير تلقائيًا حسب التاريخ الهجري؟\\nموافق = تلقائي\\nإلغاء = تحكم يدوي');
+  setBusy(true); setError('');
+  const today=currentHijriKey();
+  const autoOpen=auto && today!==null && today>=sk && today<=ek;
+  const {error}=await sb.from('payroll_periods').update({
+    start_hijri:start.replace(/-/g,'/'), end_hijri:end.replace(/-/g,'/'),
+    start_date:startG, end_date:endG, auto_open_close:auto,
+    is_open:auto ? autoOpen : p.is_open,
+    allow_edit:auto ? autoOpen : p.allow_edit
+  }).eq('id',p.id);
+  if(error)setError('تعذر تحديث الفترة: '+error.message); else {setMessage('تم حفظ الفترة الهجرية وإعداد فتح/إغلاق المسير.'); await load();}
+  setBusy(false);
+}
 
   if(loading)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
   if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
@@ -306,7 +386,7 @@ export default function AdminPage() {
 
         {tab==='teachers'&&<div className="space-y-5"><div className="card p-6"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5"><div><h1 className="text-2xl font-bold">إضافة وإسناد الموظفين</h1><p className="text-sm text-gray-500 mt-1">يمكنك الإضافة يدويًا أو استيراد الموظفين من Excel وربطهم بالمدرسة.</p></div><label className="bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold inline-flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"><FileSpreadsheet size={18}/>{importingTeachers?"جاري الاستيراد…":"استيراد الموظفين من Excel"}<input type="file" accept=".xlsx,.xls,.csv" onChange={handleTeachersExcel} disabled={busy} className="hidden"/></label></div><div className="bg-slate-50 border rounded-xl p-4 text-sm text-gray-600 mb-5"><b className="text-gray-800">تنسيق الملف:</b> الأعمدة المطلوبة: <span className="font-semibold">المدرسة، الاسم، رقم الهوية/السجل المدني</span>. ويمكن إضافة <span className="font-semibold">الوظيفة والتخصص</span>. يجب أن تكون المدرسة مسجلة في النظام، ويتم التحديث تلقائيًا عند وجود نفس رقم الهوية.</div><div className="grid md:grid-cols-2 gap-4"><label><span className="block text-sm font-semibold mb-2">المدرسة</span><select value={teacherForm.school_id} onChange={e=>setTeacherForm({...teacherForm,school_id:e.target.value})} className="border rounded-xl px-4 py-3 w-full"><option value="">اختر المدرسة</option>{schools.filter(s=>s.is_active).map(s=><option key={s.id} value={s.id}>{s.school_name} — {s.school_code}</option>)}</select></label><label><span className="block text-sm font-semibold mb-2">اسم الموظف</span><input value={teacherForm.full_name} onChange={e=>setTeacherForm({...teacherForm,full_name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="الاسم رباعيًا"/></label><label><span className="block text-sm font-semibold mb-2">رقم الهوية / السجل المدني</span><input value={teacherForm.national_id} onChange={e=>setTeacherForm({...teacherForm,national_id:e.target.value.replace(/\D/g,'').slice(0,10)})} className="border rounded-xl px-4 py-3 w-full" inputMode="numeric" maxLength={10} placeholder="10 أرقام"/></label><label><span className="block text-sm font-semibold mb-2">الوظيفة</span><select value={teacherForm.job_role} onChange={e=>setTeacherForm({...teacherForm,job_role:e.target.value})} className="border rounded-xl px-4 py-3 w-full">{roles.map(r=><option key={r}>{r}</option>)}</select></label><label className="md:col-span-2"><span className="block text-sm font-semibold mb-2">التخصص</span><input value={teacherForm.specialization} onChange={e=>setTeacherForm({...teacherForm,specialization:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="التخصص — اختياري"/></label></div><button disabled={busy} onClick={addTeacher} className="mt-5 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2 disabled:opacity-50"><UserPlus size={18}/> إضافة الموظف وإسناده</button></div><div className="card overflow-hidden"><div className="p-5 border-b flex justify-between items-center"><b>الموظفون وإسنادهم للمدارس</b><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-3 py-2"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الاسم</th><th className="p-3 text-right">الهوية</th><th className="p-3 text-right">الوظيفة</th><th className="p-3 text-right">التخصص</th><th className="p-3 text-right">المدرسة المسند إليها</th></tr></thead><tbody>{teachers.filter(t=>!schoolId||t.school_id===schoolId).map(t=>editingTeacherId===t.id?<tr className="border-t bg-blue-50/50" key={t.id}><td className="p-3"><input value={teacherEditForm.full_name} onChange={e=>setTeacherEditForm({...teacherEditForm,full_name:e.target.value})} className="border rounded-lg px-3 py-2 w-full"/></td><td className="p-3"><input value={teacherEditForm.national_id} onChange={e=>setTeacherEditForm({...teacherEditForm,national_id:e.target.value.replace(/\\D/g,'').slice(0,10)})} maxLength={10} inputMode="numeric" className="border rounded-lg px-3 py-2 w-full"/></td><td className="p-3"><select value={teacherEditForm.job_role} onChange={e=>setTeacherEditForm({...teacherEditForm,job_role:e.target.value})} className="border rounded-lg px-3 py-2 w-full">{roles.map(r=><option key={r}>{r}</option>)}</select></td><td className="p-3"><input value={teacherEditForm.specialization} onChange={e=>setTeacherEditForm({...teacherEditForm,specialization:e.target.value})} className="border rounded-lg px-3 py-2 w-full"/></td><td className="p-3"><select value={teacherEditForm.school_id} onChange={e=>setTeacherEditForm({...teacherEditForm,school_id:e.target.value})} className="border rounded-lg px-3 py-2 w-full">{schools.filter(s=>s.is_active).map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><div className="flex gap-2 mt-2"><button disabled={busy} onClick={()=>updateTeacher(t.id)} className="bg-[var(--navy)] text-white rounded-lg px-3 py-2">حفظ</button><button disabled={busy} onClick={cancelTeacherEdit} className="border rounded-lg px-3 py-2">إلغاء</button><button disabled={busy} onClick={()=>deleteTeacher(t)} className="border border-red-200 text-red-700 rounded-lg px-3 py-2">حذف</button></div></td></tr>:<tr className="border-t" key={t.id}><td className="p-3 font-semibold">{t.full_name}</td><td className="p-3">{t.national_id}</td><td className="p-3">{t.job_role}</td><td className="p-3">{t.specialization||'—'}</td><td className="p-3"><div className="flex flex-wrap gap-2 items-center"><select disabled={busy} value={t.school_id} onChange={e=>moveTeacher(t,e.target.value)} className="border rounded-lg px-3 py-2">{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><button disabled={busy} onClick={()=>startTeacherEdit(t)} className="border rounded-lg px-3 py-2">تعديل</button><button disabled={busy} onClick={()=>deleteTeacher(t)} className="border border-red-200 text-red-700 rounded-lg px-3 py-2">حذف</button></div></td></tr>)}</tbody></table></div></div></div>}
 
-        {tab==='periods'&&<div className="card p-6"><h1 className="text-2xl font-bold mb-5">فترات المسيرات</h1>{periods.map(p=><div key={p.id} className="border rounded-xl p-4 mb-3 flex justify-between items-center"><div><b>{p.period_name}</b><div className="text-sm text-gray-500">{p.start_date} إلى {p.end_date}</div></div><button disabled={busy} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2">{p.is_open&&p.allow_edit?'إغلاق الفترة':'فتح للتعبئة'}</button></div>)}</div>}
+        {tab==='periods'&&<div className="card p-6"><h1 className="text-2xl font-bold mb-2">فترات المسيرات</h1><p className="text-sm text-gray-500 mb-5">يتم فتح المسير تلقائيًا من بداية التاريخ الهجري إلى نهايته باستخدام تقويم أم القرى، ويمكن التحويل إلى التحكم اليدوي عند الحاجة.</p>{periods.map(p=>{const open=periodIsOpen(p);const sh=p.start_hijri||gregorianToHijri(p.start_date);const eh=p.end_hijri||gregorianToHijri(p.end_date);return <div key={p.id} className="border rounded-xl p-4 mb-3"><div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3"><div><b>{p.period_name}</b><div className="text-sm text-gray-600 mt-1">هجري: {sh} إلى {eh}</div><div className="text-xs text-gray-400 mt-1">ميلادي: {p.start_date} إلى {p.end_date}</div><div className="mt-2 text-sm"><span className={open?'text-green-700':'text-amber-700'}>{open?'مفتوح للتعبئة':'مغلق'}</span> — {p.auto_open_close?'فتح/إغلاق تلقائي حسب التاريخ الهجري':'تحكم يدوي'}</div></div><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>editPeriodDates(p)} className="border rounded-lg px-4 py-2">تعديل التواريخ والإعداد</button><button disabled={busy||!!p.auto_open_close} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2 disabled:opacity-50">{p.is_open&&p.allow_edit?'إغلاق يدوي':'فتح يدوي'}</button></div></div></div>})}</div>}
 
         {tab==='payroll'&&<div className="space-y-5"><div className="card p-5 grid md:grid-cols-3 gap-3"><select value={periodId} onChange={e=>setPeriodId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">اختر الفترة</option>{periods.map(p=><option key={p.id} value={p.id}>{p.period_name}</option>)}</select><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><button disabled={busy||!schoolId||!periodId} onClick={generate} className="bg-[var(--navy)] text-white rounded-xl px-4 py-3 font-bold">تجهيز مسير المدرسة</button></div><div className="card overflow-hidden"><div className="p-5 border-b"><b>{school?.school_name||'كل المدارس'}</b> — {period?.period_name||''}</div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">تاريخ المباشرة</th><th className="p-3 text-right">الحالة</th></tr></thead><tbody>{records.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id),s=schools.find(x=>x.id===r.school_id);return <tr className="border-t" key={r.id}><td className="p-3">{t?.full_name||'—'}</td><td className="p-3">{s?.school_name||'—'}</td><td className="p-3">{r.direct_start_date||'—'}</td><td className="p-3"><select value={r.status} disabled={busy} onChange={e=>status(r.id,e.target.value)} className="border rounded-lg px-2 py-1"><option>لم يبدأ</option><option>مفتوح للتعبئة</option><option>تم الحفظ</option><option>تم الاعتماد</option><option>مغلق</option></select></td></tr>})}</tbody></table></div></div></div>}
       </section>
