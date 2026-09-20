@@ -98,6 +98,54 @@ export async function POST(request: Request) {
       .toLowerCase();
     const password = String(body.password || '');
     const displayName = String(body.display_name || '').trim();
+    const mode = String(body.mode || '').trim();
+
+    if (mode === 'bulk-default') {
+      const defaultPassword = 'Aa123456';
+      const { data: schools } = await adminClient
+        .from('schools')
+        .select('id,school_code,school_name,is_active')
+        .eq('is_active', true)
+        .order('school_code');
+      const results: { school: string; username: string; created: boolean; message?: string }[] = [];
+      for (const school of schools || []) {
+        const username = String(school.school_code || '').trim().toLowerCase();
+        if (!/^[a-z0-9._-]{3,40}$/.test(username)) {
+          results.push({ school: school.school_name, username, created: false, message: 'رمز المدرسة غير صالح لاسم مستخدم.' });
+          continue;
+        }
+        const { data: existing } = await adminClient
+          .from('school_users')
+          .select('id,auth_user_id,username,is_active')
+          .eq('school_id', school.id)
+          .maybeSingle();
+        if (existing) {
+          results.push({ school: school.school_name, username: existing.username, created: false, message: 'الحساب موجود مسبقًا.' });
+          continue;
+        }
+        const email = `${username}@schools.ceedu.local`;
+        const { data: created, error: createError } = await adminClient.auth.admin.createUser({ email, password: defaultPassword, email_confirm: true });
+        if (createError || !created.user) {
+          results.push({ school: school.school_name, username, created: false, message: createError?.message || 'تعذر إنشاء حساب الدخول.' });
+          continue;
+        }
+        const { error: mapError } = await adminClient.from('school_users').insert({
+          auth_user_id: created.user.id,
+          school_id: school.id,
+          username,
+          display_name: school.school_name,
+          is_active: true,
+          must_change_password: true,
+        });
+        if (mapError) {
+          await adminClient.auth.admin.deleteUser(created.user.id);
+          results.push({ school: school.school_name, username, created: false, message: mapError.message });
+          continue;
+        }
+        results.push({ school: school.school_name, username, created: true });
+      }
+      return NextResponse.json({ success: true, defaultPassword, results, created: results.filter(x => x.created).length, existing: results.filter(x => !x.created && x.message === 'الحساب موجود مسبقًا.').length });
+    }
 
     if (!schoolId || !username || !password) {
       return NextResponse.json(
@@ -175,6 +223,7 @@ export async function POST(request: Request) {
       .from('school_users')
       .insert({
         auth_user_id: created.user.id,
+        must_change_password: true,
         school_id: school.id,
         username,
         display_name:
@@ -346,6 +395,7 @@ export async function PUT(request: Request) {
         display_name:
           displayName || school.school_name,
         is_active: isActive,
+        ...(password ? { must_change_password: true } : {}),
       })
       .eq('id', id);
 
