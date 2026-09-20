@@ -84,8 +84,8 @@ export default function ImportPage() {
         <div className="overflow-x-auto mb-5"><table className="w-full text-sm"><thead><tr className="bg-gray-50">{c.fields.map(x=><th key={x[0]} className="p-3 text-right">{x[1]}<div className="text-[11px] font-normal text-gray-400" dir="ltr">{x[0]}</div></th>)}</tr></thead><tbody><tr className="border-t">{c.fields.map(x=><td key={x[0]} className="p-3 text-gray-600">{x[0]==='job_role'?'معلم':x[0]==='national_id'?'1234567890':x[0]==='school_code'?'101':x[0]==='is_active'?'true':'مثال'}</td>)}</tr></tbody></table></div>
         <label className="block border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer hover:bg-slate-50">
           <Upload className="mx-auto mb-3" size={30}/>
-          <b>{file?file.name:'اختر ملف Excel'}</b><p className="text-sm text-gray-500 mt-1">XLSX أو XLS — حتى 10MB</p>
-          <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e=>setFile(e.target.files?.[0]||null)}/>
+          <b>{file?file.name:'اختر ملف Excel'}</b><p className="text-sm text-gray-500 mt-1">XLSX أو XLS أو CSV — حتى 10MB</p>
+          <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e=>setFile(e.target.files?.[0]||null)}/>
         </label>
         {message&&<div className="mt-4 bg-green-50 border border-green-200 text-green-800 rounded-xl p-4">{message}</div>}
         {error&&<div className="mt-4 bg-red-50 border border-red-200 text-red-800 rounded-xl p-4">{error}</div>}
