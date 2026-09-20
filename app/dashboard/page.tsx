@@ -51,13 +51,16 @@ function hijriToGregorian(value: string): string | null {
   const hy=Number(m[1]),hm=Number(m[2]),hd=Number(m[3]);
   if(hy<1300||hy>1600||hm<1||hm>12||hd<1||hd>30)return null;
   const target=hy+'/'+String(hm).padStart(2,'0')+'/'+String(hd).padStart(2,'0');
-  const approxYear=hy-579;
-  const base=new Date(Date.UTC(approxYear,Math.round((hm-1)*0.97),Math.min(hd,28),12));
-  for(let offset=-500;offset<=500;offset++){
-    const candidate=new Date(base);
-    candidate.setUTCDate(base.getUTCDate()+offset);
-    const g=candidate.toISOString().slice(0,10);
-    if(gregorianToHijri(g)===target)return g;
+
+  // البحث عن التاريخ الميلادي المطابق داخل نطاق أم القرى بدل الاعتماد على تقريب السنة.
+  let lo=Date.UTC(hy-580,0,1), hi=Date.UTC(hy-577,11,31);
+  while(lo<=hi){
+    const mid=lo+Math.floor((hi-lo)/2/86400000)*86400000;
+    const g=new Date(mid).toISOString().slice(0,10);
+    const h=gregorianToHijri(g);
+    if(h===target)return g;
+    if(h<target)lo=mid+86400000;
+    else hi=mid-86400000;
   }
   return null;
 }
