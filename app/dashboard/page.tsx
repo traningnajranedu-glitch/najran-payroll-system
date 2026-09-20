@@ -92,9 +92,17 @@ function hijriPartsFromGregorian(value:string){
   const get=(type:string)=>Number(parts.find(p=>p.type===type)?.value||0); return {year:get('year'),month:get('month'),day:get('day')};
 }
 function hijriMonthDays(year:number,month:number){
-  const first=hijriToGregorian(year+'/'+String(month).padStart(2,'0')+'/01'); if(!first)return [];
-  const result:{hijri:string;day:number;weekday:number}[]=[], start=new Date(first+'T12:00:00Z');
-  for(let i=-2;i<40;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const g=d.toISOString().slice(0,10);const h=hijriPartsFromGregorian(g);if(h&&h.year===year&&h.month===month)result.push({hijri:year+'/'+String(month).padStart(2,'0')+'/'+String(h.day).padStart(2,'0'),day:h.day,weekday:d.getUTCDay()});}
+  const now=new Date();
+  const base=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),12));
+  const result:{hijri:string;day:number;weekday:number}[]=[];
+  for(let offset=-500;offset<=500;offset++){
+    const d=new Date(base); d.setUTCDate(base.getUTCDate()+offset);
+    const g=d.toISOString().slice(0,10);
+    const h=hijriPartsFromGregorian(g);
+    if(h&&h.year===year&&h.month===month){
+      result.push({hijri:year+'/'+String(month).padStart(2,'0')+'/'+String(h.day).padStart(2,'0'),day:h.day,weekday:d.getUTCDay()});
+    }
+  }
   return result;
 }
 function HijriDatePicker({value,onChange,disabled=false}:{value:string;onChange:(value:string)=>void;disabled?:boolean}) {
