@@ -64,6 +64,46 @@ function periodIsOpen(p: Period): boolean {
   return !!p.is_open && !!p.allow_edit;
 }
 
+
+const hijriMonths=['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const weekDays=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function hijriPartsFromGregorian(value:string){
+  if(!value)return null;
+  const [y,m,d]=value.split('-').map(Number); if(!y||!m||!d)return null;
+  const parts=new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura',{year:'numeric',month:'numeric',day:'numeric',timeZone:'Asia/Riyadh'}).formatToParts(new Date(Date.UTC(y,m-1,d,12)));
+  const get=(type:string)=>Number(parts.find(p=>p.type===type)?.value||0);
+  return {year:get('year'),month:get('month'),day:get('day')};
+}
+function hijriMonthDays(year:number,month:number){
+  const first=hijriToGregorian(year+'/'+String(month).padStart(2,'0')+'/01'); if(!first)return [];
+  const result:{hijri:string;day:number;weekday:number}[]=[]; const start=new Date(first+'T12:00:00Z');
+  for(let i=-2;i<40;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const g=d.toISOString().slice(0,10);const h=hijriPartsFromGregorian(g);if(h&&h.year===year&&h.month===month)result.push({hijri:year+'/'+String(month).padStart(2,'0')+'/'+String(h.day).padStart(2,'0'),day:h.day,weekday:d.getUTCDay()});}
+  return result;
+}
+function HijriDatePicker({value,onChange,placeholder='اختر التاريخ الهجري'}:{value:string;onChange:(value:string)=>void;placeholder?:string}){
+  const parsed=value.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  const todayParts=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
+  const initial=parsed?{year:Number(parsed[1]),month:Number(parsed[2])}:(todayParts?{year:todayParts.year,month:todayParts.month}:{year:1448,month:1});
+  const [open,setOpen]=useState(false); const [ym,setYm]=useState(initial);
+  useEffect(()=>{if(open&&parsed)setYm({year:Number(parsed[1]),month:Number(parsed[2])});},[open,value]);
+  const days=hijriMonthDays(ym.year,ym.month), leading=days.length?days[0].weekday:0;
+  const cells=[...Array(leading).fill(null),...days]; while(cells.length%7)cells.push(null);
+  function move(delta:number){let y=ym.year,m=ym.month+delta;if(m<1){m=12;y--;}if(m>12){m=1;y++;}setYm({year:y,month:m});}
+  return <div className="relative">
+    <div className="flex gap-2">
+      <input value={value} onChange={e=>onChange(e.target.value.replace(/\D/g,'').slice(0,8).replace(/^(\d{4})(\d{2})(\d{2})$/,'$1/$2/$3'))} onFocus={()=>setOpen(true)} inputMode="numeric" className="border rounded-xl px-4 py-3 w-full" placeholder={placeholder}/>
+      <button type="button" onClick={()=>setOpen(v=>!v)} className="border rounded-xl px-4 py-3 bg-white" title="فتح التقويم الهجري"><CalendarDays size={18}/></button>
+    </div>
+    {open&&<div className="absolute z-50 mt-2 w-[330px] rounded-2xl border bg-white shadow-xl p-4">
+      <div className="flex items-center justify-between mb-3"><button type="button" onClick={()=>move(-1)} className="border rounded-lg px-3 py-1">‹</button><b>{hijriMonths[ym.month-1]} {ym.year} هـ</b><button type="button" onClick={()=>move(1)} className="border rounded-lg px-3 py-1">›</button></div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">{weekDays.map(x=><div key={x} className="py-1">{x.slice(0,2)}</div>)}</div>
+      <div className="grid grid-cols-7 gap-1">{cells.map((cell:any,i:number)=>cell?<button type="button" key={cell.hijri} onClick={()=>{onChange(cell.hijri);setOpen(false)}} className={value===cell.hijri?'rounded-lg bg-[var(--navy)] text-white py-2 font-bold':'rounded-lg hover:bg-slate-100 py-2'}>{cell.day}</button>:<div key={'empty-'+i}/>)}</div>
+      <div className="text-xs text-gray-500 mt-3 text-center">تقويم أم القرى — اختر اليوم مباشرة</div>
+    </div>}
+  </div>;
+}
+
 export default function AdminPage() {
   const sb = supabaseBrowser();
   const [loading,setLoading]=useState(true), [allowed,setAllowed]=useState(false);
