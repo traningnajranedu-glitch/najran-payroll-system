@@ -4,6 +4,8 @@ import * as XLSX from 'xlsx';
 
 type Row = Record<string, unknown>;
 
+type SchoolAccountImport = { id: string; school_code: string; is_active: boolean; school_name: string };
+
 async function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -95,7 +97,18 @@ async function importAccounts(client: any, rows: Row[]) {
   let added = 0, updated = 0, skipped = 0;
   const errors: string[] = [];
   const { data: schools } = await client.from('schools').select('id,school_code,is_active,school_name');
-  const schoolMap = new Map((schools || []).map((s: any) => [String(s.school_code), s]));
+  const schoolMap = new Map<string, SchoolAccountImport>();
+  for (const s of schools || []) {
+    if (s && typeof s === 'object') {
+      const row = s as Record<string, unknown>;
+      schoolMap.set(String(row.school_code ?? ''), {
+        id: String(row.id ?? ''),
+        school_code: String(row.school_code ?? ''),
+        is_active: Boolean(row.is_active),
+        school_name: String(row.school_name ?? ''),
+      });
+    }
+  }
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i], line = i + 2;
     const schoolCode = text(row,'school_code','رمز المدرسة','كود المدرسة');
