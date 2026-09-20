@@ -38,24 +38,22 @@ function gregorianToHijri(value: string): string {
 }
 
 function hijriToGregorian(value: string): string | null {
-  const m = value.trim().replace(/[-.]/g,'/').match(/^(\d{4})[\/]([01]?\d)[\/]([0-3]?\d)$/);
-  if (!m) return null;
-  const hy=Number(m[1]), hm=Number(m[2]), hd=Number(m[3]);
-  if (hm<1||hm>12||hd<1||hd>30) return null;
-  const jd=Math.floor((11*hy+3)/30)+354*hy+30*hm-Math.floor((hm-1)/2)+hd+1948440-385;
-  const l=jd+68569, n=Math.floor(4*l/146097), l2=l-Math.floor((146097*n+3)/4);
-  const y=Math.floor(4000*(l2+1)/1461001), l3=l2-Math.floor(1461*y/4)+31;
-  const mm=Math.floor(80*l3/2447), dd=l3-Math.floor(2447*mm/80), yy=y+Math.floor(mm/11);
-  const mo=mm+2-12*Math.floor(mm/14);
-  const base=new Date(Date.UTC(yy,mo-1,dd,12));
-  const target=`${hy}/${String(hm).padStart(2,'0')}/${String(hd).padStart(2,'0')}`;
-  for(let offset=-10;offset<=10;offset++){
-    const candidate=new Date(base); candidate.setUTCDate(candidate.getUTCDate()+offset);
-    if(gregorianToHijri(candidate.toISOString().slice(0,10))===target)return candidate.toISOString().slice(0,10);
+  const normalized=value.trim().replace(/[-.]/g,'/');
+  const m=normalized.match(/^(\d{4})[\/]([01]?\d)[\/]([0-3]?\d)$/);
+  if(!m)return null;
+  const hy=Number(m[1]),hm=Number(m[2]),hd=Number(m[3]);
+  if(hy<1300||hy>1600||hm<1||hm>12||hd<1||hd>30)return null;
+  const target=hy+'/'+String(hm).padStart(2,'0')+'/'+String(hd).padStart(2,'0');
+  const approxYear=hy-579;
+  const base=new Date(Date.UTC(approxYear,Math.round((hm-1)*0.97),Math.min(hd,28),12));
+  for(let offset=-500;offset<=500;offset++){
+    const candidate=new Date(base);
+    candidate.setUTCDate(base.getUTCDate()+offset);
+    const g=candidate.toISOString().slice(0,10);
+    if(gregorianToHijri(g)===target)return g;
   }
   return null;
 }
-
 function periodIsOpen(p: Period): boolean {
   if (p.auto_open_close && p.start_hijri && p.end_hijri) {
     const today=currentHijriKey(), start=hijriKey(p.start_hijri), end=hijriKey(p.end_hijri);
