@@ -53,7 +53,8 @@ function hijriToGregorian(value: string): string | null {
   const target=hy+'/'+String(hm).padStart(2,'0')+'/'+String(hd).padStart(2,'0');
 
   // البحث عن التاريخ الميلادي المطابق داخل نطاق أم القرى بدل الاعتماد على تقريب السنة.
-  const approxYear=hy+579;\n  let lo=Date.UTC(approxYear-2,0,1), hi=Date.UTC(approxYear+2,11,31);
+  const approxYear=hy+579;
+  let lo=Date.UTC(approxYear-2,0,1), hi=Date.UTC(approxYear+2,11,31);
   while(lo<=hi){
     const mid=lo+Math.floor((hi-lo)/2/86400000)*86400000;
     const g=new Date(mid).toISOString().slice(0,10);
