@@ -97,15 +97,25 @@ function hijriMonthDays(year:number,month:number){
   for(let i=-2;i<40;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);const g=d.toISOString().slice(0,10);const h=hijriPartsFromGregorian(g);if(h&&h.year===year&&h.month===month)result.push({hijri:year+'/'+String(month).padStart(2,'0')+'/'+String(h.day).padStart(2,'0'),day:h.day,weekday:d.getUTCDay()});}
   return result;
 }
-function HijriDatePicker({value,onChange}:{value:string;onChange:(value:string)=>void}){
-  const parsed=value.match(/^(\d{4})\/(\d{2})\/(\d{2})$/), today=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
+function HijriDatePicker({value,onChange,disabled=false}:{value:string;onChange:(value:string)=>void;disabled?:boolean}) {
+  const parsed=value.match(/^(\\d{4})\\/(\\d{2})\\/(\\d{2})$/), today=hijriPartsFromGregorian(new Date().toISOString().slice(0,10));
   const initial=parsed?{year:Number(parsed[1]),month:Number(parsed[2])}:(today?{year:today.year,month:today.month}:{year:1448,month:1});
   const [open,setOpen]=useState(false),[ym,setYm]=useState(initial);
   useEffect(()=>{if(open&&parsed)setYm({year:Number(parsed[1]),month:Number(parsed[2])});},[open,value]);
   const days=hijriMonthDays(ym.year,ym.month),leading=days.length?days[0].weekday:0;const cells=[...Array(leading).fill(null),...days];while(cells.length%7)cells.push(null);
   const move=(delta:number)=>{let y=ym.year,m=ym.month+delta;if(m<1){m=12;y--}if(m>12){m=1;y++}setYm({year:y,month:m})};
-  return <div className="relative"><div className="flex gap-2"><input value={value} onChange={e=>onChange(formatHijriInput(e.target.value))} onFocus={()=>setOpen(true)} inputMode="numeric" placeholder="1448/03/01" className="border rounded-lg px-2 py-2 w-[145px]"/><button type="button" onClick={()=>setOpen(v=>!v)} className="border rounded-lg px-3 py-2 bg-white" title="فتح التقويم الهجري"><CalendarDays size={17}/></button></div>
-  {open&&<div className="absolute z-50 mt-2 w-[330px] rounded-2xl border bg-white shadow-xl p-4"><div className="flex items-center justify-between mb-3"><button type="button" onClick={()=>move(-1)} className="border rounded-lg px-3 py-1">‹</button><b>{hijriMonths[ym.month-1]} {ym.year} هـ</b><button type="button" onClick={()=>move(1)} className="border rounded-lg px-3 py-1">›</button></div><div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">{weekDays.map(x=><div key={x}>{x.slice(0,2)}</div>)}</div><div className="grid grid-cols-7 gap-1">{cells.map((cell:any,i:number)=>cell?<button type="button" key={cell.hijri} onClick={()=>{onChange(cell.hijri);setOpen(false)}} className={value===cell.hijri?'rounded-lg bg-[var(--navy)] text-white py-2 font-bold':'rounded-lg hover:bg-slate-100 py-2'}>{cell.day}</button>:<div key={i}/>)}</div><div className="text-xs text-gray-400 text-center mt-3">تقويم أم القرى</div></div>}</div>;
+  return <div className="relative min-w-[230px]">
+    <div className="flex gap-2">
+      <input disabled={disabled} value={value} onChange={e=>onChange(formatHijriInput(e.target.value))} onFocus={()=>!disabled&&setOpen(true)} inputMode="numeric" placeholder="1448/03/01" className="border rounded-lg px-3 py-2 w-[175px] disabled:bg-gray-100 disabled:text-gray-400"/>
+      <button disabled={disabled} type="button" onClick={()=>setOpen(v=>!v)} className="border rounded-lg px-3 py-2 bg-white disabled:bg-gray-100 disabled:text-gray-400" title="فتح التقويم الهجري"><CalendarDays size={17}/></button>
+    </div>
+    {open&&<div className="absolute z-[100] right-0 mt-2 w-[330px] rounded-2xl border bg-white shadow-2xl p-4">
+      <div className="flex items-center justify-between mb-3"><button type="button" onClick={()=>move(-1)} className="border rounded-lg px-3 py-1">‹</button><b>{hijriMonths[ym.month-1]} {ym.year} هـ</b><button type="button" onClick={()=>move(1)} className="border rounded-lg px-3 py-1">›</button></div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">{weekDays.map(x=><div key={x}>{x.slice(0,2)}</div>)}</div>
+      <div className="grid grid-cols-7 gap-1">{cells.map((cell:any,i:number)=>cell?<button type="button" key={cell.hijri} onClick={()=>{onChange(cell.hijri);setOpen(false)}} className={value===cell.hijri?'rounded-lg bg-[var(--navy)] text-white py-2 font-bold':'rounded-lg hover:bg-slate-100 py-2'}>{cell.day}</button>:<div key={i}/>)}</div>
+      <div className="text-xs text-gray-400 text-center mt-3">تقويم أم القرى</div>
+    </div>}
+  </div>;
 }
 
 export default function Dashboard() {
@@ -318,7 +328,7 @@ export default function Dashboard() {
               <tbody>{teachers.map((t, i) => { const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' }; return <tr key={t.id} className="border-t">
                 <td className="p-4">{i + 1}</td><td className="p-4 font-semibold">{t.full_name}</td><td className="p-4">{t.national_id}</td><td className="p-4">{t.job_role}</td><td className="p-4">{t.specialization || '—'}</td>
                 <td className="p-4">
-                  <HijriDatePicker value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''} onChange={hijri => { const gregorian=hijriToGregorian(hijri); setRows(x=>({...x,[t.id]:{...r,direct_start_date:gregorian||null}})); }} />
+                  <HijriDatePicker disabled={!editable || r.status === 'تم الاعتماد'} value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''} onChange={hijri => { const gregorian=hijriToGregorian(hijri); if (gregorian) setRows(x=>({...x,[t.id]:{...r,direct_start_date:gregorian}})); }} />
                   <div className="text-[11px] text-gray-400 mt-1">هجري (أم القرى)</div>
                 </td>
                 <td className="p-4"><input disabled={!editable || r.status === 'تم الاعتماد'} value={r.notes || ''} onChange={e => setRows(x => ({ ...x, [t.id]: { ...r, notes: e.target.value } }))} className="border rounded-lg px-3 py-2" placeholder="اختياري" /></td>
