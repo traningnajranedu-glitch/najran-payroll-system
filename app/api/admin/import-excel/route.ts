@@ -158,8 +158,14 @@ export async function POST(request: Request) {
     if (!/\.(xlsx|xls)$/i.test(file.name)) return NextResponse.json({ error: 'يرجى رفع ملف Excel بصيغة XLSX أو XLS.' }, { status: 400 });
     if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: 'حجم الملف يتجاوز 10MB.' }, { status: 400 });
 
-    const rows = parseWorkbook(await file.arrayBuffer());
-    if (!rows.length) return NextResponse.json({ error: 'ورقة Excel فارغة.' }, { status: 400 });
+    let rows: Row[];
+    try {
+      rows = parseWorkbook(await file.arrayBuffer());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: `تعذر قراءة ملف Excel: ${message}` }, { status: 400 });
+    }
+    if (!rows.length) return NextResponse.json({ error: 'ورقة Excel فارغة أو لا تحتوي على صفوف بيانات.' }, { status: 400 });
 
     const result = mode === 'schools'
       ? await importSchools(auth.client, rows)
