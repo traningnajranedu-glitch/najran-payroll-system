@@ -7,7 +7,7 @@ import { supabaseBrowser } from '../../lib/supabase';
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; notes: string | null; status: string; approved_at?: string | null };
-type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null };
+type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; allow_school_teacher_edit?: boolean };
 
 function hijriKey(value: string): number | null {
   const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
@@ -137,7 +137,7 @@ export default function Dashboard() {
 
     const { data: su } = await sb
       .from('school_users')
-      .select('school_id,schools(id,school_code,school_name,manager_name,stamp_path)')
+      .select('school_id,schools(id,school_code,school_name,manager_name,stamp_path,allow_school_teacher_edit)')
       .eq('auth_user_id', user.id)
       .eq('is_active', true)
       .single();
@@ -190,6 +190,7 @@ export default function Dashboard() {
   useEffect(() => { load(); }, []);
 
   const editable = !!period && periodIsOpen(period) && !!period.allow_edit;
+  const teacherDataEditable = !!school?.allow_school_teacher_edit;
   const approved = teachers.length > 0 && teachers.every(t => rows[t.id]?.status === 'تم الاعتماد');
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
 
@@ -198,6 +199,13 @@ export default function Dashboard() {
   async function save() {
     if (!period || !school || !editable) return;
     setSaving(true); setMessage('');
+    if (teacherDataEditable) {
+      for (const t of teachers) {
+        const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' };
+        const { error } = await sb.from('teachers').update({ full_name: t.full_name, national_id: t.national_id, job_role: t.job_role, specialization: t.specialization || null }).eq('id', t.id).eq('school_id', school.id);
+        if (error) { setMessage('تعذر حفظ بيانات الموظف: ' + error.message); setSaving(false); return; }
+      }
+    }
     for (const t of teachers) {
       const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' };
       const { error } = await sb.from('payroll_records').upsert({
@@ -311,19 +319,20 @@ export default function Dashboard() {
 
         <div className="card overflow-hidden">
           <div className="p-5 border-b flex flex-wrap gap-3 items-center justify-between">
-            <div><h2 className="font-bold text-lg">مسير الرواتب</h2><p className="text-sm text-gray-500">أدخل تاريخ المباشرة والملاحظات لكل موظف ثم احفظ واعتمد المسير.</p></div>
+            <div><h2 className="font-bold text-lg">مسير الرواتب</h2><p className="text-sm text-gray-500">أدخل تاريخ المباشرة والملاحظات لكل موظف. تعديل بيانات الموظف الأساسية {teacherDataEditable ? 'مفتوح من مدير النظام.' : 'مغلق من مدير النظام.'}</p></div>
             <div className="flex gap-2">
               <select value={period?.id || ''} onChange={async e => { const p = periods.find(x => x.id === e.target.value); if (p) { setPeriod(p); await loadRecords(school.id, p.id); } }} className="border rounded-xl px-3 py-2"><option value="">اختر الفترة</option>{periods.map(p => <option key={p.id} value={p.id}>{p.period_name}</option>)}</select>
               <button type="button" onClick={load} className="border rounded-xl p-2"><RefreshCw size={18}/></button>
             </div>
           </div>
           {!editable && <div className="bg-amber-50 text-amber-800 px-5 py-3 flex gap-2 items-center text-sm"><Lock size={17}/> الفترة مغلقة حاليًا حسب التاريخ الهجري المحدد أو إعدادات الفترة، لا يمكن تعديل المسير.</div>}
+          <div className={teacherDataEditable ? 'bg-emerald-50 text-emerald-800 px-5 py-3 text-sm' : 'bg-slate-50 text-gray-600 px-5 py-3 text-sm'}>{teacherDataEditable ? 'مفتوح: يمكنك تعديل الاسم والهوية والوظيفة والتخصص، إضافة إلى تاريخ المباشرة والملاحظات.' : 'مغلق: لا يمكنك تعديل الاسم والهوية والوظيفة والتخصص. يبقى تاريخ المباشرة والملاحظات متاحين وفق صلاحية فترة المسير.'}</div>
           {approved && <div className="bg-green-50 text-green-800 px-5 py-3 flex gap-2 items-center text-sm"><ShieldCheck size={18}/> تم اعتماد المسير — يمكنك الآن طباعته.</div>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">الهوية</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">تاريخ المباشرة</th><th className="p-4 text-right">ملاحظات</th><th className="p-4 text-right">الحالة</th></tr></thead>
               <tbody>{teachers.map((t, i) => { const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' }; return <tr key={t.id} className="border-t">
-                <td className="p-4">{i + 1}</td><td className="p-4 font-semibold">{t.full_name}</td><td className="p-4">{t.national_id}</td><td className="p-4">{t.job_role}</td><td className="p-4">{t.specialization || '—'}</td>
+                <td className="p-4">{i + 1}</td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.full_name} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, full_name: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[190px] disabled:bg-gray-50" /></td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.national_id} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, national_id: e.target.value.replace(/\\D/g,'').slice(0,10)} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[130px] disabled:bg-gray-50" maxLength={10} inputMode="numeric" /></td><td className="p-4"><select disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.job_role} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, job_role: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[120px] disabled:bg-gray-50"><option>مدير</option><option>معلم</option><option>إداري</option><option>مستخدم</option><option>حارس</option></select></td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.specialization || ''} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, specialization: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[150px] disabled:bg-gray-50" placeholder="—" /></td>
                 <td className="p-4">
                   <HijriDatePicker disabled={!editable || r.status === 'تم الاعتماد'} value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''} onChange={hijri => { const gregorian=hijriToGregorian(hijri); if (gregorian) setRows(x=>({...x,[t.id]:{...r,direct_start_date:gregorian}})); }} />
                   <div className="text-[11px] text-gray-400 mt-1">هجري (أم القرى)</div>
