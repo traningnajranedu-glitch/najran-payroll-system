@@ -361,6 +361,26 @@ export default function Dashboard() {
           </div>
         </div>
 
+        <div className="card overflow-hidden mb-6">
+          <div className="p-5 border-b">
+            <h2 className="font-bold text-lg">بيانات الموظفين</h2>
+            <p className="text-sm text-gray-500 mt-1">تعديل مستقل عن المسير. البيانات غير قابلة للتعديل إلا بعد الضغط على «تعديل» للموظف.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">السجل المدني</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">الإجراء</th></tr></thead>
+              <tbody>{teachers.map((t,i) => { const editing=editingTeacherId===t.id; return <tr key={t.id} className="border-t">
+                <td className="p-4">{i+1}</td>
+                <td className="p-4"><input disabled={!editing} value={t.full_name} onChange={e=>setTeachers(xs=>xs.map(x=>x.id===t.id?{...x,full_name:e.target.value}:x))} className="border rounded-lg px-3 py-2 w-full min-w-[190px] disabled:bg-gray-50 disabled:text-gray-700"/></td>
+                <td className="p-4"><input disabled={!editing} value={t.national_id} onChange={e=>setTeachers(xs=>xs.map(x=>x.id===t.id?{...x,national_id:e.target.value.replace(/\D/g,'').slice(0,10)}:x))} className="border rounded-lg px-3 py-2 w-full min-w-[140px] disabled:bg-gray-50 disabled:text-gray-700" maxLength={10} inputMode="numeric"/></td>
+                <td className="p-4"><select disabled={!editing} value={t.job_role} onChange={e=>setTeachers(xs=>xs.map(x=>x.id===t.id?{...x,job_role:e.target.value}:x))} className="border rounded-lg px-3 py-2 w-full min-w-[120px] disabled:bg-gray-50 disabled:text-gray-700"><option>مدير</option><option>معلم</option><option>إداري</option><option>مستخدم</option><option>حارس</option></select></td>
+                <td className="p-4"><input disabled={!editing} value={t.specialization||''} onChange={e=>setTeachers(xs=>xs.map(x=>x.id===t.id?{...x,specialization:e.target.value}:x))} className="border rounded-lg px-3 py-2 w-full min-w-[160px] disabled:bg-gray-50 disabled:text-gray-700"/></td>
+                <td className="p-4">{teacherDataEditable ? (editing ? <button type="button" disabled={savingTeachers} onClick={()=>saveSingleTeacher(t)} className="bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50">{savingTeachers?'جارٍ الحفظ…':'حفظ'}</button> : <button type="button" disabled={savingTeachers} onClick={()=>setEditingTeacherId(t.id)} className="bg-[var(--navy)] text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50">تعديل</button>) : null}</td>
+              </tr>; })}</tbody>
+            </table>
+          </div>
+        </div>
+
         <div className="card overflow-hidden">
           <div className="p-5 border-b flex flex-wrap gap-3 items-center justify-between">
             <div><h2 className="font-bold text-lg">مسير الرواتب</h2><p className="text-sm text-gray-500">أدخل تاريخ المباشرة والملاحظات لكل موظف. تعديل بيانات الموظف الأساسية {teacherDataEditable ? 'مفتوح من مدير النظام.' : 'مغلق من مدير النظام.'}</p></div>
