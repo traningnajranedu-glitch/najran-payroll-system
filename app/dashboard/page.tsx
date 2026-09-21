@@ -33,24 +33,13 @@ function periodIsOpen(p: Period): boolean {
   return !!p.is_open;
 }
 
-function gregorianToHijri(value: string): string {
+function gregorianToHijri(value: string | null | undefined): string {
   if (!value) return '';
   const [y, m, d] = value.split('-').map(Number);
   if (!y || !m || !d) return '';
   const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
     year: 'numeric', month: '2-digit', day: '2-digit'
   }).formatToParts(new Date(Date.UTC(y, m - 1, d)));
-  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
-  return `${get('year')}/${get('month')}/${get('day')}`;
-}
-
-function gregorianToHijri(value: string | null | undefined): string {
-  if (!value) return '';
-  const [y, m, d] = value.split('-').map(Number);
-  if (!y || !m || !d) return '';
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Riyadh'
-  }).formatToParts(new Date(Date.UTC(y, m - 1, d, 12)));
   const get = (type: string) => parts.find(p => p.type === type)?.value || '';
   return `${get('year')}/${get('month')}/${get('day')}`;
 }
