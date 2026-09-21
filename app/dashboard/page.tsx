@@ -218,28 +218,6 @@ export default function Dashboard() {
     setSavingTeachers(false);
   }
 
-  async function saveTeacherData() {
-    if (!school || !teacherDataEditable) return;
-    setSavingTeachers(true);
-    setMessage('');
-    for (const t of teachers) {
-      const { error } = await sb.from('teachers').update({
-        full_name: t.full_name.trim(),
-        national_id: t.national_id.replace(/\D/g, '').slice(0, 10),
-        job_role: t.job_role,
-        specialization: t.specialization?.trim() || null
-      }).eq('id', t.id).eq('school_id', school.id);
-      if (error) {
-        setMessage('تعذر حفظ بيانات الموظف: ' + error.message);
-        setSavingTeachers(false);
-        return;
-      }
-    }
-    setMessage('تم حفظ بيانات الموظفين بنجاح.');
-    await load();
-    setSavingTeachers(false);
-  }
-
   async function save() {
     if (!period || !school || !editable) return;
     setSaving(true); setMessage('');
@@ -390,13 +368,13 @@ export default function Dashboard() {
             </div>
           </div>
           {!editable && <div className="bg-amber-50 text-amber-800 px-5 py-3 flex gap-2 items-center text-sm"><Lock size={17}/> الفترة مغلقة حاليًا حسب التاريخ الهجري المحدد أو إعدادات الفترة، لا يمكن تعديل المسير.</div>}
-          <div className={teacherDataEditable ? 'bg-emerald-50 text-emerald-800 px-5 py-3 text-sm' : 'bg-slate-50 text-gray-600 px-5 py-3 text-sm'}>{teacherDataEditable ? 'مفتوح: يمكنك تعديل الاسم والهوية والوظيفة والتخصص، إضافة إلى تاريخ المباشرة والملاحظات.' : 'مغلق: لا يمكنك تعديل الاسم والهوية والوظيفة والتخصص. يبقى تاريخ المباشرة والملاحظات متاحين وفق صلاحية فترة المسير.'}</div>
+          <div className="bg-slate-50 text-gray-600 px-5 py-3 text-sm">بيانات الاسم والسجل المدني والوظيفة والتخصص للعرض فقط داخل المسير، ولا يمكن تعديلها من هنا. للتعديل استخدم «بيانات الموظفين» أعلاه. تاريخ المباشرة والملاحظات فقط قابلة للتعديل حسب صلاحية فترة المسير.</div>
           {approved && <div className="bg-green-50 text-green-800 px-5 py-3 flex gap-2 items-center text-sm"><ShieldCheck size={18}/> تم اعتماد المسير — يمكنك الآن طباعته.</div>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">الهوية</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">تاريخ المباشرة</th><th className="p-4 text-right">ملاحظات</th><th className="p-4 text-right">الحالة</th></tr></thead>
               <tbody>{teachers.map((t, i) => { const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' }; return <tr key={t.id} className="border-t">
-                <td className="p-4">{i + 1}</td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.full_name} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, full_name: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[190px] disabled:bg-gray-50" /></td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.national_id} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, national_id: e.target.value.replace(/\\D/g,'').slice(0,10)} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[130px] disabled:bg-gray-50" maxLength={10} inputMode="numeric" /></td><td className="p-4"><select disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.job_role} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, job_role: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[120px] disabled:bg-gray-50"><option>مدير</option><option>معلم</option><option>إداري</option><option>مستخدم</option><option>حارس</option></select></td><td className="p-4"><input disabled={!teacherDataEditable || r.status === 'تم الاعتماد'} value={t.specialization || ''} onChange={e => setTeachers(xs => xs.map(x => x.id === t.id ? {...x, specialization: e.target.value} : x))} className="border rounded-lg px-3 py-2 w-full min-w-[150px] disabled:bg-gray-50" placeholder="—" /></td>
+                <td className="p-4">{i + 1}</td><td className="p-4"><input readOnly value={t.full_name} className="border rounded-lg px-3 py-2 w-full min-w-[190px] bg-gray-50 text-gray-700" /></td><td className="p-4"><input readOnly value={t.national_id} className="border rounded-lg px-3 py-2 w-full min-w-[130px] bg-gray-50 text-gray-700" maxLength={10} inputMode="numeric" /></td><td className="p-4"><select disabled value={t.job_role} className="border rounded-lg px-3 py-2 w-full min-w-[120px] bg-gray-50 text-gray-700"><option>مدير</option><option>معلم</option><option>إداري</option><option>مستخدم</option><option>حارس</option></select></td><td className="p-4"><input readOnly value={t.specialization || ''} className="border rounded-lg px-3 py-2 w-full min-w-[150px] bg-gray-50 text-gray-700" placeholder="—" /></td>
                 <td className="p-4">
                   <HijriDatePicker disabled={!editable || r.status === 'تم الاعتماد'} value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''} onChange={hijri => { const gregorian=hijriToGregorian(hijri); if (gregorian) setRows(x=>({...x,[t.id]:{...r,direct_start_date:gregorian}})); }} />
                   <div className="text-[11px] text-gray-400 mt-1">هجري (أم القرى)</div>
