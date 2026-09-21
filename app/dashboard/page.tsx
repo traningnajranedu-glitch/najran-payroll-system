@@ -44,6 +44,17 @@ function gregorianToHijri(value: string): string {
   return `${get('year')}/${get('month')}/${get('day')}`;
 }
 
+function gregorianToHijri(value: string | null | undefined): string {
+  if (!value) return '';
+  const [y, m, d] = value.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Riyadh'
+  }).formatToParts(new Date(Date.UTC(y, m - 1, d, 12)));
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '';
+  return `${get('year')}/${get('month')}/${get('day')}`;
+}
+
 function hijriToGregorian(value: string): string | null {
   const normalized=value.trim().replace(/[-.]/g,'/');
   const m=normalized.match(/^(\d{4})[\/]([01]?\d)[\/]([0-3]?\d)$/);
@@ -348,7 +359,7 @@ export default function Dashboard() {
         <div className="text-center mb-5">
           <h1 className="text-2xl font-bold">مسير رواتب الموظفين</h1>
           <div className="text-lg font-semibold mt-2">{school.school_name}</div>
-          <div className="text-sm mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_date || '—'} إلى {period?.end_date || '—'}</div>
+          <div className="text-sm mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
         </div>
         <table className="w-full border-collapse text-xs">
           <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">الملاحظات</th></tr></thead>
