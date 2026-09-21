@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabaseBrowser } from '../../../lib/supabase';
+import * as XLSX from 'xlsx';
 
 type School = {
   id: string;
@@ -127,6 +128,39 @@ export default function SchoolAccountsPage() {
     }
 
     return session.access_token;
+  }
+
+  function exportSchoolAccounts() {
+    const defaultPassword = 'Aa123456';
+    const rows = accounts
+      .map((account) => {
+        const school = schools.find((s) => s.id === account.school_id);
+        if (!school) return null;
+        return {
+          'اسم المدرسة': school.school_name,
+          'اسم المستخدم': account.username || school.school_code,
+          'كلمة المرور الافتراضية': defaultPassword,
+        };
+      })
+      .filter(Boolean);
+
+    if (!rows.length) {
+      setError('لا توجد حسابات مدارس لتصديرها.');
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = [
+      { wch: 32 },
+      { wch: 22 },
+      { wch: 28 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'حسابات المدارس');
+    XLSX.writeFile(workbook, 'حسابات_المدارس_اسم_المستخدم_كلمة_المرور.xlsx');
+    setMessage('تم تصدير ملف حسابات المدارس بنجاح.');
+    setError('');
   }
 
   async function createDefaultAccounts() {
@@ -532,6 +566,14 @@ export default function SchoolAccountsPage() {
             className="border border-[var(--navy)] text-[var(--navy)] rounded-xl px-6 py-3 font-bold disabled:opacity-50"
           >
             إنشاء حسابات جميع المدارس
+          </button>
+          <button
+            type="button"
+            disabled={busy || !accounts.length}
+            onClick={exportSchoolAccounts}
+            className="border border-green-600 text-green-700 rounded-xl px-6 py-3 font-bold disabled:opacity-50"
+          >
+            تصدير حسابات المدارس Excel
           </button>
           </div>
 
