@@ -130,6 +130,7 @@ export default function Dashboard() {
   const [stampFile, setStampFile] = useState<File | null>(null);
   const [savingSchool, setSavingSchool] = useState(false);
   const [savingTeachers, setSavingTeachers] = useState(false);
+  const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -196,6 +197,26 @@ export default function Dashboard() {
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
 
   const printRows = useMemo(() => teachers.map(t => ({ teacher: t, row: rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' } })), [teachers, rows]);
+
+  async function saveSingleTeacher(t: Teacher) {
+    if (!school || !teacherDataEditable) return;
+    setSavingTeachers(true);
+    setMessage('');
+    const { error } = await sb.from('teachers').update({
+      full_name: t.full_name.trim(),
+      national_id: t.national_id.replace(/\D/g, '').slice(0, 10),
+      job_role: t.job_role,
+      specialization: t.specialization?.trim() || null
+    }).eq('id', t.id).eq('school_id', school.id);
+    if (error) {
+      setMessage('تعذر حفظ بيانات الموظف: ' + error.message);
+    } else {
+      setMessage('تم حفظ بيانات الموظف بنجاح.');
+      setEditingTeacherId(null);
+      await load();
+    }
+    setSavingTeachers(false);
+  }
 
   async function saveTeacherData() {
     if (!school || !teacherDataEditable) return;
