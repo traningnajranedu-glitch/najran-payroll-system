@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3 } from 'lucide-react';
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; absence_days: number; notes: string | null; status: string; approved_at?: string | null };
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; allow_school_teacher_edit?: boolean };
+type Activity = { id: string; name: string; description: string | null; is_active: boolean };
+type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
 
 function hijriKey(value: string): number | null {
   const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
@@ -131,6 +133,10 @@ export default function Dashboard() {
   const [savingSchool, setSavingSchool] = useState(false);
   const [savingTeachers, setSavingTeachers] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activityReports, setActivityReports] = useState<Record<string, ActivityReport>>({});
+  const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
+  const [savingActivity, setSavingActivity] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -164,6 +170,12 @@ export default function Dashboard() {
     setTeachers(t || []);
 
     const { data: p } = await sb.from('payroll_periods').select('*').order('start_date', { ascending: false });
+    const { data: acts } = await sb.from('school_activities').select('id,name,description,is_active').eq('is_active', true).order('created_at', { ascending: false });
+    const { data: reports } = await sb.from('school_activity_reports').select('*').eq('school_id', su.school_id);
+    const reportMap: Record<string, ActivityReport> = {};
+    (reports || []).forEach((x: ActivityReport) => { reportMap[x.activity_id] = x; });
+    setActivities(acts || []);
+    setActivityReports(reportMap);
     setPeriods(p || []);
     const active = (p || []).find((x: Period) => periodIsOpen(x as Period)) || p?.[0];
     if (active) {
@@ -270,6 +282,41 @@ export default function Dashboard() {
     setSaving(false);
   }
 
+  async function saveActivityReport(activity: Activity) {
+    if (!school) return;
+    setSavingActivity(true); setMessage('');
+    const existing = activityReports[activity.id];
+    let attachmentPath = existing?.attachment_path || null;
+    const file = activityFiles[activity.id];
+    if (file) {
+      const safeName = file.name.replace(/[^\\p{L}\\p{N}._-]/gu, '_');
+      attachmentPath = school.id + '/' + activity.id + '/' + Date.now() + '-' + safeName;
+      const { error: uploadError } = await sb.storage.from('school-activities').upload(attachmentPath, file, { upsert: false });
+      if (uploadError) { setMessage('تعذر رفع المرفق: ' + uploadError.message); setSavingActivity(false); return; }
+    }
+    const payload = {
+      activity_id: activity.id,
+      school_id: school.id,
+      report_text: existing?.report_text || '',
+      statistics: existing?.statistics || '',
+      attachment_path: attachmentPath,
+      status: 'مقدم',
+      submitted_at: new Date().toISOString()
+    };
+    const { data, error } = await sb.from('school_activity_reports').upsert(payload, { onConflict: 'activity_id,school_id' }).select('*').single();
+    if (error) setMessage('تعذر حفظ تقرير النشاط: ' + error.message);
+    else {
+      setActivityReports(x => ({ ...x, [activity.id]: data as ActivityReport }));
+      setActivityFiles(x => ({ ...x, [activity.id]: null }));
+      setMessage('تم حفظ تقرير النشاط وإرساله لمدير النظام.');
+    }
+    setSavingActivity(false);
+  }
+
+  function updateActivityReport(activityId: string, patch: Partial<ActivityReport>) {
+    setActivityReports(x => ({ ...x, [activityId]: { ...(x[activityId] || { activity_id: activityId, school_id: school?.id || '', report_text: '', statistics: '', attachment_path: null, status: 'مسودة', rating: null }), ...patch } }));
+  }
+
   async function saveSchoolSettings() {
     if (!managerName.trim() && !stampFile) {
       setMessage('أدخل اسم مدير المدرسة أو اختر صورة الختم.');
@@ -337,6 +384,34 @@ export default function Dashboard() {
             <label className="block"><span className="block text-sm font-semibold mb-2">اسم مدير المدرسة</span><input value={managerName} onChange={e => setManagerName(e.target.value)} className="border rounded-xl px-4 py-3 w-full" placeholder="اسم مدير المدرسة" /></label>
             <label className="block"><span className="block text-sm font-semibold mb-2">صورة ختم المدرسة</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setStampFile(e.target.files?.[0] || null)} className="border rounded-xl px-3 py-2.5 w-full bg-white" /></label>
             <button type="button" disabled={savingSchool} onClick={saveSchoolSettings} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center justify-center gap-2"><Upload size={18}/>{savingSchool ? 'جارٍ الحفظ…' : 'حفظ البيانات'}</button>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden mb-6">
+          <div className="p-5 border-b flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><PartyPopper size={22}/></div>
+            <div><h2 className="font-bold text-lg">الأنشطة والاحتفالات والمناسبات</h2><p className="text-sm text-gray-500 mt-1">استعرض النشاط المضاف من مدير النظام، ثم قدم التقرير والإحصائيات وأرفق المستندات. التقييم بالنجوم للعرض فقط ويُدار من مدير النظام.</p></div>
+          </div>
+          <div className="p-5 space-y-4">
+            {!activities.length && <div className="bg-slate-50 border rounded-xl p-5 text-sm text-gray-500">لا توجد أنشطة أو مناسبات متاحة حاليًا.</div>}
+            {activities.map(activity => {
+              const r = activityReports[activity.id] || { activity_id: activity.id, school_id: school.id, report_text: '', statistics: '', attachment_path: null, status: 'مسودة', rating: null };
+              return <div key={activity.id} className="border rounded-2xl p-5">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div><h3 className="font-bold text-lg">{activity.name}</h3><p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{activity.description || 'لا يوجد وصف إضافي.'}</p></div>
+                  <div className="shrink-0"><div className="text-xs text-gray-500 mb-1">تقييم مدير النظام</div><div className="flex gap-1" aria-label="التقييم">{[1,2,3,4,5].map(n=><Star key={n} size={21} className={r.rating && n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}/>)}</div></div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mt-5">
+                  <label><span className="block text-sm font-semibold mb-2">تقرير النشاط</span><textarea value={r.report_text || ''} onChange={e=>updateActivityReport(activity.id,{report_text:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="اكتب تقرير تنفيذ النشاط والنتائج..."/></label>
+                  <label><span className="block text-sm font-semibold mb-2">الإحصائيات</span><textarea value={r.statistics || ''} onChange={e=>updateActivityReport(activity.id,{statistics:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: عدد المستفيدين، المشاركين، الحضور، الفعاليات..."/></label>
+                </div>
+                <div className="flex flex-wrap items-end gap-3 mt-4">
+                  <label className="flex-1 min-w-[260px]"><span className="block text-sm font-semibold mb-2">مرفق التقرير</span><input type="file" onChange={e=>setActivityFiles(x=>({...x,[activity.id]:e.target.files?.[0] || null}))} className="border rounded-xl px-3 py-2.5 w-full bg-white"/></label>
+                  {r.attachment_path && <div className="text-sm text-emerald-700 flex items-center gap-2 pb-3"><Paperclip size={17}/> يوجد مرفق محفوظ</div>}
+                  <button type="button" disabled={savingActivity} onClick={()=>saveActivityReport(activity)} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><BarChart3 size={18}/>{savingActivity?'جارٍ الحفظ…':'حفظ وإرسال التقرير'}</button>
+                </div>
+              </div>;
+            })}
           </div>
         </div>
 
