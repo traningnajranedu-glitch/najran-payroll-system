@@ -365,14 +365,14 @@ export default function Dashboard() {
   if (!school) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-8 text-center text-red-700">{message || 'تعذر تحميل بيانات المدرسة.'}</div></main>;
 
   return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
-    <header className="bg-[var(--navy)] text-white print:hidden">
-      <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
+    <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-[var(--navy)] text-white print:hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 py-4 flex items-center justify-between gap-3">
         <div><div className="portal-title font-bold text-base sm:text-lg">البوابة الإلكترونية لمدارس التعليم المستمر</div><div className="text-sm text-blue-100 mt-1">{school.school_name}</div></div>
-        <button type="button" onClick={logout} className="flex gap-2 items-center bg-white/10 px-4 py-2 rounded-xl"><LogOut size={17}/> خروج</button>
+        <button type="button" onClick={logout} className="flex gap-2 items-center bg-white/10 px-3 sm:px-4 py-2 rounded-xl shrink-0"><LogOut size={17}/> <span className="hidden sm:inline">خروج</span></button>
       </div>
     </header>
 
-    <main className="max-w-7xl mx-auto p-5 md:p-8">
+    <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
       <div className="print:hidden">
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <div className="card p-5"><Users/><div className="text-2xl font-bold mt-3">{teachers.length}</div><div className="text-gray-500 text-sm">عدد الموظفين</div></div>
