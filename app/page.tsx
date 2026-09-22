@@ -10,8 +10,7 @@ export default function Home(){
   const [error,setError]=useState('');
 
   async function login(e:React.FormEvent){
-    e.preventDefault();
-    setLoading(true);setError('');
+    e.preventDefault(); setLoading(true); setError('');
     const sb=supabaseBrowser();
     const email=username.includes('@')?username:`${username}@schools.ceedu.local`;
     const {data,error}=await sb.auth.signInWithPassword({email,password});
@@ -25,22 +24,31 @@ export default function Home(){
     await sb.auth.signOut();setError('بيانات الدخول غير صحيحة أو حساب المدرسة غير مفعّل.');setLoading(false);
   }
 
-  return <main className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-b from-[#f4f8f6] to-white">
-    <div className="w-full max-w-lg">
-      <div className="text-center mb-7">
-        <div className="inline-flex items-center gap-4 bg-white border border-emerald-100 rounded-2xl px-6 py-4 shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0b6b50] to-[#0b7894] text-white flex items-center justify-center shadow-md"><School size={31}/></div>
+  return <main className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(circle_at_top,#e7f3ee_0%,#f5f8f6_38%,#ffffff_75%)]">
+    <div className="w-full max-w-xl">
+      <div className="national-day-96-hero mb-5 overflow-hidden">
+        <div className="national-day-96-celebration">اليوم الوطني السعودي 96</div>
+        <div className="national-day-96-hero-inner">
+          <img src="https://cdn.gea.gov.sa/ND-2026/brand/brand-emblem-wide.png" alt="الهوية الرسمية لليوم الوطني السعودي 96 — عزّنا بطبعنا" className="national-day-96-logo"/>
+          <div className="national-day-96-slogan">عزّنا بطبعنا</div>
+          <div className="national-day-96-date">23 سبتمبر 2026</div>
+        </div>
+      </div>
+
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center gap-3 bg-white/95 border border-emerald-100 rounded-2xl px-5 py-3 shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#0b6b50] to-[#0b7894] text-white flex items-center justify-center shadow-md"><School size={28}/></div>
           <div className="text-right border-r pr-4">
             <div className="font-bold text-[#07533e] text-lg">وزارة التعليم</div>
             <div className="font-semibold text-gray-700 text-sm mt-1">الإدارة العامة للتعليم بمنطقة نجران</div>
             <div className="text-xs text-gray-500 mt-1">قسم التعليم المستمر</div>
           </div>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold mt-7 text-[#07533e]">نظام مسيرات الرواتب</h1>
-        <p className="text-gray-500 mt-2">نظام إلكتروني لإدارة مسيرات موظفي المدارس</p>
+        <h1 className="portal-title text-2xl md:text-3xl font-bold mt-6 text-[#07533e]">البوابة الالكترونية لمدارس التعليم المستمر</h1>
+        <p className="text-gray-500 mt-2">بوابة إلكترونية موحدة لإدارة خدمات مدارس التعليم المستمر</p>
       </div>
 
-      <div className="card p-7 md:p-8 border-t-4 border-t-[#0b6b50]">
+      <div className="card p-6 md:p-8 border-t-4 border-t-[#0b6b50]">
         <div className="flex items-center gap-3 mb-7">
           <div className="bg-emerald-50 p-3 rounded-xl text-[#0b6b50]"><ShieldCheck size={23}/></div>
           <div><h2 className="font-bold text-lg">تسجيل الدخول</h2><p className="text-sm text-gray-500 mt-1">الدخول المخصص للمدارس والإدارة</p></div>
@@ -53,7 +61,7 @@ export default function Home(){
         </form>
         <div className="mt-6 pt-5 border-t border-gray-100 text-xs text-gray-400 flex gap-2 items-center justify-center"><LockKeyhole size={14}/> يتم حفظ بيانات الدخول عبر نظام المصادقة الآمن</div>
       </div>
-      <p className="text-center text-xs text-gray-400 mt-6">الإدارة العامة للتعليم بمنطقة نجران — قسم التعليم المستمر</p>
+      <p className="text-center text-xs text-gray-400 mt-5">الإدارة العامة للتعليم بمنطقة نجران — قسم التعليم المستمر</p>
     </div>
   </main>
 }
