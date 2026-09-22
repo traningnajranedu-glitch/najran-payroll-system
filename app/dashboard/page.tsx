@@ -367,7 +367,7 @@ export default function Dashboard() {
   return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
     <header className="bg-[var(--navy)] text-white print:hidden">
       <div className="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
-        <div><div className="font-bold text-lg">نظام مسيرات الرواتب</div><div className="text-sm text-blue-100 mt-1">{school.school_name}</div></div>
+        <div><div className="portal-title font-bold text-base sm:text-lg">البوابة الإلكترونية لمدارس التعليم المستمر</div><div className="text-sm text-blue-100 mt-1">{school.school_name}</div></div>
         <button type="button" onClick={logout} className="flex gap-2 items-center bg-white/10 px-4 py-2 rounded-xl"><LogOut size={17}/> خروج</button>
       </div>
     </header>
