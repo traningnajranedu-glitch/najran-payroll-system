@@ -313,6 +313,12 @@ export default function Dashboard() {
     setSavingActivity(false);
   }
 
+  async function openActivityAttachment(path: string) {
+    const { data, error } = await sb.storage.from('school-activities').createSignedUrl(path, 300);
+    if (error) { setMessage('تعذر فتح المرفق: ' + error.message); return; }
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
+
   function updateActivityReport(activityId: string, patch: Partial<ActivityReport>) {
     setActivityReports(x => ({ ...x, [activityId]: { ...(x[activityId] || { activity_id: activityId, school_id: school?.id || '', report_text: '', statistics: '', attachment_path: null, status: 'مسودة', rating: null }), ...patch } }));
   }
@@ -407,7 +413,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex flex-wrap items-end gap-3 mt-4">
                   <label className="flex-1 min-w-[260px]"><span className="block text-sm font-semibold mb-2">مرفق التقرير</span><input type="file" onChange={e=>setActivityFiles(x=>({...x,[activity.id]:e.target.files?.[0] || null}))} className="border rounded-xl px-3 py-2.5 w-full bg-white"/></label>
-                  {r.attachment_path && <div className="text-sm text-emerald-700 flex items-center gap-2 pb-3"><Paperclip size={17}/> يوجد مرفق محفوظ</div>}
+                  {r.attachment_path && <button type="button" onClick={()=>openActivityAttachment(r.attachment_path!)} className="text-sm text-emerald-700 flex items-center gap-2 pb-3 hover:underline"><Paperclip size={17}/> عرض المرفق</button>}
                   <button type="button" disabled={savingActivity} onClick={()=>saveActivityReport(activity)} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><BarChart3 size={18}/>{savingActivity?'جارٍ الحفظ…':'حفظ وإرسال التقرير'}</button>
                 </div>
               </div>;
