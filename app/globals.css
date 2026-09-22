@@ -60,3 +60,41 @@ input:focus, select:focus, textarea:focus { border-color:var(--moe-green) !impor
   .national-day-96-mark{font-size:.75rem;padding:.3rem .6rem}
   .portal-title{font-size:1rem}
 }
+
+
+/* واجهة الدخول — احتفال اليوم الوطني السعودي 96 */
+.national-day-96-hero{
+  position:relative;
+  background:linear-gradient(135deg,#063f35 0%,#0b6b50 52%,#064533 100%);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:24px;
+  box-shadow:0 16px 38px rgba(4,58,48,.18);
+  color:#fff;
+}
+.national-day-96-hero::before{
+  content:"";
+  position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,transparent 2px 18px);
+}
+.national-day-96-celebration{
+  position:relative;z-index:1;text-align:center;
+  font-weight:800;font-size:.9rem;letter-spacing:.02em;
+  padding:.65rem 1rem;background:rgba(0,0,0,.12);
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.national-day-96-hero-inner{
+  position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+  gap:1rem;flex-wrap:wrap;padding:1rem 1.25rem 1.2rem;
+}
+.national-day-96-logo{width:190px;height:auto;display:block;object-fit:contain;filter:drop-shadow(0 5px 12px rgba(0,0,0,.16))}
+.national-day-96-slogan{
+  font-weight:900;font-size:1.05rem;padding:.45rem .8rem;
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);border-radius:999px;
+}
+.national-day-96-date{font-size:.82rem;opacity:.9;font-weight:700}
+@media(max-width:640px){
+  .national-day-96-hero{border-radius:18px}
+  .national-day-96-logo{width:145px}
+  .national-day-96-hero-inner{gap:.65rem;padding:.8rem}
+  .national-day-96-date{width:100%;text-align:center}
+}
