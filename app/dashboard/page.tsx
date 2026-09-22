@@ -6,7 +6,7 @@ import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
-type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; notes: string | null; status: string; approved_at?: string | null };
+type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; absence_days: number; notes: string | null; status: string; approved_at?: string | null };
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; allow_school_teacher_edit?: boolean };
 
 function hijriKey(value: string): number | null {
@@ -196,7 +196,7 @@ export default function Dashboard() {
   const approved = teachers.length > 0 && teachers.every(t => rows[t.id]?.status === 'تم الاعتماد');
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
 
-  const printRows = useMemo(() => teachers.map(t => ({ teacher: t, row: rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' } })), [teachers, rows]);
+  const printRows = useMemo(() => teachers.map(t => ({ teacher: t, row: rows[t.id] || { teacher_id: t.id, direct_start_date: null, absence_days: 0, notes: null, status: 'لم يبدأ' } })), [teachers, rows]);
 
   async function saveSingleTeacher(t: Teacher) {
     if (!school || !teacherDataEditable) return;
@@ -223,7 +223,7 @@ export default function Dashboard() {
     setSaving(true); setMessage('');
     if (teacherDataEditable) {
       for (const t of teachers) {
-        const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' };
+        const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, absence_days: 0, notes: null, status: 'لم يبدأ' };
         const { error } = await sb.from('teachers').update({ full_name: t.full_name, national_id: t.national_id, job_role: t.job_role, specialization: t.specialization || null }).eq('id', t.id).eq('school_id', school.id);
         if (error) { setMessage('تعذر حفظ بيانات الموظف: ' + error.message); setSaving(false); return; }
       }
@@ -235,6 +235,7 @@ export default function Dashboard() {
         school_id: school.id,
         teacher_id: t.id,
         direct_start_date: r.direct_start_date || null,
+        absence_days: Number(r.absence_days ?? 0),
         notes: r.notes || null,
         status: 'تم الحفظ',
         submitted_at: new Date().toISOString(),
@@ -372,13 +373,14 @@ export default function Dashboard() {
           {approved && <div className="bg-green-50 text-green-800 px-5 py-3 flex gap-2 items-center text-sm"><ShieldCheck size={18}/> تم اعتماد المسير — يمكنك الآن طباعته.</div>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">الهوية</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">تاريخ المباشرة</th><th className="p-4 text-right">ملاحظات</th><th className="p-4 text-right">الحالة</th></tr></thead>
+              <thead className="bg-gray-50"><tr><th className="p-4 text-right">#</th><th className="p-4 text-right">الاسم</th><th className="p-4 text-right">الهوية</th><th className="p-4 text-right">الوظيفة</th><th className="p-4 text-right">التخصص</th><th className="p-4 text-right">تاريخ المباشرة</th><th className="p-4 text-right">عدد أيام الغياب</th><th className="p-4 text-right">ملاحظات</th><th className="p-4 text-right">الحالة</th></tr></thead>
               <tbody>{teachers.map((t, i) => { const r = rows[t.id] || { teacher_id: t.id, direct_start_date: null, notes: null, status: 'لم يبدأ' }; return <tr key={t.id} className="border-t">
                 <td className="p-4">{i + 1}</td><td className="p-4"><input readOnly value={t.full_name} className="border rounded-lg px-3 py-2 w-full min-w-[190px] bg-gray-50 text-gray-700" /></td><td className="p-4"><input readOnly value={t.national_id} className="border rounded-lg px-3 py-2 w-full min-w-[130px] bg-gray-50 text-gray-700" maxLength={10} inputMode="numeric" /></td><td className="p-4"><select disabled value={t.job_role} className="border rounded-lg px-3 py-2 w-full min-w-[120px] bg-gray-50 text-gray-700"><option>مدير</option><option>معلم</option><option>إداري</option><option>مستخدم</option><option>حارس</option></select></td><td className="p-4"><input readOnly value={t.specialization || ''} className="border rounded-lg px-3 py-2 w-full min-w-[150px] bg-gray-50 text-gray-700" placeholder="—" /></td>
                 <td className="p-4">
                   <HijriDatePicker disabled={!editable || r.status === 'تم الاعتماد'} value={r.direct_start_date ? gregorianToHijri(r.direct_start_date) : ''} onChange={hijri => { const gregorian=hijriToGregorian(hijri); if (gregorian) setRows(x=>({...x,[t.id]:{...r,direct_start_date:gregorian}})); }} />
                   <div className="text-[11px] text-gray-400 mt-1">هجري (أم القرى)</div>
                 </td>
+                <td className="p-4"><select disabled={!editable || r.status === 'تم الاعتماد'} value={r.absence_days ?? 0} onChange={e => setRows(x => ({ ...x, [t.id]: { ...r, absence_days: Number(e.target.value) } }))} className="border rounded-lg px-3 py-2 w-[110px] bg-white"><option value={0}>0</option>{Array.from({length:30},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></td>
                 <td className="p-4"><input disabled={!editable || r.status === 'تم الاعتماد'} value={r.notes || ''} onChange={e => setRows(x => ({ ...x, [t.id]: { ...r, notes: e.target.value } }))} className="border rounded-lg px-3 py-2" placeholder="اختياري" /></td>
                 <td className="p-4"><span className={`px-2.5 py-1.5 rounded-full text-xs ${r.status === 'تم الاعتماد' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{r.status || 'لم يبدأ'}</span></td>
               </tr>; })}</tbody>
@@ -402,8 +404,8 @@ export default function Dashboard() {
           <div className="text-sm mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
         </div>
         <table className="w-full border-collapse text-xs">
-          <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">الملاحظات</th></tr></thead>
-          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
+          <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">أيام الغياب</th><th className="border p-2">الملاحظات</th></tr></thead>
+          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2 text-center">{row.absence_days ?? 0}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
         </table>
         <div className="mt-10" style={{ direction: 'ltr', display: 'flex', justifyContent: 'flex-start' }}>
           <div className="text-center w-[300px]">
