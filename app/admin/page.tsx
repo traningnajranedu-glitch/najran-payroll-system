@@ -132,6 +132,7 @@ export default function AdminPage() {
   const [activities,setActivities]=useState<Activity[]>([]), [activityReports,setActivityReports]=useState<ActivityReport[]>([]);
   const [activityForm,setActivityForm]=useState({name:'',description:''});
   const [activityRating,setActivityRating]=useState<Record<string,number>>({});
+  const [editingActivityId,setEditingActivityId]=useState<string|null>(null);
 
   async function load(){
     setLoading(true); setError('');
@@ -165,6 +166,38 @@ export default function AdminPage() {
     const {error}=await sb.from('school_activities').insert({name:activityForm.name.trim(),description:activityForm.description.trim()||null,is_active:true});
     if(error)setError('تعذر إضافة النشاط: '+error.message);
     else{setMessage('تمت إضافة النشاط أو المناسبة بنجاح.');setActivityForm({name:'',description:''});await load();}
+    setBusy(false);
+  }
+
+  function startActivityEdit(activity: Activity){
+    setEditingActivityId(activity.id);
+    setActivityForm({name:activity.name,description:activity.description||''});
+    setMessage(''); setError('');
+  }
+
+  function cancelActivityEdit(){
+    setEditingActivityId(null);
+    setActivityForm({name:'',description:''});
+  }
+
+  async function updateActivity(id:string){
+    setMessage(''); setError('');
+    if(!activityForm.name.trim()){setError('اسم النشاط أو الاحتفال مطلوب.');return;}
+    setBusy(true);
+    const {error}=await sb.from('school_activities').update({name:activityForm.name.trim(),description:activityForm.description.trim()||null}).eq('id',id);
+    if(error) setError('تعذر تعديل النشاط: '+error.message);
+    else {setMessage('تم تعديل النشاط أو المناسبة بنجاح.');cancelActivityEdit();await load();}
+    setBusy(false);
+  }
+
+  async function deleteActivity(activity: Activity){
+    const hasReports=activityReports.some(r=>r.activity_id===activity.id);
+    const warning=hasReports?'سيتم حذف النشاط وجميع تقارير المدارس المرتبطة به. هل أنت متأكد؟':'هل أنت متأكد من حذف هذا النشاط؟';
+    if(!confirm(warning)) return;
+    setBusy(true); setError('');
+    const {error}=await sb.from('school_activities').delete().eq('id',activity.id);
+    if(error) setError('تعذر حذف النشاط: '+error.message);
+    else {setMessage('تم حذف النشاط بنجاح.');await load();}
     setBusy(false);
   }
 
@@ -552,15 +585,15 @@ async function deletePeriod(p:Period){
       <label><span className="block text-sm font-semibold mb-2">اسم النشاط أو الاحتفال</span><input value={activityForm.name} onChange={e=>setActivityForm({...activityForm,name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: اليوم الوطني"/></label>
       <label><span className="block text-sm font-semibold mb-2">وصف المطلوب من المدرسة</span><textarea value={activityForm.description} onChange={e=>setActivityForm({...activityForm,description:e.target.value})} rows={3} className="border rounded-xl px-4 py-3 w-full" placeholder="حدد المطلوب تنفيذه والتقرير والإحصائيات المطلوبة"/></label>
     </div>
-    <button disabled={busy} onClick={addActivity} className="mt-4 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2"><Plus size={18}/> إضافة النشاط</button>
+    {editingActivityId ? <div className="mt-4 flex gap-2"><button disabled={busy} onClick={()=>updateActivity(editingActivityId)} className="bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold">حفظ التعديل</button><button disabled={busy} onClick={cancelActivityEdit} className="border rounded-xl px-6 py-3 font-bold">إلغاء</button></div> : <button disabled={busy} onClick={addActivity} className="mt-4 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2"><Plus size={18}/> إضافة النشاط</button>}
   </div>
   <div className="card overflow-hidden">
     <div className="p-5 border-b"><b>الأنشطة والتقارير ({activities.length})</b></div>
     <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50"><tr><th className="p-3 text-right">النشاط / المناسبة</th><th className="p-3 text-right">الوصف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">التقرير والإحصائيات</th><th className="p-3 text-right">التقييم</th><th className="p-3 text-right">الحالة</th><th className="p-3 text-right">النشاط</th></tr></thead>
     <tbody>{activities.flatMap(activity=>{
       const rows=activityReports.filter(r=>r.activity_id===activity.id);
-      if(!rows.length)return [<tr key={activity.id} className="border-t"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[280px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3 text-gray-500">لم يرسل بعد</td><td className="p-3">—</td><td className="p-3">—</td><td className="p-3">{activity.is_active?'نشط':'موقوف'}</td><td className="p-3"><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف':'تفعيل'}</button></td></tr>];
-      return rows.map(r=>{const schoolName=schools.find(s=>s.id===r.school_id)?.school_name||'—';return <tr key={r.id} className="border-t align-top"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[260px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3">{schoolName}</td><td className="p-3 max-w-[300px]"><div className="whitespace-pre-line">{r.report_text||'—'}</div><div className="mt-2 text-xs text-gray-500">الإحصائيات: {r.statistics||'—'}</div>{r.attachment_path&&<button type="button" onClick={()=>r.attachment_path && openActivityAttachment(r.attachment_path)} className="text-xs text-emerald-700 mt-1 hover:underline">عرض المرفق</button>}</td><td className="p-3"><div className="flex gap-0.5">{[1,2,3,4,5].map(n=><button key={n} type="button" disabled={busy} onClick={()=>rateActivity(r,n)} title={n+' نجوم'}><Star size={19} className={r.rating&&n<=r.rating?'fill-amber-400 text-amber-400':'text-gray-300'}/></button>)}</div></td><td className="p-3">{r.status}</td><td className="p-3"><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف النشاط':'تفعيل النشاط'}</button></td></tr>});
+      if(!rows.length)return [<tr key={activity.id} className="border-t"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[280px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3 text-gray-500">لم يرسل بعد</td><td className="p-3">—</td><td className="p-3">—</td><td className="p-3">{activity.is_active?'نشط':'موقوف'}</td><td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>startActivityEdit(activity)} className="border rounded-lg px-3 py-2">تعديل</button><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف':'تفعيل'}</button><button disabled={busy} onClick={()=>deleteActivity(activity)} className="border border-red-200 text-red-700 rounded-lg px-3 py-2">حذف</button></div></td></tr>];
+      return rows.map(r=>{const schoolName=schools.find(s=>s.id===r.school_id)?.school_name||'—';return <tr key={r.id} className="border-t align-top"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[260px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3">{schoolName}</td><td className="p-3 max-w-[300px]"><div className="whitespace-pre-line">{r.report_text||'—'}</div><div className="mt-2 text-xs text-gray-500">الإحصائيات: {r.statistics||'—'}</div>{r.attachment_path&&<button type="button" onClick={()=>r.attachment_path && openActivityAttachment(r.attachment_path)} className="text-xs text-emerald-700 mt-1 hover:underline">عرض المرفق</button>}</td><td className="p-3"><div className="flex gap-0.5">{[1,2,3,4,5].map(n=><button key={n} type="button" disabled={busy} onClick={()=>rateActivity(r,n)} title={n+' نجوم'}><Star size={19} className={r.rating&&n<=r.rating?'fill-amber-400 text-amber-400':'text-gray-300'}/></button>)}</div></td><td className="p-3">{r.status}</td><td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>startActivityEdit(activity)} className="border rounded-lg px-3 py-2">تعديل</button><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف النشاط':'تفعيل النشاط'}</button><button disabled={busy} onClick={()=>deleteActivity(activity)} className="border border-red-200 text-red-700 rounded-lg px-3 py-2">حذف</button></div></td></tr>});
     })}</tbody></table></div>
   </div>
 </div>}
