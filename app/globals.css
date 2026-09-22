@@ -23,3 +23,40 @@ input, select, textarea { border-color:#d7e3de !important; background:#fff; outl
 input:focus, select:focus, textarea:focus { border-color:var(--moe-green) !important; box-shadow:0 0 0 3px rgba(11,107,80,.10); }
 
 @media print { body { background:#fff; } .card { box-shadow:none; } }
+
+
+/* الهوية الوطنية 96 — عزّنا بطبعنا */
+.national-day-96-bar{
+  background:linear-gradient(90deg,#075b43 0%,#0b6b50 48%,#064b38 100%);
+  color:#fff;
+  border-bottom:3px solid #c9a227;
+  position:relative;
+  overflow:hidden;
+}
+.national-day-96-bar::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.055) 0 2px,transparent 2px 18px);
+  pointer-events:none;
+}
+.national-day-96-content{position:relative;z-index:1}
+.national-day-96-number{
+  font-size:2.25rem;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-.06em;
+}
+.national-day-96-mark{
+  border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  padding:.35rem .75rem;
+  font-weight:800;
+}
+.portal-title{letter-spacing:-.02em}
+@media (max-width:640px){
+  .national-day-96-number{font-size:1.65rem}
+  .national-day-96-mark{font-size:.75rem;padding:.3rem .6rem}
+  .portal-title{font-size:1rem}
+}
