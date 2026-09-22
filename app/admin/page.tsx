@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet } from 'lucide-react';
+import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../lib/supabase';
 
@@ -9,6 +9,8 @@ type School = { id: string; school_code: string; school_name: string; is_active:
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null; is_active: boolean };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type RecordRow = { id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; payroll_days: number; payroll_days_manual: boolean; notes: string | null };
+type Activity = { id: string; name: string; description: string | null; is_active: boolean };
+type ActivityReport = { id: string; activity_id: string; school_id: string; report_text: string | null; statistics: string | null; attachment_path: string | null; status: string; rating: number | null; rated_at: string | null };
 
 const roles = ['مدير','معلم','إداري','مستخدم','حارس'];
 
@@ -127,6 +129,9 @@ export default function AdminPage() {
   const [teacherEditForm,setTeacherEditForm]=useState({school_id:'',full_name:'',national_id:'',job_role:'معلم',specialization:''});
   const [importingSchools,setImportingSchools]=useState(false), [importingTeachers,setImportingTeachers]=useState(false);
   const [periodForm,setPeriodForm]=useState({period_name:'',start_hijri:'',end_hijri:'',allow_edit:true});
+  const [activities,setActivities]=useState<Activity[]>([]), [activityReports,setActivityReports]=useState<ActivityReport[]>([]);
+  const [activityForm,setActivityForm]=useState({name:'',description:''});
+  const [activityRating,setActivityRating]=useState<Record<string,number>>({});
 
   async function load(){
     setLoading(true); setError('');
@@ -134,13 +139,15 @@ export default function AdminPage() {
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setLoading(false);return;} setAllowed(true);
-    const [s,t,p]=await Promise.all([
+    const [s,t,p,acts,reps]=await Promise.all([
       sb.from('schools').select('*').order('school_name'),
       sb.from('teachers').select('*').order('full_name'),
-      sb.from('payroll_periods').select('*').order('start_date',{ascending:false})
+      sb.from('payroll_periods').select('*').order('start_date',{ascending:false}),
+      sb.from('school_activities').select('*').order('created_at',{ascending:false}),
+      sb.from('school_activity_reports').select('*').order('created_at',{ascending:false})
     ]);
     if(s.error||t.error||p.error)setError(s.error?.message||t.error?.message||p.error?.message||'تعذر تحميل البيانات');
-    setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);
+    setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports(reps.data||[]);
     if(!schoolId&&s.data?.[0])setSchoolId(s.data[0].id);
     if(!periodId&&p.data?.[0])setPeriodId(p.data[0].id);
     if(!teacherForm.school_id&&s.data?.[0])setTeacherForm(x=>({...x,school_id:s.data[0].id}));
@@ -150,6 +157,30 @@ export default function AdminPage() {
   async function loadRecords(){if(!periodId)return;let q=sb.from('payroll_records').select('*').eq('period_id',periodId);if(schoolId)q=q.eq('school_id',schoolId);const {data,error}=await q;if(error)setError(error.message);else setRecords(data||[])}
   useEffect(()=>{load()},[]); useEffect(()=>{if(allowed)loadRecords()},[allowed,schoolId,periodId]);
   async function logout(){await sb.auth.signOut();location.href='/'}
+
+  async function addActivity(){
+    setMessage(''); setError('');
+    if(!activityForm.name.trim()){setError('اسم النشاط أو الاحتفال مطلوب.');return;}
+    setBusy(true);
+    const {error}=await sb.from('school_activities').insert({name:activityForm.name.trim(),description:activityForm.description.trim()||null,is_active:true});
+    if(error)setError('تعذر إضافة النشاط: '+error.message);
+    else{setMessage('تمت إضافة النشاط أو المناسبة بنجاح.');setActivityForm({name:'',description:''});await load();}
+    setBusy(false);
+  }
+
+  async function toggleActivity(activity: Activity){
+    setBusy(true); setError('');
+    const {error}=await sb.from('school_activities').update({is_active:!activity.is_active}).eq('id',activity.id);
+    if(error)setError('تعذر تغيير حالة النشاط: '+error.message); else await load();
+    setBusy(false);
+  }
+
+  async function rateActivity(report: ActivityReport, rating: number){
+    setBusy(true); setError('');
+    const {error}=await sb.from('school_activity_reports').update({rating,rated_by: (await sb.auth.getUser()).data.user?.id || null,rated_at:new Date().toISOString(),status:'مراجع'}).eq('id',report.id);
+    if(error)setError('تعذر حفظ التقييم: '+error.message); else {setMessage('تم حفظ تقييم النشاط.');await load();}
+    setBusy(false);
+  }
 
   async function toggleSchoolTeacherEdit(school: School) {
     setBusy(true); setError(''); setMessage('');
@@ -474,7 +505,7 @@ async function deletePeriod(p:Period){
   if(loading)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
   if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
-  const nav=[['overview','نظرة عامة',Building2],['schools','المدارس',Building2],['teachers','الموظفون وإسنادهم',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',CheckCircle2],['accounts','حسابات المدارس',ShieldCheck],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle]] as const;
+  const nav=[['overview','نظرة عامة',Building2],['schools','المدارس',Building2],['teachers','الموظفون وإسنادهم',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',CheckCircle2],['accounts','حسابات المدارس',ShieldCheck],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['activities','الأنشطة والمناسبات',PartyPopper]] as const;
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
 
   function go(key:string){setTab(key);if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp'}
@@ -508,7 +539,27 @@ async function deletePeriod(p:Period){
   <div className="card p-6"><h2 className="text-xl font-bold mb-2">فترات المسيرات</h2><p className="text-sm text-gray-500 mb-5">داخل التاريخ المحدد تكون الفترة مفتوحة، وخارجها مغلقة تلقائيًا.</p>{periods.map(p=>{const open=periodIsOpen(p);const sh=p.start_hijri||gregorianToHijri(p.start_date);const eh=p.end_hijri||gregorianToHijri(p.end_date);return <div key={p.id} className="border rounded-xl p-4 mb-3"><div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3"><div><b>{p.period_name}</b><div className="text-sm text-gray-600 mt-1">فتح: {sh} — إغلاق: {eh}</div><div className="mt-2 text-sm"><span className={open?'text-green-700':'text-amber-700'}>{open?'مفتوح للتعبئة':'مغلق'}</span> — {p.auto_open_close?'تلقائي حسب التاريخ الهجري':'تحكم يدوي'}</div></div><div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>editPeriodDates(p)} className="border rounded-lg px-4 py-2">تعديل الفترة</button><button disabled={busy||!!p.auto_open_close} onClick={()=>periodState(p)} className="border rounded-lg px-4 py-2 disabled:opacity-50">{p.is_open&&p.allow_edit?'إغلاق يدوي':'فتح يدوي'}</button><button disabled={busy} onClick={()=>deletePeriod(p)} className="border border-red-200 text-red-700 rounded-lg px-4 py-2">حذف</button></div></div></div>})}</div>
 </div>}
 
-        {tab==='payroll'&&<div className="space-y-5"><div className="card p-5 grid md:grid-cols-3 gap-3"><select value={periodId} onChange={e=>setPeriodId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">اختر الفترة</option>{periods.map(p=><option key={p.id} value={p.id}>{p.period_name}</option>)}</select><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><button disabled={busy||!schoolId||!periodId} onClick={generate} className="bg-[var(--navy)] text-white rounded-xl px-4 py-3 font-bold">تجهيز مسير المدرسة</button></div><div className="card overflow-hidden"><div className="p-5 border-b"><b>{school?.school_name||'كل المدارس'}</b> — {period?.period_name||''}</div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">تاريخ المباشرة</th><th className="p-3 text-right">عدد أيام المسير</th><th className="p-3 text-right">الحالة</th></tr></thead><tbody>{records.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id),s=schools.find(x=>x.id===r.school_id);return <tr className="border-t" key={r.id}><td className="p-3">{t?.full_name||'—'}</td><td className="p-3">{s?.school_name||'—'}</td><td className="p-3">{r.direct_start_date||'—'}</td><td className="p-3"><div className="flex items-center gap-2"><input type="number" min={0} max={31} value={r.payroll_days ?? 0} disabled={busy} onChange={e=>updatePayrollDays(r.id,e.target.value)} className="border rounded-lg px-3 py-2 w-24 text-center"/><span className="text-xs text-gray-500">{r.payroll_days_manual?'يدوي':'تلقائي'}</span></div></td><td className="p-3"><select value={r.status} disabled={busy} onChange={e=>status(r.id,e.target.value)} className="border rounded-lg px-2 py-1"><option>لم يبدأ</option><option>مفتوح للتعبئة</option><option>تم الحفظ</option><option>تم الاعتماد</option><option>مغلق</option></select></td></tr>})}</tbody></table></div></div></div>}
+        {tab==='activities'&&<div className="space-y-5">
+  <div className="card p-6">
+    <div className="flex items-center gap-3 mb-5"><div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><PartyPopper size={22}/></div><div><h1 className="text-2xl font-bold">الأنشطة والاحتفالات والمناسبات</h1><p className="text-sm text-gray-500 mt-1">أنشئ النشاط أو المناسبة وحدد الوصف المطلوب، ثم راجع تقارير وإحصائيات المدارس وقيّمها من 5 نجوم.</p></div></div>
+    <div className="grid md:grid-cols-2 gap-4">
+      <label><span className="block text-sm font-semibold mb-2">اسم النشاط أو الاحتفال</span><input value={activityForm.name} onChange={e=>setActivityForm({...activityForm,name:e.target.value})} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: اليوم الوطني"/></label>
+      <label><span className="block text-sm font-semibold mb-2">وصف المطلوب من المدرسة</span><textarea value={activityForm.description} onChange={e=>setActivityForm({...activityForm,description:e.target.value})} rows={3} className="border rounded-xl px-4 py-3 w-full" placeholder="حدد المطلوب تنفيذه والتقرير والإحصائيات المطلوبة"/></label>
+    </div>
+    <button disabled={busy} onClick={addActivity} className="mt-4 bg-[var(--navy)] text-white rounded-xl px-6 py-3 font-bold inline-flex items-center gap-2"><Plus size={18}/> إضافة النشاط</button>
+  </div>
+  <div className="card overflow-hidden">
+    <div className="p-5 border-b"><b>الأنشطة والتقارير ({activities.length})</b></div>
+    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50"><tr><th className="p-3 text-right">النشاط / المناسبة</th><th className="p-3 text-right">الوصف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">التقرير والإحصائيات</th><th className="p-3 text-right">التقييم</th><th className="p-3 text-right">الحالة</th><th className="p-3 text-right">النشاط</th></tr></thead>
+    <tbody>{activities.flatMap(activity=>{
+      const rows=activityReports.filter(r=>r.activity_id===activity.id);
+      if(!rows.length)return [<tr key={activity.id} className="border-t"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[280px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3 text-gray-500">لم يرسل بعد</td><td className="p-3">—</td><td className="p-3">—</td><td className="p-3">{activity.is_active?'نشط':'موقوف'}</td><td className="p-3"><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف':'تفعيل'}</button></td></tr>];
+      return rows.map(r=>{const schoolName=schools.find(s=>s.id===r.school_id)?.school_name||'—';return <tr key={r.id} className="border-t align-top"><td className="p-3 font-semibold">{activity.name}</td><td className="p-3 max-w-[260px] whitespace-pre-line">{activity.description||'—'}</td><td className="p-3">{schoolName}</td><td className="p-3 max-w-[300px]"><div className="whitespace-pre-line">{r.report_text||'—'}</div><div className="mt-2 text-xs text-gray-500">الإحصائيات: {r.statistics||'—'}</div>{r.attachment_path&&<div className="text-xs text-emerald-700 mt-1">يوجد مرفق</div>}</td><td className="p-3"><div className="flex gap-0.5">{[1,2,3,4,5].map(n=><button key={n} type="button" disabled={busy} onClick={()=>rateActivity(r,n)} title={n+' نجوم'}><Star size={19} className={r.rating&&n<=r.rating?'fill-amber-400 text-amber-400':'text-gray-300'}/></button>)}</div></td><td className="p-3">{r.status}</td><td className="p-3"><button disabled={busy} onClick={()=>toggleActivity(activity)} className="border rounded-lg px-3 py-2">{activity.is_active?'إيقاف النشاط':'تفعيل النشاط'}</button></td></tr>});
+    })}</tbody></table></div>
+  </div>
+</div>}
+
+{tab==='payroll'&&<div className="space-y-5"><div className="card p-5 grid md:grid-cols-3 gap-3"><select value={periodId} onChange={e=>setPeriodId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">اختر الفترة</option>{periods.map(p=><option key={p.id} value={p.id}>{p.period_name}</option>)}</select><select value={schoolId} onChange={e=>setSchoolId(e.target.value)} className="border rounded-xl px-4 py-3"><option value="">كل المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><button disabled={busy||!schoolId||!periodId} onClick={generate} className="bg-[var(--navy)] text-white rounded-xl px-4 py-3 font-bold">تجهيز مسير المدرسة</button></div><div className="card overflow-hidden"><div className="p-5 border-b"><b>{school?.school_name||'كل المدارس'}</b> — {period?.period_name||''}</div><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-gray-50"><th className="p-3 text-right">الموظف</th><th className="p-3 text-right">المدرسة</th><th className="p-3 text-right">تاريخ المباشرة</th><th className="p-3 text-right">عدد أيام المسير</th><th className="p-3 text-right">الحالة</th></tr></thead><tbody>{records.map(r=>{const t=teachers.find(x=>x.id===r.teacher_id),s=schools.find(x=>x.id===r.school_id);return <tr className="border-t" key={r.id}><td className="p-3">{t?.full_name||'—'}</td><td className="p-3">{s?.school_name||'—'}</td><td className="p-3">{r.direct_start_date||'—'}</td><td className="p-3"><div className="flex items-center gap-2"><input type="number" min={0} max={31} value={r.payroll_days ?? 0} disabled={busy} onChange={e=>updatePayrollDays(r.id,e.target.value)} className="border rounded-lg px-3 py-2 w-24 text-center"/><span className="text-xs text-gray-500">{r.payroll_days_manual?'يدوي':'تلقائي'}</span></div></td><td className="p-3"><select value={r.status} disabled={busy} onChange={e=>status(r.id,e.target.value)} className="border rounded-lg px-2 py-1"><option>لم يبدأ</option><option>مفتوح للتعبئة</option><option>تم الحفظ</option><option>تم الاعتماد</option><option>مغلق</option></select></td></tr>})}</tbody></table></div></div></div>}
       </section>
     </div></main>
   </div>;
