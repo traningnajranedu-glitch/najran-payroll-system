@@ -402,20 +402,26 @@ export default function Dashboard() {
             {!activities.length && <div className="bg-slate-50 border rounded-xl p-5 text-sm text-gray-500">لا توجد أنشطة أو مناسبات متاحة حاليًا.</div>}
             {activities.map(activity => {
               const r = activityReports[activity.id] || { activity_id: activity.id, school_id: school.id, report_text: '', statistics: '', attachment_path: null, status: 'مسودة', rating: null };
-              return <div key={activity.id} className="border rounded-2xl p-5">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div><h3 className="font-bold text-lg">{activity.name}</h3><p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{activity.description || 'لا يوجد وصف إضافي.'}</p></div>
-                  <div className="shrink-0"><div className="text-xs text-gray-500 mb-1">تقييم مدير النظام</div><div className="flex gap-1" aria-label="التقييم">{[1,2,3,4,5].map(n=><Star key={n} size={21} className={r.rating && n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}/>)}</div></div>
+              const submitted = r.status === 'مقدم' || r.status === 'مراجع';
+              return <div key={activity.id} className="border rounded-2xl p-5 bg-white shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 text-[var(--navy)] flex items-center justify-center"><PartyPopper size={22}/></div>
+                    <div><h3 className="font-bold text-lg">{activity.name}</h3>{submitted && <div className="text-xs text-emerald-700 mt-1 flex items-center gap-1"><ShieldCheck size={14}/> تم إرسال النشاط — بانتظار تقييم مدير النظام</div>}</div>
+                  </div>
+                  <div className="shrink-0 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3"><div className="text-xs text-gray-500 mb-1">تقييم مدير النظام</div><div className="flex gap-1" aria-label="التقييم">{[1,2,3,4,5].map(n=><Star key={n} size={22} className={r.rating && n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}/>)}</div></div>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4 mt-5">
-                  <label><span className="block text-sm font-semibold mb-2">تقرير النشاط</span><textarea value={r.report_text || ''} onChange={e=>updateActivityReport(activity.id,{report_text:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="اكتب تقرير تنفيذ النشاط والنتائج..."/></label>
-                  <label><span className="block text-sm font-semibold mb-2">الإحصائيات</span><textarea value={r.statistics || ''} onChange={e=>updateActivityReport(activity.id,{statistics:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: عدد المستفيدين، المشاركين، الحضور، الفعاليات..."/></label>
-                </div>
-                <div className="flex flex-wrap items-end gap-3 mt-4">
-                  <label className="flex-1 min-w-[260px]"><span className="block text-sm font-semibold mb-2">مرفق التقرير</span><input type="file" onChange={e=>setActivityFiles(x=>({...x,[activity.id]:e.target.files?.[0] || null}))} className="border rounded-xl px-3 py-2.5 w-full bg-white"/></label>
-                  {r.attachment_path && <button type="button" onClick={()=>openActivityAttachment(r.attachment_path!)} className="text-sm text-emerald-700 flex items-center gap-2 pb-3 hover:underline"><Paperclip size={17}/> عرض المرفق</button>}
-                  <button type="button" disabled={savingActivity} onClick={()=>saveActivityReport(activity)} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><BarChart3 size={18}/>{savingActivity?'جارٍ الحفظ…':'حفظ وإرسال التقرير'}</button>
-                </div>
+                {!submitted ? <div className="mt-5">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <label><span className="block text-sm font-semibold mb-2">تقرير النشاط</span><textarea value={r.report_text || ''} onChange={e=>updateActivityReport(activity.id,{report_text:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="اكتب تقرير تنفيذ النشاط والنتائج..."/></label>
+                    <label><span className="block text-sm font-semibold mb-2">الإحصائيات</span><textarea value={r.statistics || ''} onChange={e=>updateActivityReport(activity.id,{statistics:e.target.value})} rows={5} className="border rounded-xl px-4 py-3 w-full" placeholder="مثال: عدد المستفيدين، المشاركين، الحضور، الفعاليات..."/></label>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-3 mt-4">
+                    <label className="flex-1 min-w-[260px]"><span className="block text-sm font-semibold mb-2">مرفق التقرير</span><input type="file" onChange={e=>setActivityFiles(x=>({...x,[activity.id]:e.target.files?.[0] || null}))} className="border rounded-xl px-3 py-2.5 w-full bg-white"/></label>
+                    {r.attachment_path && <button type="button" onClick={()=>openActivityAttachment(r.attachment_path!)} className="text-sm text-emerald-700 flex items-center gap-2 pb-3 hover:underline"><Paperclip size={17}/> عرض المرفق</button>}
+                    <button type="button" disabled={savingActivity} onClick={()=>saveActivityReport(activity)} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><BarChart3 size={18}/>{savingActivity?'جارٍ الحفظ…':'حفظ وإرسال التقرير'}</button>
+                  </div>
+                </div> : <div className="mt-5 rounded-xl bg-slate-50 border p-4 text-sm text-gray-600 flex items-center gap-2"><Lock size={17} className="text-emerald-700"/> تم إغلاق التعديل بعد إرسال النشاط. يمكنك الاطلاع على اسم النشاط والتقييم فقط.</div>}
               </div>;
             })}
           </div>
