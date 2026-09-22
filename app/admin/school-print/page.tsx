@@ -74,7 +74,7 @@ export default function SchoolPayrollPrint() {
 
   async function loadRows(schoolId?: string) {
     setBusy(true); setMessage('');
-    let query = sb.from('payroll_records').select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,notes');
+    let query = sb.from('payroll_records').select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,payroll_days,notes');
     if (periodId) query = query.eq('period_id', periodId);
     if (schoolId) query = query.eq('school_id', schoolId);
     const { data, error } = await query;
@@ -150,6 +150,7 @@ export default function SchoolPayrollPrint() {
             'تاريخ المباشرة هجري': gregorianToHijri(r.direct_start_date),
             'تاريخ المباشرة ميلادي': r.direct_start_date || '',
             'عدد أيام الغياب': r.absence_days ?? 0,
+            'عدد أيام المسير': r.payroll_days ?? 0,
             'الملاحظات': r.notes || '',
             'حالة المسير': r.status || ''
           };
@@ -159,7 +160,7 @@ export default function SchoolPayrollPrint() {
           { wch: 6 }, { wch: 14 }, { wch: 28 }, { wch: 24 },
           { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 22 },
           { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 22 },
-          { wch: 32 }, { wch: 16 }, { wch: 18 }
+          { wch: 16 }, { wch: 32 }, { wch: 16 }, { wch: 18 }
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'جميع المسيرات');
@@ -222,13 +223,13 @@ export default function SchoolPayrollPrint() {
         </div>
         <table className="w-full border-collapse text-[10px]">
           <thead><tr className="bg-gray-100">
-            <th className="border p-2">#</th><th className="border p-2">رمز المدرسة</th><th className="border p-2">اسم المدرسة</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة هجري</th><th className="border p-2">أيام الغياب</th><th className="border p-2">الملاحظات</th><th className="border p-2">الحالة</th>
+            <th className="border p-2">#</th><th className="border p-2">رمز المدرسة</th><th className="border p-2">اسم المدرسة</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة هجري</th><th className="border p-2">أيام الغياب</th><th className="border p-2">عدد أيام المسير</th><th className="border p-2">الملاحظات</th><th className="border p-2">الحالة</th>
           </tr></thead>
           <tbody>{printRowsFiltered.map((r, i) => {
             const s = schools.find(x => x.id === r.school_id);
             const t = teachers.find(x => x.id === r.teacher_id);
             return <tr key={r.id}>
-              <td className="border p-2 text-center">{i + 1}</td><td className="border p-2 text-center">{s?.school_code || '—'}</td><td className="border p-2">{s?.school_name || '—'}</td><td className="border p-2">{t?.full_name || '—'}</td><td className="border p-2 text-center">{t?.national_id || '—'}</td><td className="border p-2">{t?.job_role || '—'}</td><td className="border p-2">{t?.specialization || '—'}</td><td className="border p-2 text-center">{gregorianToHijri(r.direct_start_date) || '—'}</td><td className="border p-2 text-center">{r.absence_days ?? 0}</td><td className="border p-2">{r.notes || '—'}</td><td className="border p-2 text-center">{r.status || '—'}</td>
+              <td className="border p-2 text-center">{i + 1}</td><td className="border p-2 text-center">{s?.school_code || '—'}</td><td className="border p-2">{s?.school_name || '—'}</td><td className="border p-2">{t?.full_name || '—'}</td><td className="border p-2 text-center">{t?.national_id || '—'}</td><td className="border p-2">{t?.job_role || '—'}</td><td className="border p-2">{t?.specialization || '—'}</td><td className="border p-2 text-center">{gregorianToHijri(r.direct_start_date) || '—'}</td><td className="border p-2 text-center">{r.absence_days ?? 0}</td><td className="border p-2 text-center font-bold">{r.payroll_days ?? 0}</td><td className="border p-2">{r.notes || '—'}</td><td className="border p-2 text-center">{r.status || '—'}</td>
             </tr>;
           })}</tbody>
         </table>
