@@ -8,7 +8,7 @@ import { supabaseBrowser } from '../../../lib/supabase';
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name: string | null; stamp_path: string | null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null };
-type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; notes: string | null };
+type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; payroll_days: number; notes: string | null };
 
 function gregorianToHijri(value: string | null | undefined): string {
   if (!value) return '';
@@ -118,7 +118,7 @@ export default function SchoolPayrollPrint() {
     }
     setBusy(true);
     sb.from('payroll_records')
-      .select('id,school_id,teacher_id,period_id,status,direct_start_date,notes')
+      .select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,payroll_days,notes')
       .eq('period_id', periodId)
       .then(({ data, error }) => {
         if (error) {
