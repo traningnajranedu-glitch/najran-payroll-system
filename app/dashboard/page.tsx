@@ -137,7 +137,6 @@ export default function Dashboard() {
   const [activityReports, setActivityReports] = useState<Record<string, ActivityReport>>({});
   const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
   const [savingActivity, setSavingActivity] = useState(false);
-
   async function load() {
     setLoading(true);
     const { data: { user } } = await sb.auth.getUser();
@@ -277,8 +276,7 @@ export default function Dashboard() {
     if (error) {
       setMessage('تعذر اعتماد المسير: ' + error.message);
     } else {
-      setMessage('تم اعتماد المسير بنجاح. أصبح جاهزًا للطباعة.');
-      await loadRecords();
+      setMessage('تم اعتماد المسير بنجاح. أصبح جاهزًا للطباعة.');      await loadRecords();
     }
     setSaving(false);
   }
@@ -375,6 +373,33 @@ export default function Dashboard() {
 
     <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
       <div className="print:hidden">
+        <section className="mb-7" aria-labelledby="services-title">
+          <div className="mb-4">
+            <h2 id="services-title" className="text-xl sm:text-2xl font-black text-[var(--navy)]">خدمات المدرسة</h2>
+            <p className="text-sm text-gray-500 mt-1">الوصول السريع إلى الخدمات الإلكترونية المتاحة لحساب المدرسة</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <a href="#activities" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><PartyPopper size={30} strokeWidth={2}/></div>
+              <div className="font-black text-lg text-slate-900">الأنشطة والاحتفاليات</div>
+              <div className="text-sm text-gray-500 mt-1">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div>
+              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
+            </a>
+            <a href="#employees" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><Users size={30} strokeWidth={2}/></div>
+              <div className="font-black text-lg text-slate-900">بيانات الموظفين</div>
+              <div className="text-sm text-gray-500 mt-1">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div>
+              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
+            </a>
+            <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><FileText size={30} strokeWidth={2}/></div>
+              <div className="font-black text-lg text-slate-900">مسيرات الرواتب</div>
+              <div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div>
+              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
+            </a>
+          </div>
+        </section>
+
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <div className="card p-5"><Users/><div className="text-2xl font-bold mt-3">{teachers.length}</div><div className="text-gray-500 text-sm">عدد الموظفين</div></div>
           <div className="card p-5"><CalendarDays/><div className="font-bold mt-3">{period?.period_name || 'لا توجد فترة'}</div><div className="text-gray-500 text-sm">الفترة الحالية</div></div>
@@ -394,7 +419,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card overflow-hidden mb-6">
+        <div id="activities" className="card overflow-hidden mb-6 scroll-mt-6">
           <div className="p-5 border-b flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><PartyPopper size={22}/></div>
             <div><h2 className="font-bold text-lg">الأنشطة والاحتفالات والمناسبات</h2><p className="text-sm text-gray-500 mt-1">استعرض النشاط المضاف من مدير النظام، ثم قدم التقرير والإحصائيات وأرفق المستندات. التقييم بالنجوم للعرض فقط ويُدار من مدير النظام.</p></div>
@@ -428,7 +453,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card overflow-hidden mb-6">
+        <div id="employees" className="card overflow-hidden mb-6 scroll-mt-6">
           <div className="p-5 border-b">
             <h2 className="font-bold text-lg">بيانات الموظفين</h2>
             <p className="text-sm text-gray-500 mt-1">تعديل مستقل عن المسير. البيانات غير قابلة للتعديل إلا بعد الضغط على «تعديل» للموظف.</p>
@@ -448,7 +473,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="card overflow-hidden">
+        <div id="payroll" className="card overflow-hidden scroll-mt-6">
           <div className="p-5 border-b flex flex-wrap gap-3 items-center justify-between">
             <div><h2 className="font-bold text-lg">مسير الرواتب</h2><p className="text-sm text-gray-500">أدخل تاريخ المباشرة والملاحظات لكل موظف. تعديل بيانات الموظف الأساسية {teacherDataEditable ? 'مفتوح من مدير النظام.' : 'مغلق من مدير النظام.'}</p></div>
             <div className="flex gap-2">
@@ -498,16 +523,3 @@ export default function Dashboard() {
         <div className="mt-10" style={{ direction: 'ltr', display: 'flex', justifyContent: 'flex-start' }}>
           <div className="text-center w-[300px]">
             <div className="font-bold mb-2">مدير المدرسة</div>
-            <div className="mb-3">{school.manager_name || managerName || '—'}</div>
-            <div className="flex items-end justify-center gap-5 min-h-[90px]">
-              <div className="text-sm">التوقيع: __________________</div>
-              {stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-24 h-24 object-contain" />}
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <style jsx global>{`@media print { @page { size: A4 portrait; margin: 12mm; } body { background: white !important; } }`}</style>
-  </div>;
-}
