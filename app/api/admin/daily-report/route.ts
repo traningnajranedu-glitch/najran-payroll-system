@@ -106,6 +106,3 @@ export async function POST(request:Request){
   }
 }
 
-export async function GET(request:Request){
-  return POST(new Request(request,{method:'POST',body:JSON.stringify({})}));
-}
