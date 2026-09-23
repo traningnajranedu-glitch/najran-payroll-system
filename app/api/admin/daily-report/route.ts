@@ -79,6 +79,19 @@ async function sendWhatsApp(phone:string,message:string){
   return result;
 }
 
+export async function GET(request:Request){
+  try{
+    const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if(!url||!key)return NextResponse.json({error:'إعدادات Supabase غير مكتملة'},{status:500});
+    const supabase=createClient(url,key);
+    const ok=await isAdmin(supabase,request);
+    return NextResponse.json({authorized:ok},{status:ok?200:401});
+  }catch(error:any){
+    return NextResponse.json({error:error?.message||'حدث خطأ غير متوقع'},{status:500});
+  }
+}
+
 export async function POST(request:Request){
   try{
     const supabase=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!);
