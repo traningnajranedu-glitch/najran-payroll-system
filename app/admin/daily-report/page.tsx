@@ -22,10 +22,11 @@ export default function DailyReportPage(){
 
   async function load(){
     setLoading(true);setNotice('');setError('');
-    const {data:{user}}=await sb.auth.getUser();
-    if(!user){location.href='/';return;}
-    const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
-    if(!admin){setLoading(false);return;}
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token;
+    if(!token){location.href='/';return;}
+    const authCheck=await fetch('/api/admin/daily-report',{headers:{Authorization:'Bearer '+token}}).then(r=>r.ok).catch(()=>false);
+    if(!authCheck){setLoading(false);setError('حسابك مسجل، لكن لم يتم التحقق من صلاحية مدير النظام. أعد تسجيل الدخول ثم حاول مرة أخرى.');return;}
     setAllowed(true);
     const [{data:s},{data:setting},{data:l,error:le}]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active,whatsapp_number').order('school_name'),
@@ -88,7 +89,9 @@ export default function DailyReportPage(){
   async function sendNow(){
     setBusy(true);setNotice('');setError('');
     try{
-      const res=await fetch('/api/admin/daily-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date,phone:phone.trim()})});
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session?.access_token)throw new Error('انتهت جلسة الدخول، أعد تسجيل الدخول.');
+      const res=await fetch('/api/admin/daily-report',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({date,phone:phone.trim()})});
       const data=await res.json();
       if(!res.ok)throw new Error(data.error||'تعذر إرسال التقرير');
       setNotice('تم طلب إرسال التقرير عبر WhatsApp بنجاح.');
