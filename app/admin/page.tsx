@@ -544,10 +544,10 @@ async function deletePeriod(p:Period){
   if(loading)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
   if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
-  const nav=[['overview','نظرة عامة',Building2],['schools','المدارس',Building2],['teachers','الموظفون وإسنادهم',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',CheckCircle2],['accounts','حسابات المدارس',ShieldCheck],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['activities','الأنشطة والمناسبات',PartyPopper]] as const;
+  const nav=[['overview','نظرة عامة',Building2],['schools','المدارس',Building2],['teachers','الموظفون وإسنادهم',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',CheckCircle2],['accounts','حسابات المدارس',ShieldCheck],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير اليومي للمدارس',FileSpreadsheet],['activities','الأنشطة والمناسبات',PartyPopper]] as const;
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
 
-  function go(key:string){setTab(key);if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp'}
+  function go(key:string){setTab(key);if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report'}
 
   return <div dir="rtl" className="min-h-screen bg-slate-50">
     <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div>
