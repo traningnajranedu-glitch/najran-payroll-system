@@ -137,6 +137,7 @@ export default function Dashboard() {
   const [activityReports, setActivityReports] = useState<Record<string, ActivityReport>>({});
   const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
   const [savingActivity, setSavingActivity] = useState(false);
+
   async function load() {
     setLoading(true);
     const { data: { user } } = await sb.auth.getUser();
@@ -276,7 +277,8 @@ export default function Dashboard() {
     if (error) {
       setMessage('تعذر اعتماد المسير: ' + error.message);
     } else {
-      setMessage('تم اعتماد المسير بنجاح. أصبح جاهزًا للطباعة.');      await loadRecords();
+      setMessage('تم اعتماد المسير بنجاح. أصبح جاهزًا للطباعة.');
+      await loadRecords();
     }
     setSaving(false);
   }
@@ -379,24 +381,9 @@ export default function Dashboard() {
             <p className="text-sm text-gray-500 mt-1">الوصول السريع إلى الخدمات الإلكترونية المتاحة لحساب المدرسة</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <a href="#activities" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><PartyPopper size={30} strokeWidth={2}/></div>
-              <div className="font-black text-lg text-slate-900">الأنشطة والاحتفاليات</div>
-              <div className="text-sm text-gray-500 mt-1">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div>
-              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
-            </a>
-            <a href="#employees" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><Users size={30} strokeWidth={2}/></div>
-              <div className="font-black text-lg text-slate-900">بيانات الموظفين</div>
-              <div className="text-sm text-gray-500 mt-1">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div>
-              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
-            </a>
-            <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"><FileText size={30} strokeWidth={2}/></div>
-              <div className="font-black text-lg text-slate-900">مسيرات الرواتب</div>
-              <div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div>
-              <div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div>
-            </a>
+            <a href="#activities" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-4"><PartyPopper size={30}/></div><div className="font-black text-lg text-slate-900">الأنشطة والاحتفاليات</div><div className="text-sm text-gray-500 mt-1">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
+            <a href="#employees" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4"><Users size={30}/></div><div className="font-black text-lg text-slate-900">بيانات الموظفين</div><div className="text-sm text-gray-500 mt-1">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
+            <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4"><FileText size={30}/></div><div className="font-black text-lg text-slate-900">مسيرات الرواتب</div><div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
           </div>
         </section>
 
@@ -523,3 +510,16 @@ export default function Dashboard() {
         <div className="mt-10" style={{ direction: 'ltr', display: 'flex', justifyContent: 'flex-start' }}>
           <div className="text-center w-[300px]">
             <div className="font-bold mb-2">مدير المدرسة</div>
+            <div className="mb-3">{school.manager_name || managerName || '—'}</div>
+            <div className="flex items-end justify-center gap-5 min-h-[90px]">
+              <div className="text-sm">التوقيع: __________________</div>
+              {stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-24 h-24 object-contain" />}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <style jsx global>{`@media print { @page { size: A4 portrait; margin: 12mm; } body { background: white !important; } }`}</style>
+  </div>;
+}
