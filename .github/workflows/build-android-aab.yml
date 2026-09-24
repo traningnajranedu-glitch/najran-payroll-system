@@ -25,6 +25,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 16 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Install dependencies
         run: npm ci
 
@@ -38,6 +44,13 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Set Google Play target API 36
+        run: |
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 36/' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 36/' android/variables.gradle
+          fi
 
       - name: Configure release signing
         if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
