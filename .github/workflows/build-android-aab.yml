@@ -29,7 +29,6 @@ jobs:
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
-
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
@@ -40,6 +39,7 @@ jobs:
 
       - name: Prepare Capacitor web directory
         run: |
+          rm -rf android
           mkdir -p www
           printf '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>البوابة الإلكترونية لمدارس التعليم المستمر</title></head><body></body></html>' > www/index.html
 
@@ -123,11 +123,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          if [ -f keystore.properties ]; then
-            ./gradlew bundleRelease
-          else
-            ./gradlew bundleRelease
-          fi
+          ./gradlew bundleRelease
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
