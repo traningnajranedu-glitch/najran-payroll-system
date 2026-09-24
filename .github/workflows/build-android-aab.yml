@@ -1,0 +1,117 @@
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Capacitor web directory
+        run: |
+          mkdir -p www
+          printf '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>البوابة الإلكترونية لمدارس التعليم المستمر</title></head><body></body></html>' > www/index.html
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Configure release signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          cat > android/keystore.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("android/app/build.gradle")
+          s=p.read_text()
+          signing = """
+          def keystorePropertiesFile = rootProject.file('keystore.properties')
+          def keystoreProperties = new Properties()
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
+          """
+          s = signing + "\n" + s
+          s = s.replace(
+              "android {",
+              """android {
+              signingConfigs {
+                  release {
+                      if (keystorePropertiesFile.exists()) {
+                          storeFile file(keystoreProperties['storeFile'])
+                          storePassword keystoreProperties['storePassword']
+                          keyAlias keystoreProperties['keyAlias']
+                          keyPassword keystoreProperties['keyPassword']
+                      }
+                  }
+              }""",
+              1
+          )
+          s = s.replace(
+              "buildTypes {",
+              """buildTypes {""",
+              1
+          )
+          s = s.replace(
+              "release {",
+              """release {
+                  if (keystorePropertiesFile.exists()) {
+                      signingConfig signingConfigs.release
+                  }""",
+              1
+          )
+          p.write_text(s)
+          PY
+
+      - name: Build release AAB
+        run: |
+          cd android
+          chmod +x gradlew
+          if [ -f keystore.properties ]; then
+            ./gradlew bundleRelease
+          else
+            ./gradlew bundleRelease
+          fi
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuing-education-portal-release
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
