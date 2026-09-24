@@ -1,14 +1,17 @@
 {
-  "name":"البوابة الإلكترونية لمدارس التعليم المستمر",
-  "short_name":"مدارس التعليم المستمر",
-  "description":"البوابة الإلكترونية لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران",
-  "lang":"ar-SA",
-  "dir":"rtl",
-  "start_url":"/",
-  "scope":"/",
-  "display":"standalone",
-  "orientation":"portrait",
-  "theme_color":"#0b6b50",
-  "background_color":"#ffffff",
-  "categories":["education","business"]
+  "name": "البوابة الإلكترونية لمدارس التعليم المستمر",
+  "short_name": "التعليم المستمر",
+  "description": "البوابة الإلكترونية لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران",
+  "lang": "ar-SA",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0b6b50",
+  "background_color": "#ffffff",
+  "categories": ["education", "business"],
+  "icons": [
+    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
 }
