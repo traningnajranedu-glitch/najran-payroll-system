@@ -27,6 +27,17 @@ type Row={
 function pct(n:number){return Number.isFinite(n)?Math.round(n*10)/10:0}
 function barClass(v:number){return v>=80?'bg-emerald-600':v>=60?'bg-amber-500':'bg-rose-500'}
 
+
+function TVCard({title,sub,children,className=""}:{title:string;sub?:string;children:ReactNode;className?:string}){return <section className={"rounded-[24px] border border-white/10 bg-[#0d2135] p-5 lg:p-6 shadow-xl "+className}><div className="flex justify-between items-start mb-5"><div><h2 className="font-black text-lg lg:text-xl">{title}</h2>{sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}</div><BarChart3 size={19} className="text-slate-500"/></div>{children}</section>}
+function TVMetric({label,value}:{label:string;value:number}){const n=Math.max(0,Math.min(100,Number(value)||0));return <div className="mb-5"><div className="flex justify-between text-xs mb-2"><span className="text-slate-400">{label}</span><b>{pct(n)}%</b></div><div className="h-3 rounded-full bg-white/5 overflow-hidden"><div className="h-full rounded-full bg-cyan-400" style={{width:n+"%"}}/></div></div>}
+
+function MetricMini({value}:{value:number}){const v=Math.max(0,Math.min(100,Number(value)||0));return <div className="min-w-[110px]"><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:v+'%'}}/></div><div className="text-xs text-center mt-1">{pct(v)}%</div></div>}
+
+function Mini({label,v}:{label:string;v:number}){const n=Math.max(0,Math.min(100,Number(v)||0));return <div className="mt-2"><div className="flex justify-between text-[11px] text-slate-500"><span>{label}</span><span>{pct(n)}%</span></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:n+'%'}}/></div></div>}
+
+function ChartCard({title,sub,children}:{title:string;sub?:string;children:ReactNode}){return <div className="card p-5 shadow-sm"><div className="flex justify-between items-center mb-5"><div><h2 className="font-black text-lg">{title}</h2>{sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}</div><BarChart3 size={20}/></div>{children}</div>}
+
+
 export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
@@ -164,12 +175,3 @@ export default function KpiDashboard(){
     </div>
   </main>;
 }
-
-function TVCard({title,sub,children,className=""}:{title:string;sub?:string;children:ReactNode;className?:string}){return <section className={"rounded-[24px] border border-white/10 bg-[#0d2135] p-5 lg:p-6 shadow-xl "+className}><div className="flex justify-between items-start mb-5"><div><h2 className="font-black text-lg lg:text-xl">{title}</h2>{sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}</div><BarChart3 size={19} className="text-slate-500"/></div>{children}</section>}
-function TVMetric({label,value}:{label:string;value:number}){const n=Math.max(0,Math.min(100,Number(value)||0));return <div className="mb-5"><div className="flex justify-between text-xs mb-2"><span className="text-slate-400">{label}</span><b>{pct(n)}%</b></div><div className="h-3 rounded-full bg-white/5 overflow-hidden"><div className="h-full rounded-full bg-cyan-400" style={{width:n+"%"}}/></div></div>}
-
-function MetricMini({value}:{value:number}){const v=Math.max(0,Math.min(100,Number(value)||0));return <div className="min-w-[110px]"><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:v+'%'}}/></div><div className="text-xs text-center mt-1">{pct(v)}%</div></div>}
-
-function Mini({label,v}:{label:string;v:number}){const n=Math.max(0,Math.min(100,Number(v)||0));return <div className="mt-2"><div className="flex justify-between text-[11px] text-slate-500"><span>{label}</span><span>{pct(n)}%</span></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:n+'%'}}/></div></div>}
-
-function ChartCard({title,sub,children}:{title:string;sub?:string;children:ReactNode}){return <div className="card p-5 shadow-sm"><div className="flex justify-between items-center mb-5"><div><h2 className="font-black text-lg">{title}</h2>{sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}</div><BarChart3 size={20}/></div>{children}</div>}
