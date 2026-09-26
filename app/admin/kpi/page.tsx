@@ -109,7 +109,6 @@ export default function KpiDashboard(){
 
   if(loading)return <main dir="rtl" className="min-h-screen flex items-center justify-center bg-slate-50"><div className="card p-10">جارٍ تحميل مؤشرات الأداء…</div></main>;
 
-  const chartRows=filtered.slice(0,12);
   const scatterRows=filtered.filter(r=>r.totalStaff>0);
   return <main dir="rtl" className="min-h-screen bg-[#f4f7fb]">
     <div className="national-day-96-bar"><div className="national-day-96-content max-w-[1500px] mx-auto px-4 py-2 flex justify-between items-center"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><b>عزّنا بطبعنا</b><div className="text-[11px] text-white/80">اليوم الوطني السعودي</div></div></div><span className="hidden md:block text-sm">لوحة المؤشرات التنفيذية — مدارس التعليم المستمر</span></div></div>
@@ -133,5 +132,10 @@ export default function KpiDashboard(){
       {selectedSchool!=='all'&&<div className="grid lg:grid-cols-2 gap-6"><ChartCard title="تفاصيل المدرسة" sub={filtered[0]?.school.school_name||''}>{filtered.map(r=><div key={r.school.id} className="space-y-4"><Mini label="نسبة العاملين" v={r.staffingRate}/><Mini label="إنجاز الأنشطة" v={r.activityRate}/><Mini label="التقييم" v={r.avgRating*20}/><Mini label="التحصيل" v={r.achievement??0}/></div>)}</ChartCard><ChartCard title="تحديث التحصيل التعليمي" sub="حسب السنة الدراسية"><div className="grid sm:grid-cols-2 gap-4"><label className="text-sm font-bold">السنة<input value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="border rounded-xl px-4 py-3 w-full mt-2"/></label><label className="text-sm font-bold">التحصيل %<input type="number" min="0" max="100" step=".1" value={achievementPercent} onChange={e=>setAchievementPercent(e.target.value)} className="border rounded-xl px-4 py-3 w-full mt-2"/></label><label className="text-sm font-bold">المستهدف %<input type="number" min="0" max="100" step=".1" value={targetPercent} onChange={e=>setTargetPercent(e.target.value)} className="border rounded-xl px-4 py-3 w-full mt-2"/></label><textarea value={achievementNotes} onChange={e=>setAchievementNotes(e.target.value)} rows={3} className="border rounded-xl px-4 py-3 w-full sm:col-span-2" placeholder="ملاحظات"/></div><button disabled={saving} onClick={saveAchievement} className="mt-4 bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold inline-flex items-center gap-2"><Save/>{saving?'جاري الحفظ…':'حفظ المؤشر'}</button></ChartCard></div>}
     </div>
   </main>;
-function MetricMini({value}:{value:number}){const v=Math.max(0,Math.min(100,Number(value)||0));return <div className="min-w-[110px]"><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:v+'%'}}/></div><div className="text-xs text-center mt-1">{pct(v)}%</div></div>}
 }
+
+function MetricMini({value}:{value:number}){const v=Math.max(0,Math.min(100,Number(value)||0));return <div className="min-w-[110px]"><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:v+'%'}}/></div><div className="text-xs text-center mt-1">{pct(v)}%</div></div>}
+
+function Mini({label,v}:{label:string;v:number}){const n=Math.max(0,Math.min(100,Number(v)||0));return <div className="mt-2"><div className="flex justify-between text-[11px] text-slate-500"><span>{label}</span><span>{pct(n)}%</span></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-slate-700 rounded-full" style={{width:n+'%'}}/></div></div>}
+
+function ChartCard({title,sub,children}:{title:string;sub?:string;children:ReactNode}){return <div className="card p-5 shadow-sm"><div className="flex justify-between items-center mb-5"><div><h2 className="font-black text-lg">{title}</h2>{sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}</div><BarChart3 size={20}/></div>{children}</div>}
