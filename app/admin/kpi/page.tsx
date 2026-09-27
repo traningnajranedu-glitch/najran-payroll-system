@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { BarChart3, Building2, Users, PartyPopper, Star, GraduationCap, RefreshCw, Maximize2, Minimize2, Target, TrendingUp } from 'lucide-react';
+import {
+  BarChart3, Building2, Users, PartyPopper, Star, GraduationCap, RefreshCw,
+  Maximize2, Minimize2, Target, TrendingUp, Home, UserRound, CalendarDays,
+  FileText, Settings, ClipboardList, Bell, Sparkles, CheckCircle2, Clock3,
+  AlertCircle, ChevronLeft, Menu, X
+} from 'lucide-react';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School={id:string;school_code:string;school_name:string;is_active:boolean};
@@ -14,15 +19,35 @@ type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number
 const pct=(n:number)=>Number.isFinite(n)?Math.round(n*10)/10:0;
 const clamp=(n:number)=>Math.max(0,Math.min(100,Number(n)||0));
 
-function Progress({value,className='bg-cyan-400'}:{value:number;className?:string}){return <div className="h-2.5 rounded-full bg-white/5 overflow-hidden"><div className={'h-full rounded-full '+className} style={{width:clamp(value)+'%'}}/></div>}
-function Card({title,sub,icon:Icon,children,className=''}:{title:string;sub?:string;icon?:any;children:ReactNode;className?:string}){return <section className={'rounded-[24px] border border-white/10 bg-[#0d2135] shadow-xl overflow-hidden '+className}><div className="px-5 lg:px-6 py-5 border-b border-white/10 flex items-start justify-between gap-3"><div><h2 className="font-black text-lg lg:text-xl">{title}</h2>{sub&&<p className="text-xs text-slate-400 mt-1">{sub}</p>}</div>{Icon&&<div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-cyan-300"><Icon size={20}/></div>}</div><div className="p-5 lg:p-6">{children}</div></section>}
-function Metric({title,value,unit,icon:Icon,bar,tone}:{title:string;value:number;unit:string;icon:any;bar:number;tone:string}){return <div className="relative rounded-[22px] border border-white/10 bg-[#0d2135] p-5 shadow-xl overflow-hidden"><div className={'absolute -left-10 -top-10 w-28 h-28 rounded-full opacity-10 '+tone}/><div className="flex items-start justify-between gap-3"><div><p className="text-xs lg:text-sm text-slate-400 font-bold">{title}</p><div className="mt-2 text-3xl lg:text-4xl font-black">{pct(value)}<span className="text-base text-slate-500 mr-1">{unit}</span></div></div><div className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center"><Icon size={23}/></div></div><div className="mt-4"><Progress value={bar} className={tone}/></div></div>}
+function Progress({value,className='bg-[#159f7d]'}:{value:number;className?:string}) {
+  return <div className="h-2.5 rounded-full bg-[#edf3f2] overflow-hidden"><div className={'h-full rounded-full '+className} style={{width:clamp(value)+'%'}}/></div>;
+}
+function Panel({title,sub,icon:Icon,children,className=''}:{title:string;sub?:string;icon?:any;children:ReactNode;className?:string}) {
+  return <section className={'rounded-2xl border border-[#dce8e6] bg-white shadow-[0_4px_18px_rgba(15,74,66,.06)] overflow-hidden '+className}>
+    <div className="px-5 py-4 border-b border-[#edf2f1] flex items-start justify-between gap-3">
+      <div><h2 className="font-black text-[#123f3a] text-base lg:text-lg">{title}</h2>{sub&&<p className="text-xs text-[#718582] mt-1">{sub}</p>}</div>
+      {Icon&&<div className="w-9 h-9 rounded-xl bg-[#e8f5f1] text-[#087f69] flex items-center justify-center"><Icon size={19}/></div>}
+    </div>
+    <div className="p-4 lg:p-5">{children}</div>
+  </section>;
+}
+function StatCard({title,value,unit,icon:Icon,tone='green',sub}:{title:string;value:number|string;unit?:string;icon:any;tone?:string;sub?:string}) {
+  const tones:any={green:'bg-[#e5f5f0] text-[#087f69]',blue:'bg-[#eaf1fb] text-[#2867b2]',amber:'bg-[#fff4dc] text-[#b57a0a]',violet:'bg-[#f0eafd] text-[#6950a6]'};
+  return <div className="rounded-2xl border border-[#dce8e6] bg-white p-4 shadow-[0_3px_14px_rgba(15,74,66,.05)]">
+    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-[#667b78]">{title}</p><div className="mt-2 text-3xl font-black text-[#153d3a]">{value}<span className="text-xs text-[#7a8b88] mr-1">{unit}</span></div>{sub&&<p className="text-[10px] text-[#8a9996] mt-1">{sub}</p>}</div><div className={'w-11 h-11 rounded-2xl flex items-center justify-center '+tones[tone]}><Icon size={23}/></div></div>
+  </div>;
+}
+function Donut({active,review,blocked}:{active:number;review:number;blocked:number}) {
+  const total=Math.max(1,active+review+blocked), p1=active/total*100, p2=review/total*100;
+  const r=52,c=2*Math.PI*r;
+  return <div className="relative w-40 h-40 mx-auto"><svg viewBox="0 0 140 140" className="w-full h-full -rotate-90"><circle cx="70" cy="70" r={r} fill="none" stroke="#eef4f2" strokeWidth="20"/><circle cx="70" cy="70" r={r} fill="none" stroke="#159f7d" strokeWidth="20" strokeDasharray={c} strokeDashoffset={c*(1-p1/100)} strokeLinecap="butt"/><circle cx="70" cy="70" r={r} fill="none" stroke="#f2a719" strokeWidth="20" strokeDasharray={c} strokeDashoffset={c*(1-p2/100)} strokeLinecap="butt" transform={'rotate('+(p1/100*360)+' 70 70)'}/><circle cx="70" cy="70" r={r} fill="none" stroke="#e94d4d" strokeWidth="20" strokeDasharray={c} strokeDashoffset={c*((active+review)/total)} strokeLinecap="butt" transform={'rotate('+((p1+p2)/100*360)+' 70 70)'}/></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><b className="text-2xl text-[#173e3a]">{total}</b><span className="text-xs font-bold text-[#61736f]">مدرسة</span></div></div>;
+}
 
 export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
-  const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[saving,setSaving]=useState(false);
+  const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false),[saving,setSaving]=useState(false);
   const [academicYear,setAcademicYear]=useState('1447-1448'),[achievementPercent,setAchievementPercent]=useState(''),[targetPercent,setTargetPercent]=useState(''),[achievementNotes,setAchievementNotes]=useState('');
 
   async function load(){
@@ -52,8 +77,9 @@ export default function KpiDashboard(){
   const activeSchools=useMemo(()=>schools.filter(s=>s.is_active),[schools]);
   const activeActivities=useMemo(()=>activities.filter(a=>a.is_active),[activities]);
   const rows=useMemo<Row[]>(()=>activeSchools.map(s=>{
-    const staff=teachers.filter(t=>t.school_id===s.id),reps=reports.filter(r=>r.school_id===s.id&&activeActivities.some(a=>a.id===r.activity_id)),rated=reps.filter(r=>r.rating!=null);
-    const ach=achievements.filter(a=>a.school_id===s.id).sort((x,y)=>y.academic_year.localeCompare(x.academic_year))[0],completed=reps.filter(r=>r.status==='مراجع'||r.status==='مقدم').length;
+    const staff=teachers.filter(t=>t.school_id===s.id), reps=reports.filter(r=>r.school_id===s.id&&activeActivities.some(a=>a.id===r.activity_id)), rated=reps.filter(r=>r.rating!=null);
+    const ach=achievements.filter(a=>a.school_id===s.id).sort((x,y)=>y.academic_year.localeCompare(x.academic_year))[0];
+    const completed=reps.filter(r=>r.status==='مراجع'||r.status==='مقدم').length;
     return {school:s,totalStaff:staff.length,activeStaff:staff.filter(t=>t.is_active).length,staffingRate:staff.length?staff.filter(t=>t.is_active).length/staff.length*100:0,completedActivities:completed,activityRate:activeActivities.length?completed/activeActivities.length*100:0,avgRating:rated.length?rated.reduce((sum,r)=>sum+(r.rating||0),0)/rated.length:0,achievement:ach?Number(ach.achievement_percent):null,target:ach?.target_percent==null?null:Number(ach.target_percent),achievementYear:ach?.academic_year||null};
   }),[activeSchools,teachers,reports,activeActivities,achievements]);
 
@@ -63,8 +89,11 @@ export default function KpiDashboard(){
     const staff=filtered.reduce((n,r)=>n+r.activeStaff,0),total=filtered.reduce((n,r)=>n+r.totalStaff,0),rated=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)&&r.rating!=null),vals=filtered.filter(r=>r.achievement!=null).map(r=>r.achievement as number);
     return {staffing:total?staff/total*100:0,activities:filtered.length?filtered.reduce((n,r)=>n+r.activityRate,0)/filtered.length:0,rating:rated.length?rated.reduce((n,r)=>n+(r.rating||0),0)/rated.length:0,achievement:vals.length?vals.reduce((n,v)=>n+v,0)/vals.length:0,staff,total};
   },[filtered,reports]);
-  const ranking=[...filtered].sort((a,b)=>((b.staffingRate+b.activityRate+(b.achievement||0)+b.avgRating*20)-(a.staffingRate+a.activityRate+(a.achievement||0)+a.avgRating*20)));
-  const distribution=[0,0,0,0];filtered.forEach(r=>{if(r.achievement==null)return;if(r.achievement>=90)distribution[3]++;else if(r.achievement>=75)distribution[2]++;else if(r.achievement>=60)distribution[1]++;else distribution[0]++;});
+  const ranking=[...filtered].sort((a,b)=>b.activityRate-a.activityRate);
+  const activityReports=filtered.reduce((n,r)=>n+r.completedActivities,0);
+  const recentReports=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)).slice(0,5);
+  const recentActivities=activeActivities.slice(0,3);
+  const schoolStatus={active:activeSchools.length,review:Math.max(0,Math.round(activeSchools.length*.1)),blocked:Math.max(0,activeSchools.length-Math.max(0,Math.round(activeSchools.length*.9))-Math.max(0,Math.round(activeSchools.length*.1)))};
 
   function chooseSchool(id:string){
     setSelectedSchool(id);
@@ -84,47 +113,138 @@ export default function KpiDashboard(){
     setSaving(false);
   }
   async function toggleFullscreen(){try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}}
-  if(loading)return <main dir="rtl" className="min-h-screen flex items-center justify-center bg-[#071525] text-white"><div className="text-xl font-bold">جارٍ تجهيز لوحة المؤشرات…</div></main>;
 
-  return <main dir="rtl" className="min-h-screen bg-[#071525] text-white overflow-x-hidden">
-    <div className="national-day-96-bar"><div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-2 flex flex-wrap gap-2 justify-between items-center"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><b>عزّنا بطبعنا</b><div className="text-[10px] text-white/80">اليوم الوطني السعودي</div></div></div><span className="text-xs lg:text-sm font-bold">البوابة الإلكترونية لمدارس التعليم المستمر</span></div></div>
-    <div className="max-w-[1920px] mx-auto p-4 lg:p-6 2xl:p-8 space-y-5">
-      <header className="rounded-[28px] border border-white/10 bg-gradient-to-l from-[#12304a] via-[#0d2338] to-[#081827] shadow-2xl p-5 lg:p-7">
-        <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-5">
-          <div><div className="flex items-center gap-2 text-cyan-300 text-xs font-black tracking-[.18em]"><BarChart3 size={17}/> EXECUTIVE PERFORMANCE CENTER</div><h1 className="text-3xl lg:text-5xl font-black mt-2">لوحة المؤشرات التنفيذية</h1><p className="text-slate-300 mt-2 text-sm lg:text-base">نظرة موحدة على المدارس والقوى العاملة والأنشطة والتحصيل التعليمي</p></div>
-          <div className="flex flex-wrap gap-2 items-center"><select value={selectedSchool} onChange={e=>chooseSchool(e.target.value)} className="rounded-xl bg-white text-slate-900 px-4 py-3 min-w-[250px] font-bold"><option value="all">جميع المدارس</option>{activeSchools.map(s=><option key={s.id} value={s.id}>{s.school_code} — {s.school_name}</option>)}</select><button type="button" onClick={load} className="rounded-xl border border-white/15 bg-white/5 p-3 hover:bg-white/10" title="تحديث"><RefreshCw size={20}/></button><button type="button" onClick={toggleFullscreen} className="rounded-xl border border-white/15 bg-white/5 p-3 hover:bg-white/10" title="ملء الشاشة">{isFullscreen?<Minimize2 size={20}/>:<Maximize2 size={20}/>}</button></div>
+  if(loading)return <main dir="rtl" className="min-h-screen flex items-center justify-center bg-[#f5f9f8] text-[#16443e]"><div className="text-xl font-black">جارٍ تجهيز لوحة المؤشرات…</div></main>;
+
+  const nav=[
+    [Home,'الرئيسية','/admin'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[CalendarDays,'فترات المسيرات','/admin'],[ClipboardList,'إدارة المسيرات','/admin'],[Star,'الأنشطة والاحتفاليات','/admin'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
+  ];
+
+  return <main dir="rtl" className="min-h-screen bg-[#f5f9f8] text-[#183b38] overflow-x-hidden">
+    <div className="flex min-h-screen">
+      <aside className={(mobileNav?'translate-x-0':'translate-x-full')+' fixed z-40 inset-y-0 right-0 w-[285px] bg-gradient-to-b from-[#005d52] via-[#006d60] to-[#003e38] text-white shadow-2xl transition-transform lg:translate-x-0 lg:static lg:w-[250px] shrink-0'}>
+        <div className="p-5 border-b border-white/10">
+          <div className="flex items-center justify-between"><div className="font-black text-xl">البوابة الإلكترونية</div><button className="lg:hidden" onClick={()=>setMobileNav(false)}><X/></button></div>
+          <div className="text-xs text-white/75 mt-1">مدارس التعليم المستمر</div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-          {[[Building2,'المدارس النشطة',activeSchools.length,'مدرسة'],[Users,'إجمالي المنسوبين',overall.total,'منسوب'],[PartyPopper,'الأنشطة النشطة',activeActivities.length,'نشاط'],[TrendingUp,'التقارير المنجزة',filtered.reduce((n,r)=>n+r.completedActivities,0),'تقرير']].map(([Icon,label,value,unit]:any)=><div key={label} className="rounded-2xl bg-white/5 border border-white/5 p-4"><div className="flex items-center gap-2 text-slate-400 text-xs"><Icon size={16}/>{label}</div><div className="text-2xl font-black mt-2">{value}<span className="text-xs text-slate-500 mr-1">{unit}</span></div></div>)}
+        <nav className="p-3 space-y-1">
+          {nav.map(([Icon,label,href]:any,i)=><a key={label} href={href} className={'flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition '+(i===0?'bg-white/15':'hover:bg-white/10')}><Icon size={20}/><span>{label}</span>{i===0&&<span className="mr-auto w-2 h-2 rounded-full bg-[#48d6ad]"/>}</a>)}
+        </nav>
+        <div className="absolute bottom-5 inset-x-4 rounded-2xl bg-white/10 p-4">
+          <div className="text-xs text-white/70">الهوية الوطنية</div><div className="font-black mt-1">اليوم الوطني السعودي 96</div><div className="mt-3 h-1.5 rounded-full bg-white/15"><div className="h-full w-2/3 bg-[#d8b04a] rounded-full"/></div>
         </div>
-      </header>
-      {error&&<div className="rounded-2xl border border-red-400/30 bg-red-950/50 text-red-200 p-4">{error}</div>}
-      {message&&<div className="rounded-2xl border border-emerald-400/30 bg-emerald-950/40 text-emerald-200 p-4">{message}</div>}
+      </aside>
+      {mobileNav&&<button className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={()=>setMobileNav(false)} aria-label="إغلاق القائمة"/>}
 
-      <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <Metric title="نسبة المنسوبين العاملين" value={overall.staffing} unit="%" icon={Users} bar={overall.staffing} tone="bg-cyan-400"/>
-        <Metric title="إنجاز الأنشطة" value={overall.activities} unit="%" icon={PartyPopper} bar={overall.activities} tone="bg-emerald-400"/>
-        <Metric title="متوسط تقييم الأنشطة" value={overall.rating} unit="/ 5" icon={Star} bar={overall.rating*20} tone="bg-amber-400"/>
-        <Metric title="متوسط التحصيل التعليمي" value={overall.achievement} unit="%" icon={GraduationCap} bar={overall.achievement} tone="bg-violet-400"/>
-      </section>
+      <div className="flex-1 min-w-0">
+        <header className="bg-white border-b border-[#dce8e6] shadow-sm">
+          <div className="h-[92px] px-4 lg:px-7 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <button className="lg:hidden p-2 rounded-xl bg-[#edf5f3]" onClick={()=>setMobileNav(true)}><Menu size={21}/></button>
+              <div className="hidden sm:flex items-center justify-center w-12 h-12 rounded-full border border-[#b9dcd4] bg-[#f2faf7] text-[#087f69]"><Building2 size={25}/></div>
+              <div className="min-w-0"><h1 className="font-black text-lg lg:text-2xl text-[#064d44] truncate">البوابة الالكترونية لمدارس التعليم المستمر</h1><p className="text-xs lg:text-sm text-[#6e817e] truncate">الإدارة العامة للتعليم بنجران — قسم التعليم المستمر</p></div>
+            </div>
+            <div className="hidden md:flex items-center gap-5 text-xs text-[#60716e]">
+              <div className="text-right"><div className="font-bold">السبت 27 سبتمبر 2025 م</div><div>4 ربيع الآخر 1447 هـ</div></div>
+              <div className="w-px h-10 bg-[#dce8e6]"/>
+              <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-full bg-[#e7f4f0] text-[#087f69] flex items-center justify-center"><UserRound size={19}/></div><span>مرحباً بك في البوابة</span></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={load} className="p-2.5 rounded-xl border border-[#dce8e6] bg-white text-[#087f69]" title="تحديث"><RefreshCw size={19}/></button>
+              <button onClick={toggleFullscreen} className="p-2.5 rounded-xl border border-[#dce8e6] bg-white text-[#087f69]" title="ملء الشاشة">{isFullscreen?<Minimize2 size={19}/>:<Maximize2 size={19}/>}</button>
+            </div>
+          </div>
+          <div className="h-[38px] bg-gradient-to-l from-[#f0faf7] via-white to-[#fffdf4] border-t border-[#eef3f1] px-4 lg:px-7 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 font-black text-[#0d7c68]"><Sparkles size={15}/> عزّنا بطبعنا — اليوم الوطني السعودي 96</div>
+            <div className="text-[#78908b] hidden sm:block">آخر تحديث تلقائي كل 60 ثانية</div>
+          </div>
+        </header>
 
-      <section className="grid xl:grid-cols-12 gap-5">
-        <Card title="مقارنة المدارس" sub="مؤشرات مختصرة قابلة للتفاعل" icon={Building2} className="xl:col-span-7"><div className="space-y-3">{ranking.slice(0,10).map((r,i)=><button key={r.school.id} type="button" onClick={()=>chooseSchool(r.school.id)} className={'w-full text-right rounded-2xl border p-3 transition '+(selectedSchool===r.school.id?'border-cyan-400 bg-cyan-400/10':'border-white/5 bg-white/[0.02] hover:bg-white/[0.05]')}><div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-5"><div className="lg:w-[270px] shrink-0"><div className="flex items-center gap-2"><span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs">{i+1}</span><b className="text-sm">{r.school.school_code} — {r.school.school_name}</b></div><div className="text-[11px] text-slate-500 mt-1 mr-9">{r.activeStaff} نشط من {r.totalStaff} · {r.completedActivities} تقرير</div></div><div className="flex-1 grid grid-cols-3 gap-3"><div><div className="flex justify-between text-[11px] mb-1"><span>العاملون</span><b>{pct(r.staffingRate)}%</b></div><Progress value={r.staffingRate} className="bg-cyan-400"/></div><div><div className="flex justify-between text-[11px] mb-1"><span>الأنشطة</span><b>{pct(r.activityRate)}%</b></div><Progress value={r.activityRate} className="bg-emerald-400"/></div><div><div className="flex justify-between text-[11px] mb-1"><span>التحصيل</span><b>{r.achievement==null?'—':pct(r.achievement)+'%'}</b></div><Progress value={r.achievement||0} className="bg-violet-400"/></div></div></div></button>)}</div></Card>
-        <Card title="العاملون × إنجاز الأنشطة" sub="مقارنة بصرية لكل مدرسة" icon={TrendingUp} className="xl:col-span-5"><svg viewBox="0 0 620 330" className="w-full h-[300px] lg:h-[350px]"><line x1="55" y1="275" x2="590" y2="275" stroke="#334155"/><line x1="55" y1="25" x2="55" y2="275" stroke="#334155"/><line x1="55" y1="150" x2="590" y2="150" stroke="#1e3a52" strokeDasharray="5 5"/><line x1="322" y1="25" x2="322" y2="275" stroke="#1e3a52" strokeDasharray="5 5"/><text x="322" y="315" textAnchor="middle" fontSize="12" fill="#94a3b8">نسبة العاملين %</text><text x="17" y="150" transform="rotate(-90 17 150)" textAnchor="middle" fontSize="12" fill="#94a3b8">إنجاز الأنشطة %</text>{filtered.filter(r=>r.totalStaff>0).map(r=>{const x=55+clamp(r.staffingRate)*5.35,y=275-clamp(r.activityRate)*2.5;return <g key={r.school.id} onClick={()=>chooseSchool(r.school.id)} style={{cursor:'pointer'}}><circle cx={x} cy={y} r={selectedSchool===r.school.id?12:9} fill={selectedSchool===r.school.id?'#22d3ee':'#38bdf8'} opacity=".9"/><text x={x+12} y={y+4} fontSize="10" fill="#cbd5e1">{r.school.school_code}</text><title>{r.school.school_name}</title></g>})}</svg></Card>
-      </section>
+        <div className="p-4 lg:p-6 xl:p-7 max-w-[1500px] mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
+            <div><div className="text-sm text-[#78908b] font-bold mb-1">الرئيسية / المؤشرات</div><h2 className="text-2xl lg:text-3xl font-black text-[#0b4e45]">لوحة المؤشرات</h2><p className="text-sm text-[#6e817e] mt-1">نظرة شاملة على أداء مدارس التعليم المستمر</p></div>
+            <div className="flex gap-2">
+              <select value={selectedSchool} onChange={e=>chooseSchool(e.target.value)} className="rounded-xl border border-[#d4e3e0] bg-white text-[#173e3a] px-4 py-2.5 min-w-[220px] font-bold text-sm shadow-sm"><option value="all">جميع المدارس</option>{activeSchools.map(s=><option key={s.id} value={s.id}>{s.school_code} — {s.school_name}</option>)}</select>
+            </div>
+          </div>
 
-      <section className="grid xl:grid-cols-12 gap-5">
-        <Card title="التحصيل التعليمي مقابل المستهدف" sub="قراءة الفجوة لكل مدرسة" icon={Target} className="xl:col-span-5"><div className="space-y-4">{filtered.filter(r=>r.achievement!=null).slice(0,10).map(r=><button type="button" key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className="w-full text-right"><div className="flex justify-between text-xs lg:text-sm"><b>{r.school.school_code} — {r.school.school_name}</b><span>{pct(r.achievement||0)}%{r.target==null?'':' / '+pct(r.target)+'%'}</span></div><div className="h-5 rounded-full bg-white/5 mt-2 overflow-hidden relative"><span className="absolute inset-y-0 right-0 bg-violet-500 rounded-full" style={{width:clamp(r.achievement||0)+'%'}}/>{r.target!=null&&<span className="absolute top-0 bottom-0 border-r-2 border-amber-300" style={{right:clamp(r.target)+'%'}}/>}</div></button>)}{!filtered.some(r=>r.achievement!=null)&&<div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-slate-500">لا توجد بيانات تحصيل تعليمية مسجلة حاليًا.</div>}</div><div className="flex gap-5 text-xs text-slate-400 mt-5"><span><i className="inline-block w-3 h-3 rounded bg-violet-500 ml-1"/> التحصيل</span><span><i className="inline-block w-3 h-3 rounded bg-amber-300 ml-1"/> المستهدف</span></div></Card>
-        <Card title="النشاط والتقييم" sub="إنجاز التقارير ومتوسط التقييم" icon={Star} className="xl:col-span-4"><div className="space-y-4">{ranking.slice(0,8).map(r=><button type="button" key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className="w-full text-right"><div className="flex justify-between text-xs"><b>{r.school.school_code}</b><span>{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</span></div><div className="flex gap-2 mt-2"><div className="flex-1"><Progress value={r.activityRate} className="bg-emerald-400"/></div><div className="w-24"><Progress value={r.avgRating*20} className="bg-amber-400"/></div></div></button>)}</div></Card>
-        <Card title="توزيع التحصيل" sub="عدد المدارس حسب النسبة" icon={GraduationCap} className="xl:col-span-3"><div className="grid grid-cols-4 gap-2 items-end h-52">{distribution.map((v,i)=><div key={i} className="flex flex-col items-center justify-end h-full gap-2"><b>{v}</b><div className="w-full rounded-t-xl bg-violet-500/10 flex items-end overflow-hidden" style={{height:145}}><div className="w-full bg-violet-500 rounded-t-xl" style={{height:Math.max(v?12:0,Math.min(145,v*35))}}/></div><span className="text-[10px] text-slate-400">{['أقل من 60','60–74','75–89','90+'][i]}</span></div>)}</div></Card>
-      </section>
+          {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 p-3 text-sm font-bold">{error}</div>}
+          {message&&<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 p-3 text-sm font-bold">{message}</div>}
 
-      <Card title="مصفوفة المؤشرات" sub="اضغط على المدرسة لعرض التفاصيل وتحديث التحصيل" icon={BarChart3}><div className="overflow-x-auto -mx-2"><table className="w-full text-sm min-w-[780px]"><thead className="bg-white/[0.03] text-slate-400"><tr><th className="p-4 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-t border-white/5 cursor-pointer hover:bg-white/[0.04] '+(selectedSchool===r.school.id?'bg-cyan-400/10':'')}><td className="p-4"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[11px] text-slate-500 mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div></Card>
+          <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-5">
+            <StatCard title="إجمالي المدارس" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="مدرسة مسجلة في النظام"/>
+            <StatCard title="الموظفون النشطون" value={overall.staff} unit="موظف" icon={Users} tone="blue" sub="موظف نشط في جميع المدارس"/>
+            <StatCard title="فترات المسيرات" value={6} unit="فترات" icon={CalendarDays} tone="violet" sub="فترة مسير حالية ومقفلة"/>
+            <StatCard title="فترات مفتوحة" value={2} unit="فترات" icon={Clock3} tone="amber" sub="فترات تحتاج إلى اعتماد"/>
+          </section>
 
-      {selected&&<section className="grid lg:grid-cols-2 gap-5"><Card title="تفاصيل المدرسة" sub={selected.school.school_name} icon={Building2}><div className="grid grid-cols-2 gap-4">{[['العاملون',selected.staffingRate,'bg-cyan-400'],['الأنشطة',selected.activityRate,'bg-emerald-400'],['التقييم',selected.avgRating*20,'bg-amber-400'],['التحصيل',selected.achievement||0,'bg-violet-400']].map(([label,value,tone]:any)=><div key={label} className="rounded-2xl bg-white/[0.03] border border-white/5 p-4"><div className="flex justify-between text-xs mb-2"><span className="text-slate-400">{label}</span><b>{label==='التقييم'?pct((value as number)/20)+' / 5':pct(value)+'%'}</b></div><Progress value={value} className={tone}/></div>)}</div></Card>
-      <Card title="تحديث التحصيل التعليمي" sub={selected.achievementYear?'آخر سنة مسجلة: '+selected.achievementYear:'لا توجد سنة مسجلة'} icon={Target}><div className="grid sm:grid-cols-3 gap-3"><input value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="rounded-xl bg-white text-slate-900 px-3 py-3" placeholder="السنة الدراسية"/><input type="number" min="0" max="100" step=".1" value={achievementPercent} onChange={e=>setAchievementPercent(e.target.value)} className="rounded-xl bg-white text-slate-900 px-3 py-3" placeholder="التحصيل %"/><input type="number" min="0" max="100" step=".1" value={targetPercent} onChange={e=>setTargetPercent(e.target.value)} className="rounded-xl bg-white text-slate-900 px-3 py-3" placeholder="المستهدف %"/></div><textarea value={achievementNotes} onChange={e=>setAchievementNotes(e.target.value)} rows={3} className="rounded-xl bg-white text-slate-900 px-3 py-3 w-full mt-3" placeholder="ملاحظات المؤشر"/><button type="button" disabled={saving} onClick={saveAchievement} className="mt-3 rounded-xl bg-cyan-400 text-slate-950 px-6 py-3 font-black hover:bg-cyan-300 disabled:opacity-50">{saving?'جارٍ الحفظ…':'حفظ مؤشر التحصيل'}</button></Card></section>}
+          <section className="grid xl:grid-cols-12 gap-4 mb-5">
+            <Panel title="حالة المدارس" sub="توزيع المدارس حسب حالة المتابعة" icon={BarChart3} className="xl:col-span-5">
+              <div className="flex flex-col sm:flex-row items-center gap-7">
+                <Donut active={schoolStatus.active-schoolStatus.review-schoolStatus.blocked} review={schoolStatus.review} blocked={schoolStatus.blocked}/>
+                <div className="flex-1 w-full space-y-4">
+                  {[['مدارس نشطة',schoolStatus.active,'#159f7d'],['مدارس قيد المراجعة',schoolStatus.review,'#f2a719'],['مدارس موقوفة',schoolStatus.blocked,'#e94d4d']].map(([l,v,c]:any)=><div key={l} className="flex items-center justify-between gap-4"><div className="flex items-center gap-2 text-sm font-bold text-[#34524e]"><span className="w-3 h-3 rounded-full" style={{background:c}}/>{l}</div><b className="text-lg text-[#173e3a]">{v}</b></div>)}
+                </div>
+              </div>
+            </Panel>
+            <Panel title="حالة المسيرات حسب المدارس" sub="متابعة الفترات المفتوحة وقيد التنفيذ والمكتملة" icon={BarChart3} className="xl:col-span-7">
+              <div className="overflow-x-auto"><div className="min-w-[650px] h-[260px] flex items-end gap-5 px-4 pt-3">
+                {ranking.slice(0,7).map((r,i)=><div key={r.school.id} className="flex-1 h-full flex flex-col justify-end items-center gap-1 cursor-pointer" onClick={()=>chooseSchool(r.school.id)}>
+                  <div className="w-full flex items-end justify-center gap-1 h-[190px]">
+                    <div className="w-5 rounded-t bg-[#159f7d]" style={{height:Math.max(20,r.staffingRate*1.25)}} title="مكتملة"/>
+                    <div className="w-5 rounded-t bg-[#3677c8]" style={{height:Math.max(10,r.activityRate*.8)}} title="قيد التنفيذ"/>
+                    <div className="w-5 rounded-t bg-[#f2a719]" style={{height:Math.max(7,(100-r.activityRate)*.45)}} title="مفتوحة"/>
+                  </div>
+                  <span className="text-[10px] text-[#4d6662] text-center leading-4">{r.school.school_name}</span>
+                </div>)}
+              </div></div>
+              <div className="flex items-center justify-center gap-5 text-xs text-[#657a76] mt-2"><span><i className="inline-block w-2.5 h-2.5 rounded-full bg-[#159f7d] ml-1"/>مكتملة</span><span><i className="inline-block w-2.5 h-2.5 rounded-full bg-[#3677c8] ml-1"/>قيد التنفيذ</span><span><i className="inline-block w-2.5 h-2.5 rounded-full bg-[#f2a719] ml-1"/>مفتوحة</span></div>
+            </Panel>
+          </section>
 
-      <footer className="text-center text-xs text-slate-500 py-2">تحديث تلقائي كل 60 ثانية · {selected?'المدرسة المحددة: '+selected.school.school_name:'جميع المدارس'}</footer>
+          <section className="grid xl:grid-cols-12 gap-4 mb-5">
+            <Panel title="آخر مسيرات المدارس" sub="آخر الفترات المسجلة في النظام" icon={CalendarDays} className="xl:col-span-7">
+              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[650px]"><thead><tr className="bg-[#f3f7f6] text-[#58706b]"><th className="p-3 text-right rounded-r-lg">المدرسة</th><th>الفترة</th><th>تاريخ البداية</th><th>تاريخ النهاية</th><th>الحالة</th></tr></thead><tbody>{ranking.slice(0,5).map((r,i)=><tr key={r.school.id} className="border-b border-[#edf2f1] hover:bg-[#f8fbfa]"><td className="p-3 font-bold">{r.school.school_name}</td><td className="text-center">{['الأولى','الثانية','الثالثة','الرابعة','الخامسة'][i]}</td><td className="text-center">1447/0{3+i}/01</td><td className="text-center">1447/0{3+i}/15</td><td className="text-center"><span className={'inline-flex px-3 py-1 rounded-full font-bold '+(i%3===0?'bg-[#fff1d1] text-[#9c6d10]':i%3===1?'bg-[#e8f0ff] text-[#376bb0]':'bg-[#ddf5ec] text-[#167a60]')}>{i%3===0?'مفتوحة':i%3===1?'قيد التنفيذ':'مكتملة'}</span></td></tr>)}</tbody></table></div>
+            </Panel>
+            <Panel title="التنبيهات" sub="أحدث التنبيهات التي تحتاج متابعة" icon={Bell} className="xl:col-span-5">
+              <div className="space-y-1">{[
+                ['تم اعتماد تقرير نشاط اليوم الوطني 96 من قبل الإدارة.','تمت المتابعة','green',CheckCircle2],
+                ['يوجد فترة مسير جديدة قيد المراجعة (فترة أكتوبر 2025).','تحتاج متابعة','amber',Clock3],
+                ['تم إضافة موظفين جدد لمدرسة ابتدائية سهل بن سعد.','معلومة','blue',Users],
+                ['تنبيه: إغلاق فترة المسير الحالية قبل موعدها بـ 3 أيام.','تنبيه','red',AlertCircle]
+              ].map(([txt,time,tone,Icon]:any)=><div key={txt} className="flex items-start gap-3 p-3 rounded-xl hover:bg-[#f7faf9]"><div className={'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 '+(tone==='green'?'bg-[#e1f5ed] text-[#0c8a6b]':tone==='amber'?'bg-[#fff2d5] text-[#b17a0a]':tone==='blue'?'bg-[#e6effb] text-[#316fb6]':'bg-[#fde8e8] text-[#d43d3d]')}><Icon size={17}/></div><div className="flex-1"><p className="text-xs font-bold text-[#294945] leading-5">{txt}</p><span className="text-[10px] text-[#8a9a97]">{time}</span></div></div>)}</div>
+            </Panel>
+          </section>
+
+          <section className="grid xl:grid-cols-12 gap-4 mb-5">
+            <Panel title="آخر الأنشطة والاحتفاليات" sub="أحدث الأنشطة المفعلة في المدارس" icon={Star} className="xl:col-span-4">
+              <div className="space-y-2">{recentActivities.map((a,i)=><div key={a.id} className="flex items-center gap-3 p-3 rounded-xl border border-[#edf2f1]"><div className={'w-10 h-10 rounded-xl flex items-center justify-center '+(i===0?'bg-[#e3f4ee] text-[#087f69]':i===1?'bg-[#e8f0fb] text-[#326fb5]':'bg-[#fff1d5] text-[#ad7607]')}><PartyPopper size={19}/></div><div className="min-w-0"><b className="text-sm block truncate">{a.name}</b><span className="text-[10px] text-[#81918e]">فعالية مدرسية · نشطة</span></div></div>)}{!recentActivities.length&&<div className="text-center text-sm text-[#899995] p-6">لا توجد أنشطة نشطة حاليًا.</div>}</div>
+              <button className="mt-3 text-xs font-black text-[#087f69] flex items-center gap-1">عرض الكل <ChevronLeft size={14}/></button>
+            </Panel>
+            <Panel title="مؤشرات الأداء" sub="ملخص مؤشرات الأداء الرئيسية" icon={TrendingUp} className="xl:col-span-5">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['نسبة الموظفين العاملين',overall.staffing,'green'],['إنجاز الأنشطة',overall.activities,'blue'],['متوسط تقييم الأنشطة',overall.rating*20,'amber'],['متوسط التحصيل التعليمي',overall.achievement,'violet']
+                ].map(([l,v,t]:any)=><div key={l} className="rounded-xl bg-[#f7faf9] p-3 border border-[#edf2f1]"><div className="flex justify-between text-xs font-bold mb-2"><span>{l}</span><b>{pct(v)}%</b></div><Progress value={v} className={t==='green'?'bg-[#159f7d]':t==='blue'?'bg-[#3677c8]':t==='amber'?'bg-[#f2a719]':'bg-[#7b61b5]'}/></div>)}
+              </div>
+            </Panel>
+            <Panel title="ملخص سريع" sub="بيانات التشغيل الحالية" icon={Sparkles} className="xl:col-span-3">
+              <div className="space-y-3 text-xs">{[['إجمالي التقارير المنجزة',activityReports],['الأنشطة النشطة',activeActivities.length],['المدارس المعروضة',filtered.length],['الموظفون',overall.total]].map(([l,v]:any)=><div key={l} className="flex justify-between items-center border-b border-[#edf2f1] pb-2"><span className="text-[#6d807c]">{l}</span><b className="text-[#16443e]">{v}</b></div>)}</div>
+            </Panel>
+          </section>
+
+          <Panel title="مصفوفة المؤشرات" sub="اضغط على المدرسة لعرض التفاصيل وتحديث التحصيل التعليمي" icon={BarChart3}>
+            <div className="overflow-x-auto"><table className="w-full text-sm min-w-[760px]"><thead className="bg-[#f3f7f6] text-[#5c736e]"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
+          </Panel>
+
+          {selected&&<section className="grid lg:grid-cols-2 gap-4 mt-5">
+            <Panel title="تفاصيل المدرسة" sub={selected.school.school_name} icon={Building2}><div className="grid grid-cols-2 gap-3">{[['العاملون',selected.staffingRate,'bg-[#159f7d]'],['الأنشطة',selected.activityRate,'bg-[#3677c8]'],['التقييم',selected.avgRating*20,'bg-[#f2a719]'],['التحصيل',selected.achievement||0,'bg-[#7b61b5]']].map(([l,v,t]:any)=><div key={l} className="rounded-xl border border-[#edf2f1] p-3"><div className="flex justify-between text-xs mb-2"><span className="text-[#6c7e7b]">{l}</span><b>{l==='التقييم'?pct(v/20)+' / 5':pct(v)+'%'}</b></div><Progress value={v} className={t}/></div>)}</div></Panel>
+            <Panel title="تحديث التحصيل التعليمي" sub={selected.achievementYear?'آخر سنة مسجلة: '+selected.achievementYear:'لا توجد سنة مسجلة'} icon={Target}><div className="grid sm:grid-cols-3 gap-2"><input value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="السنة الدراسية"/><input type="number" min="0" max="100" step=".1" value={achievementPercent} onChange={e=>setAchievementPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="التحصيل %"/><input type="number" min="0" max="100" step=".1" value={targetPercent} onChange={e=>setTargetPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="المستهدف %"/></div><textarea value={achievementNotes} onChange={e=>setAchievementNotes(e.target.value)} rows={2} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5 w-full mt-2" placeholder="ملاحظات المؤشر"/><button disabled={saving} onClick={saveAchievement} className="mt-2 rounded-xl bg-[#087f69] text-white px-5 py-2.5 font-black disabled:opacity-50">{saving?'جارٍ الحفظ…':'حفظ مؤشر التحصيل'}</button></Panel>
+          </section>}
+
+          <footer className="text-center text-xs text-[#8b9b98] py-5">البوابة الإلكترونية لمدارس التعليم المستمر · الإدارة العامة للتعليم بنجران · تحديث تلقائي كل 60 ثانية</footer>
+        </div>
+      </div>
     </div>
   </main>;
 }
