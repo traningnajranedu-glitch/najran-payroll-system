@@ -120,7 +120,7 @@ export default function KpiDashboard(){
     [Home,'الرئيسية','/admin'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[CalendarDays,'فترات المسيرات','/admin'],[ClipboardList,'إدارة المسيرات','/admin'],[Star,'الأنشطة والاحتفاليات','/admin'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
   ];
 
-  return <main dir="rtl" className="min-h-screen bg-[#f5f9f8] text-[#183b38] overflow-x-hidden">
+  return <main dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top_right,#e7f6f1_0,#f5f9f8_34%,#f8fbfa_100%)] text-[#183b38] overflow-x-hidden">
     <div className="flex min-h-screen">
       <aside className={(mobileNav?'translate-x-0':'translate-x-full')+' fixed z-40 inset-y-0 right-0 w-[285px] bg-gradient-to-b from-[#005d52] via-[#006d60] to-[#003e38] text-white shadow-2xl transition-transform lg:translate-x-0 lg:static lg:w-[250px] shrink-0'}>
         <div className="p-5 border-b border-white/10">
@@ -160,10 +160,10 @@ export default function KpiDashboard(){
           </div>
         </header>
 
-        <div className="p-4 lg:p-6 xl:p-7 max-w-[1500px] mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
-            <div><div className="text-sm text-[#78908b] font-bold mb-1">الرئيسية / المؤشرات</div><h2 className="text-2xl lg:text-3xl font-black text-[#0b4e45]">لوحة المؤشرات</h2><p className="text-sm text-[#6e817e] mt-1">نظرة شاملة على أداء مدارس التعليم المستمر</p></div>
-            <div className="flex gap-2">
+        <div className="p-4 lg:p-6 xl:p-8 max-w-[1600px] mx-auto">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-6">
+            <div className="flex items-start gap-4"><div className="hidden sm:flex w-14 h-14 rounded-2xl bg-white border border-[#d6e8e3] shadow-sm items-center justify-center text-[#087f69]"><BarChart3 size={28}/></div><div><div className="text-xs text-[#78908b] font-black mb-1">مركز المتابعة والتحليل</div><h2 className="text-2xl lg:text-3xl font-black text-[#073f38] tracking-tight">لوحة مؤشرات الأداء</h2><p className="text-sm text-[#6e817e] mt-1">متابعة تشغيلية موحدة لمدارس التعليم المستمر في نجران</p></div></div>
+            <div className="flex flex-wrap gap-2">
               <select value={selectedSchool} onChange={e=>chooseSchool(e.target.value)} className="rounded-xl border border-[#d4e3e0] bg-white text-[#173e3a] px-4 py-2.5 min-w-[220px] font-bold text-sm shadow-sm"><option value="all">جميع المدارس</option>{activeSchools.map(s=><option key={s.id} value={s.id}>{s.school_code} — {s.school_name}</option>)}</select>
             </div>
           </div>
@@ -171,23 +171,23 @@ export default function KpiDashboard(){
           {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 p-3 text-sm font-bold">{error}</div>}
           {message&&<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 p-3 text-sm font-bold">{message}</div>}
 
-          <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-5">
-            <StatCard title="إجمالي المدارس" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="مدرسة مسجلة في النظام"/>
-            <StatCard title="الموظفون النشطون" value={overall.staff} unit="موظف" icon={Users} tone="blue" sub="موظف نشط في جميع المدارس"/>
-            <StatCard title="فترات المسيرات" value={6} unit="فترات" icon={CalendarDays} tone="violet" sub="فترة مسير حالية ومقفلة"/>
-            <StatCard title="فترات مفتوحة" value={2} unit="فترات" icon={Clock3} tone="amber" sub="فترات تحتاج إلى اعتماد"/>
+          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-6">
+            <StatCard title="المدارس النشطة" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="مدارس مفعلة ضمن المتابعة"/>
+            <StatCard title="المنسوبون النشطون" value={overall.staff} unit="منسوب" icon={Users} tone="blue" sub="إجمالي المنسوبين النشطين"/>
+            <StatCard title="التقارير المنجزة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير أنشطة مكتملة المراجعة"/>
+            <StatCard title="الأنشطة النشطة" value={activeActivities.length} unit="نشاط" icon={PartyPopper} tone="amber" sub="أنشطة متاحة حاليًا للمدارس"/>
           </section>
 
-          <section className="grid xl:grid-cols-12 gap-4 mb-5">
-            <Panel title="حالة المدارس" sub="توزيع المدارس حسب حالة المتابعة" icon={BarChart3} className="xl:col-span-5">
+          <section className="grid xl:grid-cols-12 gap-5 mb-6">
+            <Panel title="حالة المدارس" sub="توزيع المدارس حسب حالة المتابعة" icon={Building2} className="xl:col-span-5">
               <div className="flex flex-col sm:flex-row items-center gap-7">
-                <Donut active={schoolStatus.active-schoolStatus.review-schoolStatus.blocked} review={schoolStatus.review} blocked={schoolStatus.blocked}/>
+                <Donut active={schoolStatus.active} review={schoolStatus.review} blocked={schoolStatus.blocked}/>
                 <div className="flex-1 w-full space-y-4">
                   {[['مدارس نشطة',schoolStatus.active,'#159f7d'],['مدارس قيد المراجعة',schoolStatus.review,'#f2a719'],['مدارس موقوفة',schoolStatus.blocked,'#e94d4d']].map(([l,v,c]:any)=><div key={l} className="flex items-center justify-between gap-4"><div className="flex items-center gap-2 text-sm font-bold text-[#34524e]"><span className="w-3 h-3 rounded-full" style={{background:c}}/>{l}</div><b className="text-lg text-[#173e3a]">{v}</b></div>)}
                 </div>
               </div>
             </Panel>
-            <Panel title="حالة المسيرات حسب المدارس" sub="متابعة الفترات المفتوحة وقيد التنفيذ والمكتملة" icon={BarChart3} className="xl:col-span-7">
+            <Panel title="مؤشر المتابعة حسب المدرسة" sub="مقارنة بصرية سريعة لمؤشرات التشغيل والأنشطة" icon={TrendingUp} className="xl:col-span-7">
               <div className="overflow-x-auto"><div className="min-w-[650px] h-[260px] flex items-end gap-5 px-4 pt-3">
                 {ranking.slice(0,7).map((r,i)=><div key={r.school.id} className="flex-1 h-full flex flex-col justify-end items-center gap-1 cursor-pointer" onClick={()=>chooseSchool(r.school.id)}>
                   <div className="w-full flex items-end justify-center gap-1 h-[190px]">
@@ -233,8 +233,8 @@ export default function KpiDashboard(){
             </Panel>
           </section>
 
-          <Panel title="مصفوفة المؤشرات" sub="اضغط على المدرسة لعرض التفاصيل وتحديث التحصيل التعليمي" icon={BarChart3}>
-            <div className="overflow-x-auto"><table className="w-full text-sm min-w-[760px]"><thead className="bg-[#f3f7f6] text-[#5c736e]"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
+          <Panel title="مصفوفة مؤشرات المدارس" sub="اضغط على أي مدرسة لفتح تفاصيلها وتحديث التحصيل التعليمي" icon={BarChart3}>
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-sm min-w-[820px]"><thead className="bg-[#eef6f3] text-[#48655f] sticky top-0"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
           </Panel>
 
           {selected&&<section className="grid lg:grid-cols-2 gap-4 mt-5">
@@ -242,7 +242,7 @@ export default function KpiDashboard(){
             <Panel title="تحديث التحصيل التعليمي" sub={selected.achievementYear?'آخر سنة مسجلة: '+selected.achievementYear:'لا توجد سنة مسجلة'} icon={Target}><div className="grid sm:grid-cols-3 gap-2"><input value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="السنة الدراسية"/><input type="number" min="0" max="100" step=".1" value={achievementPercent} onChange={e=>setAchievementPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="التحصيل %"/><input type="number" min="0" max="100" step=".1" value={targetPercent} onChange={e=>setTargetPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="المستهدف %"/></div><textarea value={achievementNotes} onChange={e=>setAchievementNotes(e.target.value)} rows={2} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5 w-full mt-2" placeholder="ملاحظات المؤشر"/><button disabled={saving} onClick={saveAchievement} className="mt-2 rounded-xl bg-[#087f69] text-white px-5 py-2.5 font-black disabled:opacity-50">{saving?'جارٍ الحفظ…':'حفظ مؤشر التحصيل'}</button></Panel>
           </section>}
 
-          <footer className="text-center text-xs text-[#8b9b98] py-5">البوابة الإلكترونية لمدارس التعليم المستمر · الإدارة العامة للتعليم بنجران · تحديث تلقائي كل 60 ثانية</footer>
+          <footer className="text-center text-xs text-[#8b9b98] py-7 border-t border-[#e4eeeb] mt-6">البوابة الإلكترونية لمدارس التعليم المستمر · الإدارة العامة للتعليم بنجران · تحديث تلقائي كل 60 ثانية</footer>
         </div>
       </div>
     </div>
