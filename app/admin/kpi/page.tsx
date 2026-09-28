@@ -5,7 +5,7 @@ import {
   BarChart3, Building2, Users, PartyPopper, Star, GraduationCap, RefreshCw,
   Maximize2, Minimize2, Target, TrendingUp, Home, UserRound, CalendarDays,
   FileText, Settings, ClipboardList, Bell, Sparkles, CheckCircle2, Clock3,
-  AlertCircle, ChevronLeft, Menu, X
+  AlertCircle, ChevronLeft, Menu, X, Trophy, Award
 } from 'lucide-react';
 import { supabaseBrowser } from '../../../lib/supabase';
 
@@ -14,6 +14,7 @@ type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;target_percent:number|null;notes:string|null};
+type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
 type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number;completedActivities:number;activityRate:number;avgRating:number;achievement:number|null;target:number|null;achievementYear:string|null};
 
 const pct=(n:number)=>Number.isFinite(n)?Math.round(n*10)/10:0;
@@ -46,6 +47,7 @@ function Donut({active,review,blocked}:{active:number;review:number;blocked:numb
 export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
+  const [competition,setCompetition]=useState<CompetitionScore[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false),[saving,setSaving]=useState(false);
   const [academicYear,setAcademicYear]=useState('1447-1448'),[achievementPercent,setAchievementPercent]=useState(''),[targetPercent,setTargetPercent]=useState(''),[achievementNotes,setAchievementNotes]=useState('');
@@ -65,7 +67,10 @@ export default function KpiDashboard(){
     ]);
     const first=s.error||t.error||a.error||r.error||e.error;
     if(first){setError(first.message);setLoading(false);return;}
-    setSchools(s.data||[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements(e.data||[]);
+    setSchools(s.data||[]);
+    const monthStart=new Date().toISOString().slice(0,7)+'-01';
+    const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
+    setCompetition((competitionData||[]) as CompetitionScore[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements(e.data||[]);
     const latest=(e.data||[])[0];
     if(latest){setAcademicYear(latest.academic_year);setAchievementPercent(String(latest.achievement_percent));setTargetPercent(latest.target_percent==null?'':String(latest.target_percent));setAchievementNotes(latest.notes||'');}
     setLoading(false);
@@ -111,6 +116,14 @@ export default function KpiDashboard(){
     const {error}=await sb.from('school_educational_achievement').upsert({school_id:selectedSchool,academic_year:academicYear.trim(),achievement_percent:value,target_percent:target,notes:achievementNotes.trim()||null,updated_by:user?.id||null,updated_at:new Date().toISOString()},{onConflict:'school_id,academic_year'});
     if(error)setError('تعذر حفظ التحصيل التعليمي: '+error.message);else{setMessage('تم حفظ مؤشر التحصيل التعليمي للمدرسة.');await load();}
     setSaving(false);
+  }
+  async function issueMonthlyAwards(){
+    setIssuingAwards(true);setError('');setMessage('');
+    const d=new Date(); d.setUTCMonth(d.getUTCMonth()-1,1);
+    const month=d.toISOString().slice(0,10);
+    const {data,error}=await sb.rpc('issue_school_monthly_awards',{p_month:month});
+    if(error)setError('تعذر إصدار شهادات التميز: '+error.message);else setMessage('تم إصدار شهادات التميز لأول '+String(data||3)+' مدارس عن الشهر السابق، وستظهر تلقائيًا في حساباتها.');
+    setIssuingAwards(false);
   }
   async function toggleFullscreen(){try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}}
 
@@ -232,6 +245,11 @@ export default function KpiDashboard(){
               <div className="space-y-3 text-xs">{[['إجمالي التقارير المنجزة',activityReports],['الأنشطة النشطة',activeActivities.length],['المدارس المعروضة',filtered.length],['الموظفون',overall.total]].map(([l,v]:any)=><div key={l} className="flex justify-between items-center border-b border-[#edf2f1] pb-2"><span className="text-[#6d807c]">{l}</span><b className="text-[#16443e]">{v}</b></div>)}</div>
             </Panel>
           </section>
+
+          <Panel title="التنافس الشهري بين المدارس" sub="ترتيب المدارس حسب نسبة الإنجاز من 100 نقطة" icon={Trophy} className="mb-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4"><div className="text-xs text-[#6d807c]">الأوزان: تسجيل الدخول 15% · سرعة اعتماد المسير 30% · المنجزات 20% · الأنشطة 20% · تحديث بيانات الموظفين 15%</div><button disabled={issuingAwards} onClick={issueMonthlyAwards} className="rounded-xl bg-[#b47b16] text-white px-4 py-2 font-black text-sm disabled:opacity-50 inline-flex items-center gap-2 justify-center"><Award size={17}/>{issuingAwards?'جارٍ الإصدار…':'إصدار شهادات الشهر السابق'}</button></div>
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[900px]"><thead className="bg-[#fff8e7] text-[#6f571d]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>الدخول /15</th><th>المسير /30</th><th>المنجزات /20</th><th>الأنشطة /20</th><th>الموظفون /15</th><th>الإنجاز</th></tr></thead><tbody>{competition.map((x,i)=><tr key={x.school_id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i<3?['🥇','🥈','🥉'][i]:i+1}</td><td className="font-bold">{x.school_name}</td><td className="text-center">{pct(Number(x.login_score))}</td><td className="text-center">{pct(Number(x.payroll_score))}</td><td className="text-center">{pct(Number(x.achievements_score))}</td><td className="text-center">{pct(Number(x.activities_score))}</td><td className="text-center">{pct(Number(x.employee_updates_score))}</td><td className="text-center"><b className="text-[#087f69]">{pct(Number(x.total_score))}%</b></td></tr>)}</tbody></table></div>
+          </Panel>
 
           <Panel title="مصفوفة مؤشرات المدارس" sub="اضغط على أي مدرسة لفتح تفاصيلها وتحديث التحصيل التعليمي" icon={BarChart3}>
             <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-sm min-w-[820px]"><thead className="bg-[#eef6f3] text-[#48655f] sticky top-0"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
