@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3 } from 'lucide-react';
+import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../lib/supabase';
 
@@ -133,13 +133,15 @@ export default function AdminPage() {
   const [activityForm,setActivityForm]=useState({name:'',description:''});
   const [activityRating,setActivityRating]=useState<Record<string,number>>({});
   const [editingActivityId,setEditingActivityId]=useState<string|null>(null);
+  const [adminSignatureUrl,setAdminSignatureUrl]=useState(''), [adminSignatureFile,setAdminSignatureFile]=useState<File|null>(null), [savingAdminSignature,setSavingAdminSignature]=useState(false);
 
   async function load(){
     setLoading(true); setError('');
     const {data:{user}}=await sb.auth.getUser();
     if(!user){location.href='/';return;}
-    const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
+    const {data:admin}=await sb.from('admin_users').select('id,signature_path').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setLoading(false);return;} setAllowed(true);
+    setAdminSignatureUrl(admin.signature_path ? sb.storage.from('school-stamps').getPublicUrl(admin.signature_path).data.publicUrl : '');
     const [s,t,p,acts,reps]=await Promise.all([
       sb.from('schools').select('*').order('school_name'),
       sb.from('teachers').select('*').order('full_name'),
@@ -158,6 +160,19 @@ export default function AdminPage() {
   async function loadRecords(){if(!periodId)return;let q=sb.from('payroll_records').select('*').eq('period_id',periodId);if(schoolId)q=q.eq('school_id',schoolId);const {data,error}=await q;if(error)setError(error.message);else setRecords(data||[])}
   useEffect(()=>{load()},[]); useEffect(()=>{if(allowed)loadRecords()},[allowed,schoolId,periodId]);
   async function logout(){await sb.auth.signOut();location.href='/'}
+
+  async function saveAdminSignature(){
+    if(!adminSignatureFile){setError('اختر صورة توقيع مدير النظام أولًا.');return;}
+    setSavingAdminSignature(true);setError('');setMessage('جاري رفع التوقيع الإلكتروني…');
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){setError('انتهت جلسة الدخول.');setSavingAdminSignature(false);return;}
+    const form=new FormData();form.append('signature',adminSignatureFile);
+    const response=await fetch('/api/admin/signature',{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`},body:form});
+    const result=await response.json();
+    if(!response.ok)setError(result.error||'تعذر حفظ توقيع مدير النظام.');
+    else{setAdminSignatureUrl(result.signature_url||'');setAdminSignatureFile(null);setMessage('تم حفظ توقيع مدير النظام بنجاح.');}
+    setSavingAdminSignature(false);
+  }
 
   async function addActivity(){
     setMessage(''); setError('');
@@ -541,7 +556,9 @@ async function deletePeriod(p:Period){
   setBusy(false);
 }
 
-  if(loading)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
+  if(loading)return <main className="min-h-screen flex items-center justify-center">
+      {allowed&&<div className="max-w-7xl mx-auto px-4 sm:px-5 pt-5 print:hidden"><div className="card p-5"><div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"><div><h2 className="font-bold text-lg">التوقيع الإلكتروني لمدير النظام</h2><p className="text-sm text-gray-500 mt-1">ارفع صورة التوقيع مرة واحدة، ويمكن تغييرها لاحقًا من نفس المكان.</p></div>{adminSignatureUrl&&<img src={adminSignatureUrl} alt="توقيع مدير النظام" className="w-32 h-20 object-contain border rounded-xl bg-white"/>}</div><div className="flex flex-col sm:flex-row gap-3 mt-4"><label className="flex-1"><span className="block text-sm font-semibold mb-2">{adminSignatureUrl?'تغيير التوقيع':'رفع التوقيع'}</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setAdminSignatureFile(e.target.files?.[0]||null)} className="border rounded-xl px-3 py-2.5 w-full bg-white"/></label><button type="button" disabled={savingAdminSignature} onClick={saveAdminSignature} className="self-end bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50"><Upload size={18}/>{savingAdminSignature?'جارٍ الحفظ…':adminSignatureUrl?'حفظ التوقيع الجديد':'حفظ التوقيع'}</button></div></div></div>}
+<div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
   if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
   const nav=[['overview','نظرة عامة',Building2],['schools','المدارس',Building2],['teachers','الموظفون وإسنادهم',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',CheckCircle2],['accounts','حسابات المدارس',ShieldCheck],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير اليومي للمدارس',FileSpreadsheet],['activities','الأنشطة والمناسبات',PartyPopper],['kpi','مؤشرات الأداء',BarChart3]] as const;
