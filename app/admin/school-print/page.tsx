@@ -8,7 +8,7 @@ import { supabaseBrowser } from '../../../lib/supabase';
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name: string | null; stamp_path: string | null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null };
-type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; payroll_days: number; notes: string | null };
+type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; payroll_days: number; notes: string | null; approved_at?: string | null };
 
 function gregorianToHijri(value: string | null | undefined): string {
   if (!value) return '';
@@ -74,7 +74,7 @@ export default function SchoolPayrollPrint() {
 
   async function loadRows(schoolId?: string) {
     setBusy(true); setMessage('');
-    let query = sb.from('payroll_records').select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,payroll_days,notes');
+    let query = sb.from('payroll_records').select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,payroll_days,notes,approved_at');
     if (periodId) query = query.eq('period_id', periodId);
     if (schoolId) query = query.eq('school_id', schoolId);
     const { data, error } = await query;
@@ -176,6 +176,13 @@ export default function SchoolPayrollPrint() {
     return printRows;
   }, [printRows, printMode, selectedSchoolId]);
 
+  const approvedAt = useMemo(() => {
+    const dates = printRowsFiltered.map(r => r.approved_at).filter(Boolean) as string[];
+    return dates.sort().at(-1) || null;
+  }, [printRowsFiltered]);
+
+  const approvedHijri = approvedAt ? gregorianToHijri(approvedAt.slice(0, 10)) : '—';
+
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل نظام مسيرات الرواتب…</div></main>;
   if (!allowed) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">صلاحية طباعة المسيرات متاحة لمدير النظام فقط.</p></div></main>;
 
@@ -213,14 +220,41 @@ export default function SchoolPayrollPrint() {
       </div>
     </main>
 
-    <section className="hidden print:block bg-white text-black p-2" dir="rtl">
+    <section className="hidden print:block bg-white text-black p-2 print-payroll-sheet" dir="rtl">
       {printRowsFiltered.length > 0 && selectedPeriod && <>
-        <div className="text-center mb-5">
-          <h1 className="text-2xl font-bold">مسير رواتب الموظفين</h1>
-          <div className="text-lg font-semibold mt-2">{printMode === 'all' ? 'جميع المدارس' : (selectedSchool?.school_name || 'المدرسة')}</div>
-          <div className="text-sm mt-2">الفترة: {selectedPeriod.period_name}</div>
+        <div className="print-letterhead">
+          <div className="print-letterhead-right">
+            <div className="font-bold text-[15px]">المملكة العربية السعودية</div>
+            <div className="font-bold text-[16px] mt-1">وزارة التعليم</div>
+            <div className="font-semibold text-[13px] mt-1">الإدارة العامة للتعليم بمنطقة نجران</div>
+            <div className="font-semibold text-[12px] mt-1">الشؤون التعليمية/إدارة أداء التعليم</div>
+          </div>
+          <div className="print-letterhead-center">
+            <svg viewBox="0 0 180 120" aria-label="شعار وزارة التعليم" role="img" className="print-moe-logo">
+              <g fill="#00857a">
+                <circle cx="48" cy="20" r="5"/><circle cx="66" cy="16" r="5"/><circle cx="84" cy="14" r="5"/><circle cx="102" cy="16" r="5"/><circle cx="120" cy="20" r="5"/>
+                <circle cx="40" cy="36" r="5"/><circle cx="58" cy="32" r="5"/><circle cx="76" cy="30" r="5"/><circle cx="94" cy="32" r="5"/><circle cx="112" cy="36" r="5"/>
+                <circle cx="34" cy="52" r="5"/><circle cx="52" cy="48" r="5"/><circle cx="70" cy="46" r="5"/><circle cx="88" cy="48" r="5"/><circle cx="106" cy="52" r="5"/>
+              </g>
+              <text x="90" y="82" textAnchor="middle" fill="#00857a" fontSize="18" fontWeight="700">وزارة التعليم</text>
+              <text x="90" y="101" textAnchor="middle" fill="#4a4a4a" fontSize="9">Ministry of Education</text>
+            </svg>
+          </div>
+          <div className="print-letterhead-left">
+            <div><span className="font-bold">الرقم:</span> ـــــــــــــــــــــــــــــــ</div>
+            <div className="mt-4"><span className="font-bold">التاريخ:</span></div>
+            <div className="text-[11px] mt-1">التاريخ الهجري الذي تم فيه اعتماد المسير</div>
+            <div className="font-bold mt-1">{approvedHijri} هـ</div>
+          </div>
+        </div>
+
+        <div className="print-title">
+          <h1>مسير رواتب الموظفين</h1>
+          <div className="text-lg font-semibold">{printMode === 'all' ? 'جميع المدارس' : (selectedSchool?.school_name || 'المدرسة')}</div>
+          <div className="text-sm mt-1">الفترة: {selectedPeriod.period_name}</div>
           <div className="text-sm mt-1 font-semibold">من {hijriOrGregorian(selectedPeriod.start_hijri, selectedPeriod.start_date)} هـ إلى {hijriOrGregorian(selectedPeriod.end_hijri, selectedPeriod.end_date)} هـ</div>
         </div>
+
         <table className="w-full border-collapse text-[10px]">
           <thead><tr className="bg-gray-100">
             <th className="border p-2">#</th><th className="border p-2">رمز المدرسة</th><th className="border p-2">اسم المدرسة</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة هجري</th><th className="border p-2">أيام الغياب</th><th className="border p-2">عدد أيام المسير</th><th className="border p-2">الملاحظات</th><th className="border p-2">الحالة</th>
@@ -233,9 +267,28 @@ export default function SchoolPayrollPrint() {
             </tr>;
           })}</tbody>
         </table>
-        <div className="mt-8 text-sm text-gray-700">عدد سجلات المسيرات: {printRowsFiltered.length}</div>
+        <div className="mt-8 flex justify-between text-sm text-gray-700">
+          <div>عدد سجلات المسيرات: {printRowsFiltered.length}</div>
+          <div className="font-semibold">تاريخ اعتماد المسير: {approvedHijri} هـ</div>
+        </div>
       </>}
     </section>
-    <style jsx global>{`@media print { @page { size: A4 landscape; margin: 10mm; } body { background: white !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; page-break-after: auto; } thead { display: table-header-group; } }`}</style>
+    <style jsx global>{`@media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    body { background: white !important; }
+    .print-payroll-sheet { font-family: Tahoma, Arial, sans-serif; }
+    .print-letterhead { position: relative; min-height: 118px; border-bottom: 2px solid #00857a; padding: 4px 0 14px; }
+    .print-letterhead-right { position: absolute; top: 4px; right: 0; width: 34%; text-align: right; line-height: 1.45; }
+    .print-letterhead-center { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 190px; text-align: center; }
+    .print-letterhead-left { position: absolute; top: 4px; left: 0; width: 30%; text-align: left; direction: rtl; line-height: 1.45; }
+    .print-moe-logo { width: 155px; height: 105px; }
+    .print-title { text-align: center; margin: 16px 0 14px; }
+    .print-title h1 { margin: 0 0 7px; font-size: 20px; font-weight: 800; }
+    .print-payroll-sheet table th { background: #e9f2f0 !important; font-weight: 800; }
+    .print-payroll-sheet table td, .print-payroll-sheet table th { border-color: #7caaa5 !important; }
+    table { page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    thead { display: table-header-group; }
+  }`}</style>
   </div>;
 }
