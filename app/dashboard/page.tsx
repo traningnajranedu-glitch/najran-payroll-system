@@ -74,6 +74,18 @@ function formatHijriInput(value: string): string {
   return `${digits.slice(0, 4)}/${digits.slice(4, 6)}/${digits.slice(6)}`;
 }
 
+function payrollWorkDays(startDate: string | null | undefined, endDate: string | null | undefined): number {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return 0;
+  let count = 0;
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 5 && day !== 6) count++;
+  }
+  return count;
+}
 
 const hijriMonths=['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
 const weekDays=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -213,7 +225,13 @@ export default function Dashboard() {
   }, [rows]);
   const approvedHijri = approvedAt ? gregorianToHijri(approvedAt.slice(0, 10)) : '—';
 
-  const printRows = useMemo(() => teachers.map(t => ({ teacher: t, row: rows[t.id] || { teacher_id: t.id, direct_start_date: null, pre_start_hours: 0, absence_days: 0, notes: null, status: 'لم يبدأ' } })), [teachers, rows]);
+  const printRows = useMemo(() => teachers.map(t => {
+    const row = rows[t.id] || { teacher_id: t.id, direct_start_date: null, pre_start_hours: 0, absence_days: 0, notes: null, status: 'لم يبدأ' };
+    const periodDays = payrollWorkDays(period?.start_date, period?.end_date);
+    const absenceDays = Number(row.absence_days ?? 0);
+    const netDays = Math.max(0, periodDays - absenceDays);
+    return { teacher: t, row, periodDays, netDays };
+  }), [teachers, rows, period]);
 
   async function saveSingleTeacher(t: Teacher) {
     if (!school || !teacherDataEditable) return;
@@ -535,19 +553,41 @@ export default function Dashboard() {
           <div className="text-[11px] mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
         </div>
 
-        <table className="w-full border-collapse text-xs">
-          <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">عدد الحصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">أيام الغياب</th><th className="border p-2">الملاحظات</th></tr></thead>
-          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.pre_start_hours ?? 0}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2 text-center">{row.absence_days ?? 0}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
-        </table>
+        <div className="print-table-wrap">
+          <table className="w-full border-collapse text-[10px] print-payroll-table">
+            <thead><tr>
+              <th className="border p-2">م</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">عدد الحصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">أيام الغياب</th><th className="border p-2">عدد أيام المسير</th><th className="border p-2">الملاحظات</th>
+            </tr></thead>
+            <tbody>
+              {printRows.map(({ teacher, row, netDays }, i) => <tr key={teacher.id}>
+                <td className="border p-2 text-center font-semibold">{i + 1}</td><td className="border p-2 font-semibold">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2 text-center">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.pre_start_hours ?? 0}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2 text-center">{row.absence_days ?? 0}</td><td className="border p-2 text-center font-bold">{netDays}</td><td className="border p-2">{row.notes || '—'}</td>
+              </tr>)}
+              <tr className="print-total-row">
+                <td className="border p-2 text-center font-bold" colSpan={8}>الإجمالي</td>
+                <td className="border p-2 text-center font-bold">{printRows.reduce((sum, x) => sum + x.netDays, 0)}</td>
+                <td className="border p-2 text-center font-bold">{printRows.length} موظف</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <div className="mt-8 flex justify-between items-end">
-          <div className="text-center w-[300px]">
-            <div className="font-bold mb-2">مدير المدرسة</div>
-            <div className="mb-3">{school.manager_name || managerName || '—'}</div>
-            <div className="flex items-end justify-center gap-5 min-h-[90px]">
-              <div className="text-sm">التوقيع: __________________</div>
-              {stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-24 h-24 object-contain" />}
-            </div>
+        <div className="print-approval-grid">
+          <div className="print-signature-box">
+            <div className="font-bold text-[13px] mb-2">اعتماد مدير المدرسة</div>
+            <div className="mb-4">الاسم: <span className="font-semibold">{school.manager_name || managerName || '—'}</span></div>
+            <div className="print-signature-line">التوقيع: <span>________________________</span></div>
+          </div>
+          <div className="print-stamp-box">
+            <div className="font-bold text-[13px] mb-2">ختم المدرسة</div>
+            <div className="print-stamp-area">{stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="print-stamp-image" />}</div>
+          </div>
+          <div className="print-status-box">
+            <div className="font-bold text-[13px] mb-2">اعتماد المسير</div>
+            <div className="font-semibold">تم الاعتماد</div>
+            <div className="text-[11px] mt-1">بتاريخ {approvedHijri} هـ</div>
+          </div>
+        </div>
+        <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
           </div>
           <div className="text-center text-[11px] text-gray-500">
             <div className="font-bold text-gray-700">حالة المسير</div>
@@ -566,10 +606,30 @@ export default function Dashboard() {
     .print-letterhead-center { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 190px; text-align: center; }
     .print-letterhead-left { position: absolute; top: 4px; left: 0; width: 30%; text-align: left; direction: rtl; line-height: 1.45; }
     .print-moe-logo { width: 155px; height: 105px; }
-    .print-title { text-align: center; margin: 16px 0 14px; }
-    .print-title h1 { margin: 0 0 7px; font-size: 20px; font-weight: 800; }
-    .print-payroll-sheet table th { background: #e9f2f0 !important; font-weight: 800; }
-    .print-payroll-sheet table td, .print-payroll-sheet table th { border-color: #7caaa5 !important; }
+    .print-title { text-align: center; margin: 14px 0 12px; padding: 9px 12px; border: 1px solid #9abdb7; border-radius: 6px; background: #f7faf9; }
+    .print-title h1 { margin: 0 0 5px; font-size: 19px; font-weight: 900; letter-spacing: .2px; }
+    .print-table-wrap { width: 100%; overflow: hidden; }
+    .print-payroll-table { table-layout: fixed; }
+    .print-payroll-table th { background: #e5efec !important; font-weight: 900; border-color: #5f8f87 !important; white-space: nowrap; }
+    .print-payroll-table td { border-color: #7caaa5 !important; vertical-align: middle; line-height: 1.35; }
+    .print-payroll-table tr { page-break-inside: avoid; }
+    .print-payroll-table th:nth-child(1), .print-payroll-table td:nth-child(1) { width: 4%; }
+    .print-payroll-table th:nth-child(2), .print-payroll-table td:nth-child(2) { width: 17%; }
+    .print-payroll-table th:nth-child(3), .print-payroll-table td:nth-child(3) { width: 12%; }
+    .print-payroll-table th:nth-child(4), .print-payroll-table td:nth-child(4) { width: 9%; }
+    .print-payroll-table th:nth-child(5), .print-payroll-table td:nth-child(5) { width: 11%; }
+    .print-payroll-table th:nth-child(6), .print-payroll-table td:nth-child(6) { width: 8%; }
+    .print-payroll-table th:nth-child(7), .print-payroll-table td:nth-child(7) { width: 11%; }
+    .print-payroll-table th:nth-child(8), .print-payroll-table td:nth-child(8) { width: 8%; }
+    .print-payroll-table th:nth-child(9), .print-payroll-table td:nth-child(9) { width: 10%; }
+    .print-payroll-table th:nth-child(10), .print-payroll-table td:nth-child(10) { width: 10%; }
+    .print-total-row td { background: #eef5f3 !important; border-top: 2px solid #416f67 !important; }
+    .print-approval-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 18px; page-break-inside: avoid; }
+    .print-signature-box, .print-stamp-box, .print-status-box { min-height: 108px; border: 1px solid #7caaa5; border-radius: 6px; padding: 12px; text-align: center; background: #fff; }
+    .print-signature-line { margin-top: 32px; font-size: 11px; }
+    .print-stamp-area { height: 68px; display: flex; align-items: center; justify-content: center; }
+    .print-stamp-image { width: 68px; height: 68px; object-fit: contain; }
+    .print-footer-note { margin-top: 10px; text-align: center; font-size: 9px; color: #68736f; border-top: 1px solid #d2dfdb; padding-top: 6px; }
   }`}</style>
   </div>;
 }
