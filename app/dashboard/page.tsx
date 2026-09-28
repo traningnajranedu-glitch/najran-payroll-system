@@ -418,6 +418,9 @@ export default function Dashboard() {
 
     <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
       <div className="print:hidden">
+        {monthlyAwards.length>0&&<section className="mb-6 rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-white p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={26}/></div><div><h2 className="font-black text-lg text-amber-900">شهادة تميز شهرية</h2><p className="text-sm text-amber-800">حققت المدرسة المركز {monthlyAwards[0].rank} بنسبة إنجاز {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}.</p></div></div><button type="button" onClick={()=>window.print()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-700 text-white px-4 py-2 font-bold"><Award size={18}/> عرض / طباعة الشهادة</button></div>
+        </section>}
         <section className="mb-7" aria-labelledby="services-title">
           <div className="mb-4">
             <h2 id="services-title" className="text-xl sm:text-2xl font-black text-[var(--navy)]">خدمات المدرسة</h2>
