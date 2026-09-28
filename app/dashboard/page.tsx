@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3 } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award } from 'lucide-react';
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
@@ -10,6 +10,7 @@ type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string |
 type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null; allow_school_teacher_edit?: boolean };
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
 type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
+type MonthlyAward = { id:string; month_key:string; rank:number; total_score:number; issued_at:string };
 
 function hijriKey(value: string): number | null {
   const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
@@ -151,6 +152,7 @@ export default function Dashboard() {
   const [activityReports, setActivityReports] = useState<Record<string, ActivityReport>>({});
   const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
   const [savingActivity, setSavingActivity] = useState(false);
+  const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
 
   async function load() {
     setLoading(true);
@@ -168,6 +170,14 @@ export default function Dashboard() {
 
     const currentSchool = su.schools as unknown as School;
     setSchool(currentSchool);
+    // يسجل زيارة واحدة فقط لكل جلسة متصفح حتى لا يتحول تحديث الصفحة إلى نقاط مصطنعة.
+    const loginKey='school-login-'+su.school_id+'-'+new Date().toISOString().slice(0,10);
+    if(!sessionStorage.getItem(loginKey)){
+      await sb.from('school_login_events').insert({school_id:su.school_id,user_id:user.id});
+      sessionStorage.setItem(loginKey,'1');
+    }
+    const {data:awards}=await sb.from('school_monthly_awards').select('id,month_key,rank,total_score,issued_at').eq('school_id',su.school_id).order('month_key',{ascending:false}).limit(12);
+    setMonthlyAwards((awards||[]) as MonthlyAward[]);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
