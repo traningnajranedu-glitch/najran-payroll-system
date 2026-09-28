@@ -207,6 +207,11 @@ export default function Dashboard() {
   const teacherDataEditable = !!school?.allow_school_teacher_edit;
   const approved = teachers.length > 0 && teachers.every(t => rows[t.id]?.status === 'تم الاعتماد');
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
+  const approvedAt = useMemo(() => {
+    const dates = Object.values(rows).map(r => r.approved_at).filter(Boolean) as string[];
+    return dates.sort().at(-1) || null;
+  }, [rows]);
+  const approvedHijri = approvedAt ? gregorianToHijri(approvedAt.slice(0, 10)) : '—';
 
   const printRows = useMemo(() => teachers.map(t => ({ teacher: t, row: rows[t.id] || { teacher_id: t.id, direct_start_date: null, pre_start_hours: 0, absence_days: 0, notes: null, status: 'لم يبدأ' } })), [teachers, rows]);
 
@@ -497,17 +502,45 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <section className="hidden print:block bg-white text-black" dir="rtl">
-        <div className="text-center mb-5">
-          <h1 className="text-2xl font-bold">مسير رواتب الموظفين</h1>
-          <div className="text-lg font-semibold mt-2">{school.school_name}</div>
-          <div className="text-sm mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
+      <section className="hidden print:block bg-white text-black print-payroll-sheet" dir="rtl">
+        <div className="print-letterhead">
+          <div className="print-letterhead-right">
+            <div className="font-bold text-[15px]">المملكة العربية السعودية</div>
+            <div className="font-bold text-[16px] mt-1">وزارة التعليم</div>
+            <div className="font-semibold text-[13px] mt-1">الإدارة العامة للتعليم بمنطقة نجران</div>
+            <div className="font-semibold text-[12px] mt-1">الشؤون التعليمية/إدارة أداء التعليم</div>
+          </div>
+          <div className="print-letterhead-center">
+            <svg viewBox="0 0 180 120" aria-label="شعار وزارة التعليم" role="img" className="print-moe-logo">
+              <g fill="#00857a">
+                <circle cx="48" cy="20" r="5"/><circle cx="66" cy="16" r="5"/><circle cx="84" cy="14" r="5"/><circle cx="102" cy="16" r="5"/><circle cx="120" cy="20" r="5"/>
+                <circle cx="40" cy="36" r="5"/><circle cx="58" cy="32" r="5"/><circle cx="76" cy="30" r="5"/><circle cx="94" cy="32" r="5"/><circle cx="112" cy="36" r="5"/>
+                <circle cx="34" cy="52" r="5"/><circle cx="52" cy="48" r="5"/><circle cx="70" cy="46" r="5"/><circle cx="88" cy="48" r="5"/><circle cx="106" cy="52" r="5"/>
+              </g>
+              <text x="90" y="82" textAnchor="middle" fill="#00857a" fontSize="18" fontWeight="700">وزارة التعليم</text>
+              <text x="90" y="101" textAnchor="middle" fill="#4a4a4a" fontSize="9">Ministry of Education</text>
+            </svg>
+          </div>
+          <div className="print-letterhead-left">
+            <div><span className="font-bold">الرقم:</span> ـــــــــــــــــــــــــــــــ</div>
+            <div className="mt-4"><span className="font-bold">التاريخ:</span></div>
+            <div className="text-[11px] mt-1">التاريخ الهجري الذي تم فيه اعتماد المسير</div>
+            <div className="font-bold mt-1">{approvedHijri} هـ</div>
+          </div>
         </div>
+
+        <div className="print-title">
+          <h1>مسير رواتب الموظفين</h1>
+          <div className="font-semibold">{school.school_name}</div>
+          <div className="text-[11px] mt-1">الفترة: {period?.period_name || '—'} — من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
+        </div>
+
         <table className="w-full border-collapse text-xs">
-          <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">الساعات المخصصة قبل المباشرة</th><th className="border p-2">أيام الغياب</th><th className="border p-2">الملاحظات</th></tr></thead>
-          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2 text-center">{row.pre_start_hours ?? 0}</td><td className="border p-2 text-center">{row.absence_days ?? 0}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
+          <thead><tr className="bg-gray-100"><th className="border p-2">#</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">عدد الحصص</th><th className="border p-2">تاريخ المباشرة</th><th className="border p-2">أيام الغياب</th><th className="border p-2">الملاحظات</th></tr></thead>
+          <tbody>{printRows.map(({ teacher, row }, i) => <tr key={teacher.id}><td className="border p-2 text-center">{i + 1}</td><td className="border p-2">{teacher.full_name}</td><td className="border p-2 text-center">{teacher.national_id}</td><td className="border p-2">{teacher.job_role}</td><td className="border p-2">{teacher.specialization || '—'}</td><td className="border p-2 text-center">{row.pre_start_hours ?? 0}</td><td className="border p-2 text-center">{row.direct_start_date ? gregorianToHijri(row.direct_start_date) : '—'}</td><td className="border p-2 text-center">{row.absence_days ?? 0}</td><td className="border p-2">{row.notes || '—'}</td></tr>)}</tbody>
         </table>
-        <div className="mt-10" style={{ direction: 'ltr', display: 'flex', justifyContent: 'flex-start' }}>
+
+        <div className="mt-8 flex justify-between items-end">
           <div className="text-center w-[300px]">
             <div className="font-bold mb-2">مدير المدرسة</div>
             <div className="mb-3">{school.manager_name || managerName || '—'}</div>
@@ -516,10 +549,27 @@ export default function Dashboard() {
               {stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-24 h-24 object-contain" />}
             </div>
           </div>
+          <div className="text-center text-[11px] text-gray-500">
+            <div className="font-bold text-gray-700">حالة المسير</div>
+            <div>تم الاعتماد — {approvedHijri} هـ</div>
+          </div>
         </div>
       </section>
     </main>
 
-    <style jsx global>{`@media print { @page { size: A4 portrait; margin: 12mm; } body { background: white !important; } }`}</style>
+    <style jsx global>{`@media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    body { background: white !important; }
+    .print-payroll-sheet { font-family: Tahoma, Arial, sans-serif; }
+    .print-letterhead { position: relative; min-height: 118px; border-bottom: 2px solid #00857a; padding: 4px 0 14px; }
+    .print-letterhead-right { position: absolute; top: 4px; right: 0; width: 34%; text-align: right; line-height: 1.45; }
+    .print-letterhead-center { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 190px; text-align: center; }
+    .print-letterhead-left { position: absolute; top: 4px; left: 0; width: 30%; text-align: left; direction: rtl; line-height: 1.45; }
+    .print-moe-logo { width: 155px; height: 105px; }
+    .print-title { text-align: center; margin: 16px 0 14px; }
+    .print-title h1 { margin: 0 0 7px; font-size: 20px; font-weight: 800; }
+    .print-payroll-sheet table th { background: #e9f2f0 !important; font-weight: 800; }
+    .print-payroll-sheet table td, .print-payroll-sheet table th { border-color: #7caaa5 !important; }
+  }`}</style>
   </div>;
 }
