@@ -220,75 +220,34 @@ export default function SchoolPayrollPrint() {
       </div>
     </main>
 
-    <section className="hidden print:block bg-white text-black p-2 print-payroll-sheet" dir="rtl">
+    <section className="hidden print:block bg-white text-black print-payroll-sheet" dir="rtl">
       {printRowsFiltered.length > 0 && selectedPeriod && <>
         <div className="print-letterhead">
-          <div className="print-letterhead-right">
-            <div className="font-bold text-[15px]">المملكة العربية السعودية</div>
-            <div className="font-bold text-[16px] mt-1">وزارة التعليم</div>
-            <div className="font-semibold text-[13px] mt-1">الإدارة العامة للتعليم بمنطقة نجران</div>
-            <div className="font-semibold text-[12px] mt-1">الشؤون التعليمية/إدارة أداء التعليم</div>
-          </div>
-          <div className="print-letterhead-center">
-            <svg viewBox="0 0 180 120" aria-label="شعار وزارة التعليم" role="img" className="print-moe-logo">
-              <g fill="#00857a">
-                <circle cx="48" cy="20" r="5"/><circle cx="66" cy="16" r="5"/><circle cx="84" cy="14" r="5"/><circle cx="102" cy="16" r="5"/><circle cx="120" cy="20" r="5"/>
-                <circle cx="40" cy="36" r="5"/><circle cx="58" cy="32" r="5"/><circle cx="76" cy="30" r="5"/><circle cx="94" cy="32" r="5"/><circle cx="112" cy="36" r="5"/>
-                <circle cx="34" cy="52" r="5"/><circle cx="52" cy="48" r="5"/><circle cx="70" cy="46" r="5"/><circle cx="88" cy="48" r="5"/><circle cx="106" cy="52" r="5"/>
-              </g>
-              <text x="90" y="82" textAnchor="middle" fill="#00857a" fontSize="18" fontWeight="700">وزارة التعليم</text>
-              <text x="90" y="101" textAnchor="middle" fill="#4a4a4a" fontSize="9">Ministry of Education</text>
-            </svg>
-          </div>
-          <div className="print-letterhead-left">
-            <div><span className="font-bold">الرقم:</span> ـــــــــــــــــــــــــــــــ</div>
-            <div className="mt-4"><span className="font-bold">التاريخ:</span></div>
-            <div className="text-[11px] mt-1">التاريخ الهجري الذي تم فيه اعتماد المسير</div>
-            <div className="font-bold mt-1">{approvedHijri} هـ</div>
-          </div>
+          <div className="print-letterhead-right"><div>المملكة العربية السعودية</div><div className="print-ministry">وزارة التعليم</div><div>الإدارة العامة للتعليم بمنطقة نجران</div><div>الشؤون التعليمية/إدارة أداء التعليم</div></div>
+          <div className="print-letterhead-center"><svg viewBox="0 0 180 120" aria-label="شعار وزارة التعليم" role="img" className="print-moe-logo"><g fill="#00857a"><circle cx="48" cy="20" r="5"/><circle cx="66" cy="16" r="5"/><circle cx="84" cy="14" r="5"/><circle cx="102" cy="16" r="5"/><circle cx="120" cy="20" r="5"/><circle cx="40" cy="36" r="5"/><circle cx="58" cy="32" r="5"/><circle cx="76" cy="30" r="5"/><circle cx="94" cy="32" r="5"/><circle cx="112" cy="36" r="5"/><circle cx="34" cy="52" r="5"/><circle cx="52" cy="48" r="5"/><circle cx="70" cy="46" r="5"/><circle cx="88" cy="48" r="5"/><circle cx="106" cy="52" r="5"/></g><text x="90" y="82" textAnchor="middle" fill="#00857a" fontSize="18" fontWeight="700">وزارة التعليم</text><text x="90" y="101" textAnchor="middle" fill="#4a4a4a" fontSize="9">Ministry of Education</text></svg></div>
+          <div className="print-letterhead-left"><div><b>الرقم:</b> ....................................</div><div><b>التاريخ:</b> &nbsp;&nbsp; / &nbsp;&nbsp; / {approvedHijri.split('/')[0] || 'ــــ'} هـ</div><small>التاريخ الهجري الذي تم فيه اعتماد المسير</small></div>
         </div>
-
-        <div className="print-title">
-          <h1>مسير رواتب الموظفين</h1>
-          <div className="text-lg font-semibold">{printMode === 'all' ? 'جميع المدارس' : (selectedSchool?.school_name || 'المدرسة')}</div>
-          <div className="text-sm mt-1">الفترة: {selectedPeriod.period_name}</div>
-          <div className="text-sm mt-1 font-semibold">من {hijriOrGregorian(selectedPeriod.start_hijri, selectedPeriod.start_date)} هـ إلى {hijriOrGregorian(selectedPeriod.end_hijri, selectedPeriod.end_date)} هـ</div>
+        <div className="print-main-title">طباعة مسير الرواتب</div><div className="print-portal-title">البوابة الالكترونية لمدارس التعليم المستمر</div>
+        <div className="print-meta"><div><b>اسم المدرسة:</b> {printMode === 'all' ? 'جميع المدارس' : (selectedSchool?.school_name || '—')}</div><div><b>فترة المسير:</b> {selectedPeriod.period_name} &nbsp; | &nbsp; من {hijriOrGregorian(selectedPeriod.start_hijri,selectedPeriod.start_date)} هـ إلى {hijriOrGregorian(selectedPeriod.end_hijri,selectedPeriod.end_date)} هـ</div></div>
+        <table className="print-payroll-table"><thead><tr><th>م</th>{printMode==='all'&&<th>المدرسة</th>}<th>اسم الموظف</th><th>الوظيفة</th><th>عدد الأيام</th><th>أيام الغياب</th><th>تاريخ المباشرة</th><th>الملاحظات</th></tr></thead><tbody>
+          {printRowsFiltered.map((r,i)=>{const s=schools.find(x=>x.id===r.school_id);const t=teachers.find(x=>x.id===r.teacher_id);return <tr key={r.id}><td>{i+1}</td>{printMode==='all'&&<td>{s?.school_name||'—'}</td>}<td className="employee-name">{t?.full_name||'—'}</td><td>{t?.job_role||'—'}</td><td>{r.payroll_days??0}</td><td>{r.absence_days??0}</td><td>{gregorianToHijri(r.direct_start_date)||'—'}</td><td>{r.notes||'—'}</td></tr>})}
+        </tbody></table>
+        <div className="print-approval-grid">
+          <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{printMode==='school' ? (selectedSchool?.manager_name || '................................') : '................................'}</div><div className="approval-line">التوقيع: ................................</div></div>
+          <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{printMode==='school' && selectedSchool?.stamp_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.stamp_path).data.publicUrl} alt="ختم المدرسة" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
+          <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">المشرف / مدير إدارة التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
         </div>
-
-        <table className="w-full border-collapse text-[10px]">
-          <thead><tr className="bg-gray-100">
-            <th className="border p-2">#</th><th className="border p-2">رمز المدرسة</th><th className="border p-2">اسم المدرسة</th><th className="border p-2">اسم الموظف</th><th className="border p-2">رقم الهوية</th><th className="border p-2">الوظيفة</th><th className="border p-2">التخصص</th><th className="border p-2">تاريخ المباشرة هجري</th><th className="border p-2">أيام الغياب</th><th className="border p-2">عدد أيام المسير</th><th className="border p-2">الملاحظات</th><th className="border p-2">الحالة</th>
-          </tr></thead>
-          <tbody>{printRowsFiltered.map((r, i) => {
-            const s = schools.find(x => x.id === r.school_id);
-            const t = teachers.find(x => x.id === r.teacher_id);
-            return <tr key={r.id}>
-              <td className="border p-2 text-center">{i + 1}</td><td className="border p-2 text-center">{s?.school_code || '—'}</td><td className="border p-2">{s?.school_name || '—'}</td><td className="border p-2">{t?.full_name || '—'}</td><td className="border p-2 text-center">{t?.national_id || '—'}</td><td className="border p-2">{t?.job_role || '—'}</td><td className="border p-2">{t?.specialization || '—'}</td><td className="border p-2 text-center">{gregorianToHijri(r.direct_start_date) || '—'}</td><td className="border p-2 text-center">{r.absence_days ?? 0}</td><td className="border p-2 text-center font-bold">{r.payroll_days ?? 0}</td><td className="border p-2">{r.notes || '—'}</td><td className="border p-2 text-center">{r.status || '—'}</td>
-            </tr>;
-          })}</tbody>
-        </table>
-        <div className="mt-8 flex justify-between text-sm text-gray-700">
-          <div>عدد سجلات المسيرات: {printRowsFiltered.length}</div>
-          <div className="font-semibold">تاريخ اعتماد المسير: {approvedHijri} هـ</div>
-        </div>
+        <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
       </>}
     </section>
     <style jsx global>{`@media print {
-    @page { size: A4 landscape; margin: 10mm; }
-    body { background: white !important; }
-    .print-payroll-sheet { font-family: Tahoma, Arial, sans-serif; }
-    .print-letterhead { position: relative; min-height: 118px; border-bottom: 2px solid #00857a; padding: 4px 0 14px; }
-    .print-letterhead-right { position: absolute; top: 4px; right: 0; width: 34%; text-align: right; line-height: 1.45; }
-    .print-letterhead-center { position: absolute; top: -4px; left: 50%; transform: translateX(-50%); width: 190px; text-align: center; }
-    .print-letterhead-left { position: absolute; top: 4px; left: 0; width: 30%; text-align: left; direction: rtl; line-height: 1.45; }
-    .print-moe-logo { width: 155px; height: 105px; }
-    .print-title { text-align: center; margin: 16px 0 14px; }
-    .print-title h1 { margin: 0 0 7px; font-size: 20px; font-weight: 800; }
-    .print-payroll-sheet table th { background: #e9f2f0 !important; font-weight: 800; }
-    .print-payroll-sheet table td, .print-payroll-sheet table th { border-color: #7caaa5 !important; }
-    table { page-break-inside: auto; }
-    tr { page-break-inside: avoid; page-break-after: auto; }
-    thead { display: table-header-group; }
+    @page { size:A4 landscape; margin:8mm; } body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .print-payroll-sheet{font-family:Tahoma,Arial,sans-serif;color:#064f50;position:relative;min-height:190mm;padding:2mm 3mm 0}
+    .print-letterhead{position:relative;height:34mm}.print-letterhead-right{position:absolute;right:0;top:1mm;width:34%;text-align:right;font-weight:800;font-size:13px;line-height:1.7}.print-ministry{font-size:17px}.print-letterhead-center{position:absolute;left:50%;top:-2mm;transform:translateX(-50%);width:32%;text-align:center}.print-moe-logo{width:145px;height:98px}.print-letterhead-left{position:absolute;left:0;top:3mm;width:25%;border:1px solid #9ccbd0;border-radius:7px;padding:8px 10px;text-align:right;line-height:1.9;font-size:11px}.print-letterhead-left small{display:block;font-size:9px}
+    .print-main-title{width:310px;margin:0 auto 4px;padding:8px 22px;border-radius:16px;background:linear-gradient(135deg,#006b78,#078b82)!important;color:#fff!important;text-align:center;font-size:24px;font-weight:900}.print-portal-title{text-align:center;font-size:17px;font-weight:900;margin-bottom:10px}
+    .print-meta{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-bottom:10px;font-size:11px}.print-meta>div{border:1px solid #b7d9dc;border-radius:6px;padding:6px 10px;background:#fbfefe!important}
+    .print-payroll-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:10px;color:#173f41;border:1px solid #0b7e7b;border-radius:7px;overflow:hidden}.print-payroll-table th{background:#087f78!important;color:#fff!important;padding:8px 5px;font-weight:900;border-left:1px solid rgba(255,255,255,.45)}.print-payroll-table td{height:25px;padding:5px;text-align:center;border-left:1px solid #77b5b8;border-top:1px solid #9ac9cb}.print-payroll-table tbody tr:nth-child(even) td{background:#f6fbfb!important}.employee-name{text-align:right!important;font-weight:700}
+    .print-approval-grid{display:grid;grid-template-columns:1fr .8fr 1fr;gap:22px;align-items:center;margin:12px auto 0;width:82%;page-break-inside:avoid}.print-signature-box,.print-stamp-box{min-height:72px;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px 12px}.approval-name,.approval-role{margin-top:8px;font-size:11px;font-weight:700}.approval-line{margin-top:10px;font-size:10px}.print-stamp-area{height:52px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8aa}.print-stamp-image{max-width:72px;max-height:58px;object-fit:contain}.print-footer-note{position:absolute;bottom:1mm;left:0;right:0;text-align:center;border-top:1px solid #d7e8e8;padding-top:4px;font-size:8px;color:#628080}tr{page-break-inside:avoid}thead{display:table-header-group}
   }`}</style>
   </div>;
 }
