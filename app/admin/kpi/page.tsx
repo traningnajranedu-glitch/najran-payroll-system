@@ -51,6 +51,14 @@ export default function KpiDashboard(){
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false),[saving,setSaving]=useState(false);
   const [academicYear,setAcademicYear]=useState('1447-1448'),[achievementPercent,setAchievementPercent]=useState(''),[targetPercent,setTargetPercent]=useState(''),[achievementNotes,setAchievementNotes]=useState('');
+  const [currentDate,setCurrentDate]=useState(new Date());
+
+  const gregorianDate=useMemo(()=>new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{
+    timeZone:'Asia/Riyadh',weekday:'long',day:'numeric',month:'long',year:'numeric'
+  }).format(currentDate),[currentDate]);
+  const hijriDate=useMemo(()=>new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura',{
+    timeZone:'Asia/Riyadh',day:'numeric',month:'long',year:'numeric'
+  }).format(currentDate),[currentDate]);
 
   async function load(){
     setLoading(true);setError('');
@@ -76,6 +84,7 @@ export default function KpiDashboard(){
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
+  useEffect(()=>{const id=setInterval(()=>setCurrentDate(new Date()),60000);return()=>clearInterval(id)},[]);
   useEffect(()=>{const id=setInterval(load,60000);return()=>clearInterval(id)},[]);
   useEffect(()=>{const h=()=>setIsFullscreen(!!document.fullscreenElement);document.addEventListener('fullscreenchange',h);return()=>document.removeEventListener('fullscreenchange',h)},[]);
 
@@ -158,7 +167,7 @@ export default function KpiDashboard(){
               <div className="min-w-0"><h1 className="font-black text-lg lg:text-2xl text-[#064d44] truncate">البوابة الالكترونية لمدارس التعليم المستمر</h1><p className="text-xs lg:text-sm text-[#6e817e] truncate">الإدارة العامة للتعليم بنجران — قسم التعليم المستمر</p></div>
             </div>
             <div className="hidden md:flex items-center gap-5 text-xs text-[#60716e]">
-              <div className="text-right"><div className="font-bold">السبت 27 سبتمبر 2025 م</div><div>4 ربيع الآخر 1447 هـ</div></div>
+              <div className="text-right"><div className="font-bold">{gregorianDate} م</div><div>{hijriDate} هـ</div></div>
               <div className="w-px h-10 bg-[#dce8e6]"/>
               <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-full bg-[#e7f4f0] text-[#087f69] flex items-center justify-center"><UserRound size={19}/></div><span>مرحباً بك في البوابة</span></div>
             </div>
