@@ -533,8 +533,7 @@ export default function Dashboard() {
             </svg>
           </div>
           <div className="print-letterhead-left">
-            <div><b>الرقم:</b> ....................................</div><div><b>التاريخ:</b> &nbsp;&nbsp; / &nbsp;&nbsp; / {approvedHijri.split('/')[0] || 'ــــ'} هـ</div>
-            <small>التاريخ الهجري الذي تم فيه اعتماد المسير</small>
+            <div><b>الرقم:</b> ....................................</div><div><b>التاريخ:</b> {approvedHijri !== '—' ? `${approvedHijri} هـ` : '....................................'}</div>
           </div>
         </div>
         <div className="print-main-title">طباعة مسير الرواتب</div>
