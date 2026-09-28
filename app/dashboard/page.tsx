@@ -543,6 +543,7 @@ export default function Dashboard() {
           <div><b>اسم المدرسة:</b> {school.school_name}</div>
           <div><b>فترة المسير:</b> {period?.period_name || '—'} &nbsp; | &nbsp; من {period?.start_hijri || gregorianToHijri(period?.start_date)} هـ إلى {period?.end_hijri || gregorianToHijri(period?.end_date)} هـ</div>
         </div>
+        <div className="print-reward-title">مكافأة العاملين وشهادة إنهاء مهمة بمدرسة {school.school_name} للتعليم المستمر بمنطقة نجران للعام: 1448هـ</div>
         <table className="print-payroll-table">
           <thead><tr><th>م</th><th>اسم الموظف</th><th>الوظيفة</th><th>عدد الحصص</th><th>عدد الأيام</th><th>أيام الغياب</th><th>تاريخ المباشرة</th><th>الملاحظات</th></tr></thead>
           <tbody>{printRows.map(({ teacher, row, netDays }, i) => <tr key={teacher.id}>
@@ -573,7 +574,8 @@ export default function Dashboard() {
     .print-portal-title { text-align:center; font-size:17px; font-weight:900; margin-bottom:10px; }
     .print-meta { display:grid; grid-template-columns:1fr 1.3fr; gap:10px; margin:0 0 10px; font-size:11px; color:#064f50; }
     .print-meta > div { border:1px solid #b7d9dc; border-radius:6px; padding:6px 10px; background:#fbfefe; }
-    .print-payroll-table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:10px; color:#173f41; overflow:hidden; border:1px solid #0b7e7b; border-radius:7px; }
+    .print-reward-title{text-align:center;font-size:14px;font-weight:900;color:#064f50;margin:5px 0 9px;line-height:1.8}
+        .print-payroll-table { width:100%; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:10px; color:#173f41; overflow:hidden; border:1px solid #0b7e7b; border-radius:7px; }
     .print-payroll-table th { background:#087f78 !important; color:#fff !important; padding:8px 5px; font-weight:900; border-left:1px solid rgba(255,255,255,.45); }
     .print-payroll-table td { height:25px; padding:5px; text-align:center; border-left:1px solid #77b5b8; border-top:1px solid #9ac9cb; }
     .print-payroll-table tbody tr:nth-child(even) td { background:#f6fbfb !important; }
