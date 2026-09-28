@@ -26,12 +26,15 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const rawFile = form.get('stamp');
     const file = rawFile instanceof File && rawFile.size > 0 ? rawFile : null;
+    const rawSignature = form.get('signature');
+    const signatureFile = rawSignature instanceof File && rawSignature.size > 0 ? rawSignature : null;
     const managerName = String(form.get('manager_name') || '').trim();
 
-    if (!file && !managerName) return NextResponse.json({ error: 'أدخل اسم مدير المدرسة أو أرفق صورة الختم.' }, { status: 400 });
+    if (!file && !signatureFile && !managerName) return NextResponse.json({ error: 'أدخل اسم مدير المدرسة أو أرفق صورة الختم أو التوقيع.' }, { status: 400 });
 
-    const { data: oldSchool } = await adminClient.from('schools').select('stamp_path').eq('id', schoolUser.school_id).maybeSingle();
+    const { data: oldSchool } = await adminClient.from('schools').select('stamp_path,manager_signature_path').eq('id', schoolUser.school_id).maybeSingle();
     let stampPath = oldSchool?.stamp_path || null;
+    let signaturePath = oldSchool?.manager_signature_path || null;
 
     if (file) {
       if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'الختم يجب أن يكون صورة.' }, { status: 400 });
@@ -46,15 +49,30 @@ export async function POST(request: Request) {
       if (oldSchool?.stamp_path && oldSchool.stamp_path !== stampPath) await adminClient.storage.from('school-stamps').remove([oldSchool.stamp_path]);
     }
 
+    if (signatureFile) {
+      if (!signatureFile.type.startsWith('image/')) return NextResponse.json({ error: 'التوقيع يجب أن يكون صورة.' }, { status: 400 });
+      if (signatureFile.size > 2 * 1024 * 1024) return NextResponse.json({ error: 'حجم صورة التوقيع يجب ألا يتجاوز 2 ميجابايت.' }, { status: 400 });
+      const ext = (signatureFile.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+      signaturePath = `${schoolUser.school_id}/signature.${ext}`;
+      const bytes = await signatureFile.arrayBuffer();
+      const { error: uploadError } = await adminClient.storage
+        .from('school-stamps')
+        .upload(signaturePath, bytes, { contentType: signatureFile.type, upsert: true, cacheControl: '3600' });
+      if (uploadError) return NextResponse.json({ error: 'تعذر رفع التوقيع: ' + uploadError.message }, { status: 400 });
+      if (oldSchool?.manager_signature_path && oldSchool.manager_signature_path !== signaturePath) await adminClient.storage.from('school-stamps').remove([oldSchool.manager_signature_path]);
+    }
+
     const { error: updateError } = await adminClient
       .from('schools')
-      .update({ manager_name: managerName || null, stamp_path: stampPath })
+      .update({ manager_name: managerName || null, stamp_path: stampPath, manager_signature_path: signaturePath })
       .eq('id', schoolUser.school_id);
     if (updateError) return NextResponse.json({ error: 'تعذر حفظ بيانات المدرسة: ' + updateError.message }, { status: 400 });
 
     let stampUrl = '';
+    let signatureUrl = '';
     if (stampPath) stampUrl = adminClient.storage.from('school-stamps').getPublicUrl(stampPath).data.publicUrl;
-    return NextResponse.json({ success: true, stamp_url: stampUrl, manager_name: managerName });
+    if (signaturePath) signatureUrl = adminClient.storage.from('school-stamps').getPublicUrl(signaturePath).data.publicUrl;
+    return NextResponse.json({ success: true, stamp_url: stampUrl, signature_url: signatureUrl, manager_name: managerName });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'حدث خطأ غير متوقع.' }, { status: 500 });
   }
