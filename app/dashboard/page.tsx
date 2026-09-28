@@ -7,7 +7,7 @@ import { supabaseBrowser } from '../../lib/supabase';
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type PayrollRow = { id?: string; teacher_id: string; direct_start_date: string | null; pre_start_hours: number; absence_days: number; notes: string | null; status: string; approved_at?: string | null };
-type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; allow_school_teacher_edit?: boolean };
+type School = { id: string; school_code: string; school_name: string; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null; allow_school_teacher_edit?: boolean };
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
 type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
 
@@ -142,6 +142,8 @@ export default function Dashboard() {
   const [managerName, setManagerName] = useState('');
   const [stampUrl, setStampUrl] = useState('');
   const [stampFile, setStampFile] = useState<File | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState('');
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [savingSchool, setSavingSchool] = useState(false);
   const [savingTeachers, setSavingTeachers] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export default function Dashboard() {
 
     const { data: su } = await sb
       .from('school_users')
-      .select('school_id,schools(id,school_code,school_name,manager_name,stamp_path,allow_school_teacher_edit)')
+      .select('school_id,schools(id,school_code,school_name,manager_name,stamp_path,manager_signature_path,allow_school_teacher_edit)')
       .eq('auth_user_id', user.id)
       .eq('is_active', true)
       .single();
@@ -171,6 +173,11 @@ export default function Dashboard() {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
     } else {
       setStampUrl('');
+    }
+    if (currentSchool?.manager_signature_path) {
+      setSignatureUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.manager_signature_path).data.publicUrl);
+    } else {
+      setSignatureUrl('');
     }
 
     const { data: t } = await sb
@@ -348,16 +355,17 @@ export default function Dashboard() {
   }
 
   async function saveSchoolSettings() {
-    if (!managerName.trim() && !stampFile) {
-      setMessage('أدخل اسم مدير المدرسة أو اختر صورة الختم.');
+    if (!managerName.trim() && !stampFile && !signatureFile) {
+      setMessage('أدخل اسم مدير المدرسة أو اختر صورة الختم أو التوقيع.');
       return;
     }
-    setSavingSchool(true); setMessage('جاري حفظ بيانات المدير والختم…');
+    setSavingSchool(true); setMessage('جاري حفظ بيانات المدير والختم والتوقيع…');
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { setMessage('انتهت جلسة الدخول.'); setSavingSchool(false); return; }
     const form = new FormData();
     form.append('manager_name', managerName.trim());
     if (stampFile) form.append('stamp', stampFile);
+    if (signatureFile) form.append('signature', signatureFile);
     const response = await fetch('/api/school/stamp', {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}` },
@@ -368,8 +376,10 @@ export default function Dashboard() {
       setMessage(result.error || 'تعذر حفظ بيانات المدرسة.');
     } else {
       setStampUrl(result.stamp_url || stampUrl);
+      setSignatureUrl(result.signature_url || signatureUrl);
       setStampFile(null);
-      setMessage('تم حفظ بيانات مدير المدرسة والختم.');
+      setSignatureFile(null);
+      setMessage('تم حفظ بيانات مدير المدرسة والختم والتوقيع الإلكتروني.');
       await load();
     }
     setSavingSchool(false);
@@ -419,12 +429,13 @@ export default function Dashboard() {
 
         <div className="card p-5 mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div><h2 className="font-bold text-lg">بيانات اعتماد المدرسة</h2><p className="text-sm text-gray-500 mt-1">تظهر بيانات المدير والختم في أسفل يسار المسير عند الطباعة.</p></div>
-            {stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-20 h-20 object-contain border rounded-xl bg-white" />}
+            <div><h2 className="font-bold text-lg">بيانات اعتماد المدرسة</h2><p className="text-sm text-gray-500 mt-1">تظهر بيانات المدير والختم والتوقيع الإلكتروني في المسير عند الطباعة.</p></div>
+            <div className="flex items-center gap-2">{signatureUrl && <img src={signatureUrl} alt="توقيع مدير المدرسة" className="w-28 h-20 object-contain border rounded-xl bg-white" />}{stampUrl && <img src={stampUrl} alt="ختم المدرسة" className="w-20 h-20 object-contain border rounded-xl bg-white" />}</div>
           </div>
-          <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+          <div className="grid md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
             <label className="block"><span className="block text-sm font-semibold mb-2">اسم مدير المدرسة</span><input value={managerName} onChange={e => setManagerName(e.target.value)} className="border rounded-xl px-4 py-3 w-full" placeholder="اسم مدير المدرسة" /></label>
             <label className="block"><span className="block text-sm font-semibold mb-2">صورة ختم المدرسة</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setStampFile(e.target.files?.[0] || null)} className="border rounded-xl px-3 py-2.5 w-full bg-white" /></label>
+            <label className="block"><span className="block text-sm font-semibold mb-2">{signatureUrl ? "تغيير توقيع مدير المدرسة" : "رفع توقيع مدير المدرسة"}</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setSignatureFile(e.target.files?.[0] || null)} className="border rounded-xl px-3 py-2.5 w-full bg-white" /></label>
             <button type="button" disabled={savingSchool} onClick={saveSchoolSettings} className="bg-[var(--navy)] text-white rounded-xl px-5 py-3 font-bold flex items-center justify-center gap-2"><Upload size={18}/>{savingSchool ? 'جارٍ الحفظ…' : 'حفظ البيانات'}</button>
           </div>
         </div>
@@ -554,7 +565,7 @@ export default function Dashboard() {
           <div className="print-certification-closing">للإحاطة والاطلاع ،،،،،،</div>
         </div>
         <div className="print-approval-grid">
-          <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{school.manager_name || managerName || '................................'}</div><div className="approval-line">التوقيع: ................................</div></div>
+          <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{school.manager_name || managerName || '................................'}</div>{signatureUrl ? <img src={signatureUrl} alt="توقيع مدير المدرسة" className="print-signature-image"/> : <div className="approval-line">التوقيع: ................................</div>}</div>
           <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{stampUrl ? <img src={stampUrl} alt="ختم المدرسة" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
           <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">المشرف / مدير إدارة التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
         </div>
@@ -586,7 +597,7 @@ export default function Dashboard() {
     .print-payroll-table th:nth-child(1){width:4%}.print-payroll-table th:nth-child(2){width:22%}.print-payroll-table th:nth-child(3){width:12%}.print-payroll-table th:nth-child(4){width:10%}.print-payroll-table th:nth-child(5){width:10%}.print-payroll-table th:nth-child(6){width:10%}.print-payroll-table th:nth-child(7){width:14%}.print-payroll-table th:nth-child(8){width:18%}
     .print-approval-grid { display:grid; grid-template-columns:1fr .8fr 1fr; gap:22px; align-items:center; margin:12px auto 0; width:82%; page-break-inside:avoid; }
     .print-signature-box,.print-stamp-box { min-height:72px; border:1px solid #9ccbd0; border-radius:7px; text-align:center; padding:7px 12px; color:#064f50; }
-    .approval-name,.approval-role { margin-top:8px; font-size:11px; font-weight:700; }.approval-line{margin-top:10px;font-size:10px}
+    .approval-name,.approval-role { margin-top:8px; font-size:11px; font-weight:700; }.approval-line{margin-top:10px;font-size:10px}.print-signature-image{display:block;max-width:110px;max-height:42px;object-fit:contain;margin:5px auto 0}
     .print-stamp-area { height:52px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#8aa; }
     .print-stamp-image { max-width:72px; max-height:58px; object-fit:contain; }
     .print-footer-note { position:absolute; bottom:1mm; left:0; right:0; text-align:center; border-top:1px solid #d7e8e8; padding-top:4px; font-size:8px; color:#628080; }
