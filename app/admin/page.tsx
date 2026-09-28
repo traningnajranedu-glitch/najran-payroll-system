@@ -8,7 +8,7 @@ import { supabaseBrowser } from '../../lib/supabase';
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name?: string | null; allow_school_teacher_edit?: boolean };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null; is_active: boolean };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
-type RecordRow = { id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; pre_start_hours: number; payroll_days: number; payroll_days_manual: boolean; notes: string | null };
+type RecordRow = { id: string; period_id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; pre_start_hours: number; payroll_days: number; payroll_days_manual: boolean; notes: string | null; approved_at?: string | null };
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
 type ActivityReport = { id: string; activity_id: string; school_id: string; report_text: string | null; statistics: string | null; attachment_path: string | null; status: string; rating: number | null; rated_at: string | null };
 
@@ -119,7 +119,7 @@ function HijriDatePicker({value,onChange,placeholder='اختر التاريخ ا
 export default function AdminPage() {
   const sb = supabaseBrowser();
   const [loading,setLoading]=useState(true), [allowed,setAllowed]=useState(false);
-  const [tab,setTab]=useState('overview'), [schools,setSchools]=useState<School[]>([]), [teachers,setTeachers]=useState<Teacher[]>([]), [periods,setPeriods]=useState<Period[]>([]), [records,setRecords]=useState<RecordRow[]>([]);
+  const [tab,setTab]=useState('overview'), [schools,setSchools]=useState<School[]>([]), [teachers,setTeachers]=useState<Teacher[]>([]), [periods,setPeriods]=useState<Period[]>([]), [records,setRecords]=useState<RecordRow[]>([]), [allRecords,setAllRecords]=useState<RecordRow[]>([]);
   const [schoolId,setSchoolId]=useState(''), [periodId,setPeriodId]=useState(''), [message,setMessage]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
   const [schoolForm,setSchoolForm]=useState({school_code:'',school_name:'',manager_name:''});
   const [teacherForm,setTeacherForm]=useState({school_id:'',full_name:'',national_id:'',job_role:'معلم',specialization:''});
@@ -142,15 +142,16 @@ export default function AdminPage() {
     const {data:admin}=await sb.from('admin_users').select('id,signature_path').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setLoading(false);return;} setAllowed(true);
     setAdminSignatureUrl(admin.signature_path ? sb.storage.from('school-stamps').getPublicUrl(admin.signature_path).data.publicUrl : '');
-    const [s,t,p,acts,reps]=await Promise.all([
+    const [s,t,p,acts,reps,allPayroll]=await Promise.all([
       sb.from('schools').select('*').order('school_name'),
       sb.from('teachers').select('*').order('full_name'),
       sb.from('payroll_periods').select('*').order('start_date',{ascending:false}),
       sb.from('school_activities').select('*').order('created_at',{ascending:false}),
-      sb.from('school_activity_reports').select('*').order('created_at',{ascending:false})
+      sb.from('school_activity_reports').select('*').order('created_at',{ascending:false}),
+      sb.from('payroll_records').select('*')
     ]);
     if(s.error||t.error||p.error)setError(s.error?.message||t.error?.message||p.error?.message||'تعذر تحميل البيانات');
-    setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports(reps.data||[]);
+    setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports(reps.data||[]);setAllRecords(allPayroll.data||[]);
     if(!schoolId&&s.data?.[0])setSchoolId(s.data[0].id);
     if(!periodId&&p.data?.[0])setPeriodId(p.data[0].id);
     if(!teacherForm.school_id&&s.data?.[0])setTeacherForm(x=>({...x,school_id:s.data[0].id}));
@@ -577,6 +578,18 @@ async function deletePeriod(p:Period){
   const maxRoleCount=Math.max(1,...roleCounts.map(x=>x.count));
   const recentActivities=activities.slice(0,3);
   const recentPeriods=periods.slice(0,5);
+  const latestSchoolPayrolls=schools.map(school=>{
+    const schoolRecords=allRecords.filter(r=>r.school_id===school.id);
+    const periodWithRecords=periods.find(p=>schoolRecords.some(r=>r.period_id===p.id));
+    if(!periodWithRecords)return {school,period:null,approved:false,approvedAt:null};
+    const periodRecords=schoolRecords.filter(r=>r.period_id===periodWithRecords.id);
+    const approved=periodRecords.length>0&&periodRecords.every(r=>r.status==='تم الاعتماد');
+    const approvedAt=approved?periodRecords.map(r=>r.approved_at).filter(Boolean).sort().at(-1)||null:null;
+    return {school,period:periodWithRecords,approved,approvedAt};
+  }).sort((a,b)=>{
+    const ad=a.period?.start_date||'', bd=b.period?.start_date||'';
+    return bd.localeCompare(ad);
+  }).slice(0,5);
 
   return <div dir="rtl" className="min-h-screen bg-[#f4f7f6] text-slate-800">
     <div className="lg:pr-[220px]">
@@ -610,7 +623,7 @@ async function deletePeriod(p:Period){
           <div className="grid xl:grid-cols-3 gap-4">
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden"><div className="p-4 border-b flex justify-between"><h3 className="font-black">أحدث الأنشطة والاحتفالات</h3><button onClick={()=>setTab('activities')} className="text-xs text-emerald-700 font-bold">عرض الكل</button></div><div className="divide-y">{recentActivities.length?recentActivities.map(a=><div key={a.id} className="p-4 flex gap-3"><div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><PartyPopper size={18}/></div><div><b className="text-sm">{a.name}</b><p className="text-xs text-slate-500 mt-1 line-clamp-1">{a.description||'نشاط مدارس التعليم المستمر'}</p></div></div>):<div className="p-5 text-sm text-slate-500">لا توجد أنشطة حاليًا.</div>}</div></div>
             <div className="bg-white border rounded-2xl shadow-sm overflow-hidden"><div className="p-4 border-b flex justify-between"><h3 className="font-black flex gap-2 items-center"><Bell size={18}/> التنبيهات</h3><button onClick={()=>setTab('payroll')} className="text-xs text-emerald-700 font-bold">عرض الكل</button></div><div className="p-4 space-y-3 text-sm"><div className="flex gap-3"><CheckCircle2 size={18} className="text-emerald-600 shrink-0"/><span>يوجد <b>{approvedRecords}</b> سجل مسير معتمد في الفترة المحددة.</span></div><div className="flex gap-3"><Clock3 size={18} className="text-amber-600 shrink-0"/><span>عدد الفترات المفتوحة حاليًا: <b>{openPeriods}</b>.</span></div><div className="flex gap-3"><Users size={18} className="text-blue-600 shrink-0"/><span>إجمالي الموظفين النشطين: <b>{activeTeachers}</b>.</span></div></div></div>
-            <div className="bg-white border rounded-2xl shadow-sm overflow-hidden"><div className="p-4 border-b flex justify-between"><h3 className="font-black">آخر فترات المسيرات</h3><button onClick={()=>setTab('periods')} className="text-xs text-emerald-700 font-bold">عرض الكل</button></div><div className="divide-y">{recentPeriods.map(p=><div key={p.id} className="p-3 flex items-center justify-between gap-2"><div><b className="text-sm">{p.period_name}</b><div className="text-[11px] text-slate-500 mt-1">{p.start_hijri||gregorianToHijri(p.start_date)} — {p.end_hijri||gregorianToHijri(p.end_date)}</div></div><span className={`text-[11px] px-2 py-1 rounded-full font-bold ${periodIsOpen(p)?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'}`}>{periodIsOpen(p)?'مفتوحة':'مغلقة'}</span></div>)}</div></div>
+            <div className="bg-white border rounded-2xl shadow-sm overflow-hidden"><div className="p-4 border-b flex justify-between"><h3 className="font-black">آخر مسيرات المدارس</h3><button onClick={()=>setTab('payroll')} className="text-xs text-emerald-700 font-bold">عرض الكل</button></div><div className="divide-y">{latestSchoolPayrolls.map(item=><div key={item.school.id} className="p-3 flex items-center justify-between gap-3"><div className="min-w-0"><b className="text-sm block truncate">{item.school.school_name}</b><div className="text-[11px] text-slate-500 mt-1">{item.period?item.period.period_name:'لا يوجد مسير حتى الآن'}</div>{item.approvedAt&&<div className="text-[10px] text-emerald-700 mt-1">تاريخ الاعتماد: {gregorianToHijri(item.approvedAt.slice(0,10))} هـ</div>}</div><span className={`shrink-0 text-[11px] px-2.5 py-1.5 rounded-full font-bold ${item.approved?'bg-emerald-50 text-emerald-700':'bg-red-50 text-red-700'}`}>{item.approved?'معتمد':'لم يعتمد'}</span></div>)}</div></div>
           </div>
         </div>}
 
