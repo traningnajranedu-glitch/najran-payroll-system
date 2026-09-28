@@ -588,12 +588,6 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
-          </div>
-          <div className="text-center text-[11px] text-gray-500">
-            <div className="font-bold text-gray-700">حالة المسير</div>
-            <div>تم الاعتماد — {approvedHijri} هـ</div>
-          </div>
-        </div>
       </section>
     </main>
 
