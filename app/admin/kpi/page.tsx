@@ -7,6 +7,7 @@ import {
   FileText, Settings, ClipboardList, Bell, Sparkles, CheckCircle2, Clock3,
   AlertCircle, ChevronLeft, Menu, X, Trophy, Award
 } from 'lucide-react';
+import DisciplinePanel from '../../../components/DisciplinePanel';
 import AchievementPanel from '../../../components/AchievementPanel';
 import {currentAcademicYear} from '../../../lib/achievement';
 import { supabaseBrowser } from '../../../lib/supabase';
@@ -241,6 +242,7 @@ export default function KpiDashboard(){
             </Panel>
           </section>
 
+          <DisciplinePanel schools={activeSchools} admin/>
           <AchievementPanel schools={activeSchools} admin/>
 
           <Panel title="التنافس اليومي — مؤشر منصة مدرستي" sub="جميع المدارس النشطة تظهر يوميًا؛ المدرسة التي لم تُدخل بياناتها تظهر بقيمة 0% حتى يتم تحديث النموذج" icon={BarChart3} className="mb-5">
