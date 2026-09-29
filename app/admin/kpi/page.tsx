@@ -257,28 +257,30 @@ export default function KpiDashboard(){
             </Panel>
           </section>
 
-          <Panel title="التنافس اليومي — مؤشر منصة مدرستي" sub="مقارنة بصرية مرتبة من الأعلى إلى الأقل حسب متوسط الدخول والتفعيل" icon={BarChart3} className="mb-5">
-            {madrasati.length>0&&<div className="space-y-3">
-              {madrasati.map(x=>({...x,school:schools.find(s=>s.id===x.school_id),avg:(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5})).sort((a,b)=>b.avg-a.avg||a.support_challenges_count-b.support_challenges_count).map((x,i)=>{
-                const tone=x.avg>=90?'from-emerald-700 to-emerald-500':x.avg>=80?'from-green-600 to-green-400':x.avg>=70?'from-blue-600 to-sky-400':x.avg>=60?'from-amber-500 to-yellow-400':'from-orange-600 to-red-500';
-                const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-                return <div key={x.id} className={`rounded-2xl border p-3 sm:p-4 ${i<3?'border-amber-200 bg-amber-50/40':'border-slate-200 bg-white'}`}>
+          <Panel title="التنافس اليومي — مؤشر منصة مدرستي" sub="جميع المدارس النشطة تظهر يوميًا؛ المدرسة التي لم تُدخل بياناتها تظهر بقيمة 0% حتى يتم تحديث النموذج" icon={BarChart3} className="mb-5">
+            {activeSchools.length>0&&<div className="space-y-3">
+              {activeSchools.map(s=>{
+                const x=madrasati.find(m=>m.school_id===s.id);
+                const avg=x?(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5:0;
+                return {school:s,data:x,avg,support:x?.support_challenges_count??0};
+              }).sort((a,b)=>b.avg-a.avg||a.school.school_name.localeCompare(b.school.school_name,'ar')).map((x,i)=>{
+                const tone=x.avg>=90?'from-emerald-700 to-emerald-500':x.avg>=80?'from-green-600 to-green-400':x.avg>=70?'from-blue-600 to-sky-400':x.avg>=60?'from-amber-500 to-yellow-400':x.avg>0?'from-orange-600 to-red-500':'from-slate-300 to-slate-400';
+                const medal=x.avg>0&&i===0?'🥇':x.avg>0&&i===1?'🥈':x.avg>0&&i===2?'🥉':'';
+                return <div key={x.school.id} className={`rounded-2xl border p-3 sm:p-4 ${x.avg>0&&i<3?'border-amber-200 bg-amber-50/40':x.data?'border-slate-200 bg-white':'border-slate-200 bg-slate-50'}`}>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex items-center gap-2"><span className="w-7 text-center font-black text-slate-500">{medal||`#${i+1}`}</span><span className="truncate font-bold text-slate-800">{x.school?.school_name||'—'}</span></div>
-                    <div className="shrink-0 rounded-xl bg-slate-900 px-3 py-1 text-sm font-black text-white">{pct(x.avg)}%</div>
+                    <div className="min-w-0 flex items-center gap-2"><span className="w-7 text-center font-black text-slate-500">{medal||`#${i+1}`}</span><span className="truncate font-bold text-slate-800">{x.school.school_name}</span>{!x.data&&<span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">لم يتم الإدخال</span>}</div>
+                    <div className={`shrink-0 rounded-xl px-3 py-1 text-sm font-black text-white ${x.data?'bg-slate-900':'bg-slate-400'}`}>{pct(x.avg)}%</div>
                   </div>
                   <div className="h-5 overflow-hidden rounded-full bg-slate-100 shadow-inner" dir="ltr"><div className={`h-full rounded-full bg-gradient-to-r ${tone} transition-all duration-700`} style={{width:`${Math.max(0,Math.min(100,x.avg))}%`}} /></div>
-                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500"><span>0%</span><span>التحديات/الدعم: <b className="text-slate-700">{x.support_challenges_count}</b></span><span>100%</span></div>
+                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500"><span>0%</span><span>{x.data?<>التحديات/الدعم: <b className="text-slate-700">{x.support}</b></>:'بانتظار إدخال المدرسة'}</span><span>100%</span></div>
                 </div>
               })}
-              <div className="flex flex-wrap gap-3 pt-2 text-[11px] font-bold text-slate-600"><span>● 90–100% متفوق</span><span>● 80–89% مرتفع</span><span>● 70–79% جيد</span><span>● 60–69% متوسط</span><span>● أقل من 60% يحتاج متابعة</span></div>
+              <div className="flex flex-wrap gap-3 pt-2 text-[11px] font-bold text-slate-600"><span>● 90–100% متفوق</span><span>● 80–89% مرتفع</span><span>● 70–79% جيد</span><span>● 60–69% متوسط</span><span>● 1–59% يحتاج متابعة</span><span>● 0% لم يتم الإدخال</span></div>
             </div>}
-            {!madrasati.length&&<div className="text-center text-sm text-[#718582] py-5">لم تُدخل المدارس مؤشرات منصة مدرستي لليوم حتى الآن.</div>}
           </Panel>
 
-          <Panel title="مؤشر منصة مدرستي — اليوم" sub="المقارنة اليومية بين المدارس حسب آخر إدخال؛ الترتيب يعتمد متوسط نسب الدخول والتفعيل الخمس" icon={BarChart3} className="mb-5">
-            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[1050px]"><thead className="bg-[#eef6f3] text-[#48655f]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>دخول المدير</th><th>دخول المعلمين</th><th>تفعيل المعلمين</th><th>دخول الطلاب</th><th>تفعيل الطلاب</th><th>التحديات/الدعم</th><th>المتوسط</th></tr></thead><tbody>{madrasati.map(x=>({...x,school:schools.find(s=>s.id===x.school_id),avg:(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5})).sort((a,b)=>b.avg-a.avg||a.support_challenges_count-b.support_challenges_count).map((x,i)=><tr key={x.id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{x.school?.school_name||'—'}</td><td className="text-center">{x.manager_login_percent}%</td><td className="text-center">{x.teachers_login_percent}%</td><td className="text-center">{x.teachers_tools_percent}%</td><td className="text-center">{x.students_login_percent}%</td><td className="text-center">{x.students_tools_percent}%</td><td className="text-center">{x.support_challenges_count}</td><td className="text-center font-black text-[#087f69]">{pct(x.avg)}%</td></tr>)}</tbody></table></div>
-            {!madrasati.length&&<div className="text-center text-sm text-[#718582] py-5">لم تُدخل المدارس مؤشرات منصة مدرستي لليوم حتى الآن.</div>}
+          <Panel title="مؤشر منصة مدرستي — تفاصيل اليوم" sub="تفاصيل جميع المدارس؛ القيم صفر حتى تقوم المدرسة بإدخال نموذج اليوم" icon={BarChart3} className="mb-5">
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[1050px]"><thead className="bg-[#eef6f3] text-[#48655f]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>دخول المدير</th><th>دخول المعلمين</th><th>تفعيل المعلمين</th><th>دخول الطلاب</th><th>تفعيل الطلاب</th><th>التحديات/الدعم</th><th>المتوسط</th></tr></thead><tbody>{activeSchools.map(s=>{const x=madrasati.find(m=>m.school_id===s.id);const avg=x?(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5:0;return {school:s,data:x,avg};}).sort((a,b)=>b.avg-a.avg||a.school.school_name.localeCompare(b.school.school_name,'ar')).map((x,i)=><tr key={x.school.id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{x.school.school_name}{!x.data&&<span className="mr-2 text-[10px] text-slate-400">لم يتم الإدخال</span>}</td><td className="text-center">{x.data?.manager_login_percent??0}%</td><td className="text-center">{x.data?.teachers_login_percent??0}%</td><td className="text-center">{x.data?.teachers_tools_percent??0}%</td><td className="text-center">{x.data?.students_login_percent??0}%</td><td className="text-center">{x.data?.students_tools_percent??0}%</td><td className="text-center">{x.data?.support_challenges_count??0}</td><td className="text-center font-black text-[#087f69]">{pct(x.avg)}%</td></tr>)}</tbody></table></div>
           </Panel>
 
           <Panel title="التنافس الشهري بين المدارس" sub="ترتيب المدارس حسب نسبة الإنجاز من 100 نقطة" icon={Trophy} className="mb-5">
