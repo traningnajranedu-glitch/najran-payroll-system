@@ -149,7 +149,8 @@ export default function AdminPage() {
       sb.from('payroll_periods').select('*').order('start_date',{ascending:false}),
       sb.from('school_activities').select('*').order('created_at',{ascending:false}),
       sb.from('school_activity_reports').select('*').order('created_at',{ascending:false}),
-      sb.from('payroll_records').select('*')
+      sb.from('payroll_records').select('*'),
+      sb.from('school_madrasati_daily_indicators').select('id,school_id,indicator_date,updated_at').order('updated_at',{ascending:false}).limit(50)
     ]);
     if(s.error||t.error||p.error)setError(s.error?.message||t.error?.message||p.error?.message||'تعذر تحميل البيانات');
     setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports(reps.data||[]);setAllRecords(allPayroll.data||[]);setMadrasatiDaily((mad.data||[]) as MadrasatiDaily[]);
