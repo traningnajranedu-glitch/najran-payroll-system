@@ -10,7 +10,8 @@ type Teacher = { id: string; school_id: string; full_name: string; national_id: 
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type RecordRow = { id: string; period_id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; pre_start_hours: number; payroll_days: number; payroll_days_manual: boolean; notes: string | null; approved_at?: string | null };
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
-type ActivityReport = { id: string; activity_id: string; school_id: string; report_text: string | null; statistics: string | null; attachment_path: string | null; status: string; rating: number | null; rated_at: string | null };\ntype MadrasatiDaily = { id:string; school_id:string; indicator_date:string; updated_at:string };
+type ActivityReport = { id: string; activity_id: string; school_id: string; report_text: string | null; statistics: string | null; attachment_path: string | null; status: string; rating: number | null; rated_at: string | null };
+type MadrasatiDaily = { id:string; school_id:string; indicator_date:string; updated_at:string };
 
 const roles = ['مدير','معلم','إداري','مستخدم','حارس'];
 
@@ -591,7 +592,8 @@ async function deletePeriod(p:Period){
     const approvedAt=periodRecords.map(r=>r.approved_at).filter(Boolean).sort().at(-1)||null;
     return {id:school.id+'-'+period.id,school,period,approvedAt};
   })).filter((x):x is NonNullable<typeof x>=>!!x).sort((a,b)=>(b.approvedAt||'').localeCompare(a.approvedAt||''));
-  const recentApprovalNotifications=payrollApprovalNotifications.slice(0,4);\n  const recentMadrasatiNotifications=madrasatiDaily.slice(0,4).map(x=>({ ...x, school:schools.find(s=>s.id===x.school_id) }));
+  const recentApprovalNotifications=payrollApprovalNotifications.slice(0,4);
+  const recentMadrasatiNotifications=madrasatiDaily.slice(0,4).map(x=>({ ...x, school:schools.find(s=>s.id===x.school_id) }));
   const latestSchoolPayrolls=schools.map(school=>{
     const schoolRecords=allRecords.filter(r=>r.school_id===school.id);
     const periodWithRecords=periods.find(p=>schoolRecords.some(r=>r.period_id===p.id));
