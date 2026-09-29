@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList } from 'lucide-react';
+import AchievementPanel from '../../components/AchievementPanel';
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
@@ -438,6 +439,8 @@ export default function Dashboard() {
             <a href="/dashboard/indicators" className="group relative overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-b from-violet-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-violet-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-700 to-purple-500 text-white shadow-lg shadow-violet-200 flex items-center justify-center mb-5"><ClipboardList size={31}/></div><div className="font-black text-xl text-violet-700">نماذج إدخال المؤشرات</div><div className="text-sm text-slate-500 mt-2 min-h-10">إدخال مؤشرات منصة مدرستي والانضباط والتحصيل العلمي</div><div className="mt-5 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-black text-violet-700 group-hover:bg-violet-100 transition">الدخول إلى الخدمة ←</div></div></a>
           </div>
         </section>
+
+        {school&&<><a href="/dashboard/indicators/achievement" className="inline-block mb-3 rounded-xl bg-emerald-700 px-5 py-3 text-white font-bold">إدخال / تحديث التحصيل العلمي</a><AchievementPanel schools={[school]}/></>}
 
         <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-l from-violet-50 via-white to-blue-50 shadow-sm">
           <div className="flex flex-col gap-5 p-5 sm:p-6">

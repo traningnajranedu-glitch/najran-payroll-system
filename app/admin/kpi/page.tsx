@@ -7,13 +7,15 @@ import {
   FileText, Settings, ClipboardList, Bell, Sparkles, CheckCircle2, Clock3,
   AlertCircle, ChevronLeft, Menu, X, Trophy, Award
 } from 'lucide-react';
+import AchievementPanel from '../../../components/AchievementPanel';
+import {currentAcademicYear} from '../../../lib/achievement';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School={id:string;school_code:string;school_name:string;is_active:boolean};
 type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
-type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;target_percent:number|null;notes:string|null};
+type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;assessed_count:number;target_percent:number|null;notes:string|null};
 type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
 type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
 type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number;completedActivities:number;activityRate:number;avgRating:number;achievement:number|null;target:number|null;achievementYear:string|null};
@@ -50,8 +52,7 @@ export default function KpiDashboard(){
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [competition,setCompetition]=useState<CompetitionScore[]>([]),[madrasati,setMadrasati]=useState<MadrasatiDaily[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
-  const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false),[saving,setSaving]=useState(false);
-  const [academicYear,setAcademicYear]=useState('1447-1448'),[achievementPercent,setAchievementPercent]=useState(''),[targetPercent,setTargetPercent]=useState(''),[achievementNotes,setAchievementNotes]=useState('');
+  const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false);
   const [currentDate,setCurrentDate]=useState(new Date());
 
   const gregorianDate=useMemo(()=>new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{
@@ -67,22 +68,21 @@ export default function KpiDashboard(){
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
-    const [s,t,a,r,e,m]=await Promise.all([
+    const [s,t,a,r,e,m,c]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
-      sb.from('school_educational_achievement').select('*').order('academic_year',{ascending:false}),
-      sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false})
+      sb.from('school_achievement_summary').select('*').eq('academic_year',currentAcademicYear()).eq('semester','الأول').eq('evaluation_type','ختامي'),
+      sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false}),
+      sb.from('school_achievement_settings').select('*').single()
     ]);
-    const first=s.error||t.error||a.error||r.error||e.error||m.error;
+    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error;
     if(first){setError(first.message);setLoading(false);return;}
     setSchools(s.data||[]);
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
-    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements(e.data||[]);
-    const latest=(e.data||[])[0];
-    if(latest){setAcademicYear(latest.academic_year);setAchievementPercent(String(latest.achievement_percent));setTargetPercent(latest.target_percent==null?'':String(latest.target_percent));setAchievementNotes(latest.notes||'');}
+    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
@@ -102,32 +102,16 @@ export default function KpiDashboard(){
   const filtered=selectedSchool==='all'?rows:rows.filter(r=>r.school.id===selectedSchool);
   const selected=selectedSchool==='all'?null:rows.find(r=>r.school.id===selectedSchool)||null;
   const overall=useMemo(()=>{
-    const staff=filtered.reduce((n,r)=>n+r.activeStaff,0),total=filtered.reduce((n,r)=>n+r.totalStaff,0),rated=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)&&r.rating!=null),vals=filtered.filter(r=>r.achievement!=null).map(r=>r.achievement as number);
-    return {staffing:total?staff/total*100:0,activities:filtered.length?filtered.reduce((n,r)=>n+r.activityRate,0)/filtered.length:0,rating:rated.length?rated.reduce((n,r)=>n+(r.rating||0),0)/rated.length:0,achievement:vals.length?vals.reduce((n,v)=>n+v,0)/vals.length:0,staff,total};
-  },[filtered,reports]);
+    const staff=filtered.reduce((n,r)=>n+r.activeStaff,0),total=filtered.reduce((n,r)=>n+r.totalStaff,0),rated=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)&&r.rating!=null);
+    return {staffing:total?staff/total*100:0,activities:filtered.length?filtered.reduce((n,r)=>n+r.activityRate,0)/filtered.length:0,rating:rated.length?rated.reduce((n,r)=>n+(r.rating||0),0)/rated.length:0,achievement:filtered.some(r=>r.achievement!==null)?achievements.filter(a=>filtered.some(r=>r.school.id===a.school_id)).reduce((n,a)=>n+Number(a.achievement_percent)*Number(a.assessed_count),0)/(achievements.filter(a=>filtered.some(r=>r.school.id===a.school_id)).reduce((n,a)=>n+Number(a.assessed_count),0)||1):null,staff,total};
+  },[filtered,reports,achievements]);
   const ranking=[...filtered].sort((a,b)=>b.activityRate-a.activityRate);
   const activityReports=filtered.reduce((n,r)=>n+r.completedActivities,0);
   const recentReports=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)).slice(0,5);
   const recentActivities=activeActivities.slice(0,3);
   const schoolStatus={active:activeSchools.length,review:Math.max(0,Math.round(activeSchools.length*.1)),blocked:Math.max(0,activeSchools.length-Math.max(0,Math.round(activeSchools.length*.9))-Math.max(0,Math.round(activeSchools.length*.1)))};
 
-  function chooseSchool(id:string){
-    setSelectedSchool(id);
-    if(id==='all'){setAchievementPercent('');setTargetPercent('');setAchievementNotes('');return;}
-    const ach=achievements.filter(a=>a.school_id===id).sort((x,y)=>y.academic_year.localeCompare(x.academic_year))[0];
-    if(ach){setAcademicYear(ach.academic_year);setAchievementPercent(String(ach.achievement_percent));setTargetPercent(ach.target_percent==null?'':String(ach.target_percent));setAchievementNotes(ach.notes||'');}
-    else{setAchievementPercent('');setTargetPercent('');setAchievementNotes('');}
-  }
-  async function saveAchievement(){
-    if(selectedSchool==='all'){setError('اختر مدرسة محددة قبل حفظ مؤشر التحصيل التعليمي.');return;}
-    const value=Number(achievementPercent),target=targetPercent===''?null:Number(targetPercent);
-    if(!academicYear.trim()||!Number.isFinite(value)||value<0||value>100||(target!==null&&(!Number.isFinite(target)||target<0||target>100))){setError('أدخل السنة ونسبة التحصيل والمستهدف بشكل صحيح من 0 إلى 100.');return;}
-    setSaving(true);setError('');setMessage('');
-    const {data:{user}}=await sb.auth.getUser();
-    const {error}=await sb.from('school_educational_achievement').upsert({school_id:selectedSchool,academic_year:academicYear.trim(),achievement_percent:value,target_percent:target,notes:achievementNotes.trim()||null,updated_by:user?.id||null,updated_at:new Date().toISOString()},{onConflict:'school_id,academic_year'});
-    if(error)setError('تعذر حفظ التحصيل التعليمي: '+error.message);else{setMessage('تم حفظ مؤشر التحصيل التعليمي للمدرسة.');await load();}
-    setSaving(false);
-  }
+  function chooseSchool(id:string){setSelectedSchool(id);}
   async function issueMonthlyAwards(){
     setIssuingAwards(true);setError('');setMessage('');
     const d=new Date(); d.setUTCMonth(d.getUTCMonth()-1,1);
@@ -245,17 +229,19 @@ export default function KpiDashboard(){
               <div className="space-y-2">{recentActivities.map((a,i)=><div key={a.id} className="flex items-center gap-3 p-3 rounded-xl border border-[#edf2f1]"><div className={'w-10 h-10 rounded-xl flex items-center justify-center '+(i===0?'bg-[#e3f4ee] text-[#087f69]':i===1?'bg-[#e8f0fb] text-[#326fb5]':'bg-[#fff1d5] text-[#ad7607]')}><PartyPopper size={19}/></div><div className="min-w-0"><b className="text-sm block truncate">{a.name}</b><span className="text-[10px] text-[#81918e]">فعالية مدرسية · نشطة</span></div></div>)}{!recentActivities.length&&<div className="text-center text-sm text-[#899995] p-6">لا توجد أنشطة نشطة حاليًا.</div>}</div>
               <button className="mt-3 text-xs font-black text-[#087f69] flex items-center gap-1">عرض الكل <ChevronLeft size={14}/></button>
             </Panel>
-            <Panel title="مؤشرات الأداء" sub="ملخص مؤشرات الأداء الرئيسية" icon={TrendingUp} className="xl:col-span-5">
+            <Panel title="مؤشرات الأداء" sub="ملخص التشغيل والتحصيل الختامي للفصل الأول في العام الحالي" icon={TrendingUp} className="xl:col-span-5">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  ['نسبة الموظفين العاملين',overall.staffing,'green'],['إنجاز الأنشطة',overall.activities,'blue'],['متوسط تقييم الأنشطة',overall.rating*20,'amber'],['متوسط التحصيل التعليمي',overall.achievement,'violet']
-                ].map(([l,v,t]:any)=><div key={l} className="rounded-xl bg-[#f7faf9] p-3 border border-[#edf2f1]"><div className="flex justify-between text-xs font-bold mb-2"><span>{l}</span><b>{pct(v)}%</b></div><Progress value={v} className={t==='green'?'bg-[#159f7d]':t==='blue'?'bg-[#3677c8]':t==='amber'?'bg-[#f2a719]':'bg-[#7b61b5]'}/></div>)}
+                  ['نسبة الموظفين العاملين',overall.staffing,'green'],['إنجاز الأنشطة',overall.activities,'blue'],['متوسط تقييم الأنشطة',overall.rating*20,'amber'],['إتقان الفصل الأول (ختامي)',overall.achievement,'violet']
+                ].map(([l,v,t]:any)=><div key={l} className="rounded-xl bg-[#f7faf9] p-3 border border-[#edf2f1]"><div className="flex justify-between text-xs font-bold mb-2"><span>{l}</span><b>{v===null?'لم تُدخل البيانات':pct(v)+'%'}</b></div><Progress value={v} className={t==='green'?'bg-[#159f7d]':t==='blue'?'bg-[#3677c8]':t==='amber'?'bg-[#f2a719]':'bg-[#7b61b5]'}/></div>)}
               </div>
             </Panel>
             <Panel title="ملخص سريع" sub="بيانات التشغيل الحالية" icon={Sparkles} className="xl:col-span-3">
               <div className="space-y-3 text-xs">{[['إجمالي التقارير المنجزة',activityReports],['الأنشطة النشطة',activeActivities.length],['المدارس المعروضة',filtered.length],['الموظفون',overall.total]].map(([l,v]:any)=><div key={l} className="flex justify-between items-center border-b border-[#edf2f1] pb-2"><span className="text-[#6d807c]">{l}</span><b className="text-[#16443e]">{v}</b></div>)}</div>
             </Panel>
           </section>
+
+          <AchievementPanel schools={activeSchools} admin/>
 
           <Panel title="التنافس اليومي — مؤشر منصة مدرستي" sub="جميع المدارس النشطة تظهر يوميًا؛ المدرسة التي لم تُدخل بياناتها تظهر بقيمة 0% حتى يتم تحديث النموذج" icon={BarChart3} className="mb-5">
             {activeSchools.length>0&&<div className="space-y-3">
@@ -288,13 +274,13 @@ export default function KpiDashboard(){
             <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[900px]"><thead className="bg-[#fff8e7] text-[#6f571d]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>الدخول /15</th><th>المسير /30</th><th>المنجزات /20</th><th>الأنشطة /20</th><th>الموظفون /15</th><th>الإنجاز</th></tr></thead><tbody>{competition.map((x,i)=><tr key={x.school_id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i<3?['🥇','🥈','🥉'][i]:i+1}</td><td className="font-bold">{x.school_name}</td><td className="text-center">{pct(Number(x.login_score))}</td><td className="text-center">{pct(Number(x.payroll_score))}</td><td className="text-center">{pct(Number(x.achievements_score))}</td><td className="text-center">{pct(Number(x.activities_score))}</td><td className="text-center">{pct(Number(x.employee_updates_score))}</td><td className="text-center"><b className="text-[#087f69]">{pct(Number(x.total_score))}%</b></td></tr>)}</tbody></table></div>
           </Panel>
 
-          <Panel title="مصفوفة مؤشرات المدارس" sub="اضغط على أي مدرسة لفتح تفاصيلها وتحديث التحصيل التعليمي" icon={BarChart3}>
-            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-sm min-w-[820px]"><thead className="bg-[#eef6f3] text-[#48655f] sticky top-0"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'—':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
+          <Panel title="مصفوفة مؤشرات المدارس" sub="اضغط على أي مدرسة لفتح تفاصيلها وعرض التحصيل العلمي" icon={BarChart3}>
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-sm min-w-[820px]"><thead className="bg-[#eef6f3] text-[#48655f] sticky top-0"><tr><th className="p-3 text-right">المدرسة</th><th>المنسوبون</th><th>الأنشطة</th><th>التقييم</th><th>التحصيل</th><th>المستهدف</th></tr></thead><tbody>{filtered.map(r=><tr key={r.school.id} onClick={()=>chooseSchool(r.school.id)} className={'border-b border-[#edf2f1] cursor-pointer hover:bg-[#f7faf9] '+(selectedSchool===r.school.id?'bg-[#edf8f5]':'')}><td className="p-3"><b>{r.school.school_code} — {r.school.school_name}</b><div className="text-[10px] text-[#8a9996] mt-1">{r.activeStaff} نشط / {r.totalStaff}</div></td><td className="text-center">{pct(r.staffingRate)}%</td><td className="text-center">{pct(r.activityRate)}%</td><td className="text-center">{r.avgRating?r.avgRating.toFixed(1):'—'} / 5</td><td className="text-center">{r.achievement==null?'لم تُدخل البيانات':pct(r.achievement)+'%'}</td><td className="text-center">{r.target==null?'—':pct(r.target)+'%'}</td></tr>)}</tbody></table></div>
           </Panel>
 
           {selected&&<section className="grid lg:grid-cols-2 gap-4 mt-5">
-            <Panel title="تفاصيل المدرسة" sub={selected.school.school_name} icon={Building2}><div className="grid grid-cols-2 gap-3">{[['العاملون',selected.staffingRate,'bg-[#159f7d]'],['الأنشطة',selected.activityRate,'bg-[#3677c8]'],['التقييم',selected.avgRating*20,'bg-[#f2a719]'],['التحصيل',selected.achievement||0,'bg-[#7b61b5]']].map(([l,v,t]:any)=><div key={l} className="rounded-xl border border-[#edf2f1] p-3"><div className="flex justify-between text-xs mb-2"><span className="text-[#6c7e7b]">{l}</span><b>{l==='التقييم'?pct(v/20)+' / 5':pct(v)+'%'}</b></div><Progress value={v} className={t}/></div>)}</div></Panel>
-            <Panel title="تحديث التحصيل التعليمي" sub={selected.achievementYear?'آخر سنة مسجلة: '+selected.achievementYear:'لا توجد سنة مسجلة'} icon={Target}><div className="grid sm:grid-cols-3 gap-2"><input value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="السنة الدراسية"/><input type="number" min="0" max="100" step=".1" value={achievementPercent} onChange={e=>setAchievementPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="التحصيل %"/><input type="number" min="0" max="100" step=".1" value={targetPercent} onChange={e=>setTargetPercent(e.target.value)} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5" placeholder="المستهدف %"/></div><textarea value={achievementNotes} onChange={e=>setAchievementNotes(e.target.value)} rows={2} className="rounded-xl border border-[#d6e4e1] bg-white text-[#183b38] px-3 py-2.5 w-full mt-2" placeholder="ملاحظات المؤشر"/><button disabled={saving} onClick={saveAchievement} className="mt-2 rounded-xl bg-[#087f69] text-white px-5 py-2.5 font-black disabled:opacity-50">{saving?'جارٍ الحفظ…':'حفظ مؤشر التحصيل'}</button></Panel>
+            <Panel title="تفاصيل المدرسة" sub={selected.school.school_name} icon={Building2}><div className="grid grid-cols-2 gap-3">{[['العاملون',selected.staffingRate,'bg-[#159f7d]'],['الأنشطة',selected.activityRate,'bg-[#3677c8]'],['التقييم',selected.avgRating*20,'bg-[#f2a719]'],['التحصيل',selected.achievement,'bg-[#7b61b5]']].map(([l,v,t]:any)=><div key={l} className="rounded-xl border border-[#edf2f1] p-3"><div className="flex justify-between text-xs mb-2"><span className="text-[#6c7e7b]">{l}</span><b>{v===null?'لم تُدخل البيانات':l==='التقييم'?pct(v/20)+' / 5':pct(v)+'%'}</b></div><Progress value={v} className={t}/></div>)}</div></Panel>
+
           </section>}
 
           <footer className="text-center text-xs text-[#8b9b98] py-7 border-t border-[#e4eeeb] mt-6">البوابة الإلكترونية لمدارس التعليم المستمر · الإدارة العامة للتعليم بنجران · تحديث تلقائي كل 60 ثانية</footer>
