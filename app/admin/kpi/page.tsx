@@ -14,7 +14,8 @@ type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;target_percent:number|null;notes:string|null};
-type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};\ntype MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
+type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
+type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
 type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number;completedActivities:number;activityRate:number;avgRating:number;achievement:number|null;target:number|null;achievementYear:string|null};
 
 const pct=(n:number)=>Number.isFinite(n)?Math.round(n*10)/10:0;
