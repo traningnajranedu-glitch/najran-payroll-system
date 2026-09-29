@@ -14,7 +14,7 @@ type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;target_percent:number|null;notes:string|null};
-type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
+type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};\ntype MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
 type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number;completedActivities:number;activityRate:number;avgRating:number;achievement:number|null;target:number|null;achievementYear:string|null};
 
 const pct=(n:number)=>Number.isFinite(n)?Math.round(n*10)/10:0;
@@ -47,7 +47,7 @@ function Donut({active,review,blocked}:{active:number;review:number;blocked:numb
 export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
-  const [competition,setCompetition]=useState<CompetitionScore[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
+  const [competition,setCompetition]=useState<CompetitionScore[]>([]),[madrasati,setMadrasati]=useState<MadrasatiDaily[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false),[saving,setSaving]=useState(false);
   const [academicYear,setAcademicYear]=useState('1447-1448'),[achievementPercent,setAchievementPercent]=useState(''),[targetPercent,setTargetPercent]=useState(''),[achievementNotes,setAchievementNotes]=useState('');
@@ -66,19 +66,19 @@ export default function KpiDashboard(){
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
-    const [s,t,a,r,e]=await Promise.all([
+    const [s,t,a,r,e,m]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
       sb.from('school_educational_achievement').select('*').order('academic_year',{ascending:false})
     ]);
-    const first=s.error||t.error||a.error||r.error||e.error;
+    const first=s.error||t.error||a.error||r.error||e.error||m.error;
     if(first){setError(first.message);setLoading(false);return;}
     setSchools(s.data||[]);
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
-    setCompetition((competitionData||[]) as CompetitionScore[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements(e.data||[]);
+    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements(e.data||[]);
     const latest=(e.data||[])[0];
     if(latest){setAcademicYear(latest.academic_year);setAchievementPercent(String(latest.achievement_percent));setTargetPercent(latest.target_percent==null?'':String(latest.target_percent));setAchievementNotes(latest.notes||'');}
     setLoading(false);
@@ -254,6 +254,11 @@ export default function KpiDashboard(){
               <div className="space-y-3 text-xs">{[['إجمالي التقارير المنجزة',activityReports],['الأنشطة النشطة',activeActivities.length],['المدارس المعروضة',filtered.length],['الموظفون',overall.total]].map(([l,v]:any)=><div key={l} className="flex justify-between items-center border-b border-[#edf2f1] pb-2"><span className="text-[#6d807c]">{l}</span><b className="text-[#16443e]">{v}</b></div>)}</div>
             </Panel>
           </section>
+
+          <Panel title="مؤشر منصة مدرستي — اليوم" sub="المقارنة اليومية بين المدارس حسب آخر إدخال؛ الترتيب يعتمد متوسط نسب الدخول والتفعيل الخمس" icon={BarChart3} className="mb-5">
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[1050px]"><thead className="bg-[#eef6f3] text-[#48655f]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>دخول المدير</th><th>دخول المعلمين</th><th>تفعيل المعلمين</th><th>دخول الطلاب</th><th>تفعيل الطلاب</th><th>التحديات/الدعم</th><th>المتوسط</th></tr></thead><tbody>{madrasati.map(x=>({...x,school:schools.find(s=>s.id===x.school_id),avg:(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5})).sort((a,b)=>b.avg-a.avg||a.support_challenges_count-b.support_challenges_count).map((x,i)=><tr key={x.id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{x.school?.school_name||'—'}</td><td className="text-center">{x.manager_login_percent}%</td><td className="text-center">{x.teachers_login_percent}%</td><td className="text-center">{x.teachers_tools_percent}%</td><td className="text-center">{x.students_login_percent}%</td><td className="text-center">{x.students_tools_percent}%</td><td className="text-center">{x.support_challenges_count}</td><td className="text-center font-black text-[#087f69]">{pct(x.avg)}%</td></tr>)}</tbody></table></div>
+            {!madrasati.length&&<div className="text-center text-sm text-[#718582] py-5">لم تُدخل المدارس مؤشرات منصة مدرستي لليوم حتى الآن.</div>}
+          </Panel>
 
           <Panel title="التنافس الشهري بين المدارس" sub="ترتيب المدارس حسب نسبة الإنجاز من 100 نقطة" icon={Trophy} className="mb-5">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4"><div className="text-xs text-[#6d807c]">الأوزان: تسجيل الدخول 15% · سرعة اعتماد المسير 30% · المنجزات 20% · الأنشطة 20% · تحديث بيانات الموظفين 15%</div><button disabled={issuingAwards} onClick={issueMonthlyAwards} className="rounded-xl bg-[#b47b16] text-white px-4 py-2 font-black text-sm disabled:opacity-50 inline-flex items-center gap-2 justify-center"><Award size={17}/>{issuingAwards?'جارٍ الإصدار…':'إصدار شهادات الشهر السابق'}</button></div>
