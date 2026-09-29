@@ -239,7 +239,7 @@ export default function SchoolPayrollPrint() {
         <div className="print-approval-grid">
           <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{printMode==='school' ? (selectedSchool?.manager_name || '................................') : '................................'}</div><div className="approval-line">التوقيع: ................................</div></div>
           <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{printMode==='school' && selectedSchool?.stamp_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.stamp_path).data.publicUrl} alt="ختم المدرسة" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
-          <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">المشرف / مدير إدارة التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
+          <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">رئيس التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
         </div>
         <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
       </>}
