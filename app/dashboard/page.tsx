@@ -11,6 +11,7 @@ type School = { id: string; school_code: string; school_name: string; manager_na
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
 type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
 type MonthlyAward = { id:string; month_key:string; rank:number; total_score:number; issued_at:string };
+type MadrasatiDaily = { manager_login_percent:number; teachers_login_percent:number; teachers_tools_percent:number; students_login_percent:number; students_tools_percent:number; support_challenges_count:number; indicator_date:string };
 
 function hijriKey(value: string): number | null {
   const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
@@ -153,6 +154,7 @@ export default function Dashboard() {
   const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
   const [savingActivity, setSavingActivity] = useState(false);
   const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
+  const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
 
   async function load() {
     setLoading(true);
@@ -178,6 +180,9 @@ export default function Dashboard() {
     }
     const {data:awards}=await sb.from('school_monthly_awards').select('id,month_key,rank,total_score,issued_at').eq('school_id',su.school_id).order('month_key',{ascending:false}).limit(12);
     setMonthlyAwards((awards||[]) as MonthlyAward[]);
+    const riyadhToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const {data:madrasati}=await sb.from('school_madrasati_daily_indicators').select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date').eq('school_id',su.school_id).eq('indicator_date',riyadhToday).maybeSingle();
+    setMadrasatiToday((madrasati||null) as MadrasatiDaily|null);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
@@ -431,6 +436,27 @@ export default function Dashboard() {
             <a href="#employees" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4"><Users size={30}/></div><div className="font-black text-lg text-slate-900">بيانات الموظفين</div><div className="text-sm text-gray-500 mt-1">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
             <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4"><FileText size={30}/></div><div className="font-black text-lg text-slate-900">مسيرات الرواتب</div><div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
             <a href="/dashboard/indicators" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-violet-50 text-violet-700 flex items-center justify-center mb-4"><ClipboardList size={30}/></div><div className="font-black text-lg text-slate-900">نماذج إدخال المؤشرات</div><div className="text-sm text-gray-500 mt-1">إدخال مؤشرات منصة مدرستي والانضباط والتحصيل العلمي</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
+          </div>
+        </section>
+
+        <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-l from-violet-50 via-white to-blue-50 shadow-sm">
+          <div className="flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200"><BarChart3 size={25}/></div><div><h2 className="text-lg font-black text-slate-900">مؤشر منصة مدرستي — اليوم</h2><p className="mt-1 text-sm text-slate-500">يعكس آخر إدخال يومي خاص بـ {school.school_name}</p></div></div>
+              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiToday?'تحديث المؤشر':'إدخال مؤشر اليوم'}</a>
+            </div>
+            {madrasatiToday?(()=>{
+              const avg=(madrasatiToday.manager_login_percent+madrasatiToday.teachers_login_percent+madrasatiToday.teachers_tools_percent+madrasatiToday.students_login_percent+madrasatiToday.students_tools_percent)/5;
+              const tone=avg>=90?'from-emerald-600 to-green-400':avg>=80?'from-green-500 to-lime-400':avg>=70?'from-blue-600 to-sky-400':avg>=60?'from-amber-500 to-yellow-400':'from-orange-600 to-red-500';
+              const metrics=[['دخول المدير',madrasatiToday.manager_login_percent],['دخول المعلمين',madrasatiToday.teachers_login_percent],['تفعيل المعلمين',madrasatiToday.teachers_tools_percent],['دخول الطلاب',madrasatiToday.students_login_percent],['تفعيل الطلاب',madrasatiToday.students_tools_percent]];
+              return <div>
+                <div className="mb-5 grid gap-4 lg:grid-cols-[180px_1fr]">
+                  <div className="rounded-2xl bg-slate-900 p-5 text-center text-white"><div className="text-xs text-slate-300">متوسط الإنجاز</div><div className="mt-1 text-4xl font-black">{avg.toFixed(0)}%</div><div className="mt-2 text-xs text-slate-300">التحديات/الدعم: {madrasatiToday.support_challenges_count}</div></div>
+                  <div className="flex flex-col justify-center"><div className="mb-2 flex justify-between text-xs font-bold text-slate-500"><span>مستوى الإنجاز اليومي</span><span>100%</span></div><div className="h-6 overflow-hidden rounded-full bg-slate-100 shadow-inner" dir="ltr"><div className={`h-full rounded-full bg-gradient-to-r ${tone}`} style={{width:`${avg}%`}} /></div></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{metrics.map(([label,value])=><div key={String(label)} className="rounded-2xl border border-slate-100 bg-white p-4 text-center shadow-sm"><div className="text-2xl font-black text-violet-700">{value}%</div><div className="mt-1 text-xs font-bold text-slate-600">{label}</div></div>)}</div>
+              </div>
+            })():<div className="rounded-2xl border border-dashed border-violet-300 bg-white/70 p-6 text-center"><div className="font-black text-slate-800">لم يتم إدخال مؤشر منصة مدرستي لليوم بعد</div><div className="mt-1 text-sm text-slate-500">أدخل بيانات اليوم لتظهر نسبة الإنجاز مباشرة في الصفحة الرئيسية.</div></div>}
           </div>
         </section>
 
