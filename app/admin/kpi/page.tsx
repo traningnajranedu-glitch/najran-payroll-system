@@ -72,7 +72,8 @@ export default function KpiDashboard(){
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
-      sb.from('school_educational_achievement').select('*').order('academic_year',{ascending:false})
+      sb.from('school_educational_achievement').select('*').order('academic_year',{ascending:false}),
+      sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false})
     ]);
     const first=s.error||t.error||a.error||r.error||e.error||m.error;
     if(first){setError(first.message);setLoading(false);return;}
