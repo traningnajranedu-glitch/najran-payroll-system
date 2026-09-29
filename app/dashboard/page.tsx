@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList } from 'lucide-react';
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
@@ -426,10 +426,10 @@ export default function Dashboard() {
             <h2 id="services-title" className="text-xl sm:text-2xl font-black text-[var(--navy)]">خدمات المدرسة</h2>
             <p className="text-sm text-gray-500 mt-1">الوصول السريع إلى الخدمات الإلكترونية المتاحة لحساب المدرسة</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <a href="#activities" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mb-4"><PartyPopper size={30}/></div><div className="font-black text-lg text-slate-900">الأنشطة والاحتفاليات</div><div className="text-sm text-gray-500 mt-1">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
             <a href="#employees" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-4"><Users size={30}/></div><div className="font-black text-lg text-slate-900">بيانات الموظفين</div><div className="text-sm text-gray-500 mt-1">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
-            <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4"><FileText size={30}/></div><div className="font-black text-lg text-slate-900">مسيرات الرواتب</div><div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
+            <a href="#payroll" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4"><FileText size={30}/></div><div className="font-black text-lg text-slate-900">مسيرات الرواتب</div><div className="text-sm text-gray-500 mt-1">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>\n            <a href="/dashboard/indicators" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-200"><div className="w-16 h-16 rounded-2xl bg-violet-50 text-violet-700 flex items-center justify-center mb-4"><ClipboardList size={30}/></div><div className="font-black text-lg text-slate-900">نماذج إدخال المؤشرات</div><div className="text-sm text-gray-500 mt-1">إدخال مؤشرات منصة مدرستي والانضباط والتحصيل العلمي</div><div className="mt-4 text-sm font-bold text-[var(--navy)]">الدخول إلى الخدمة ←</div></a>
           </div>
         </section>
 
