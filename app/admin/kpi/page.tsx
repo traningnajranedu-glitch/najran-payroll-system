@@ -93,6 +93,15 @@ export default function KpiDashboard(){
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    const channel=sb.channel('admin-school-profiles-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'school_profiles'},payload=>{
+        const row=(payload.new||payload.old) as any;
+        if(payload.eventType==='DELETE') setProfiles(prev=>prev.filter(x=>x.school_id!==row.school_id));
+        else setProfiles(prev=>{const next=prev.filter(x=>x.school_id!==row.school_id);return [...next,row as SchoolProfile]});
+      }).subscribe();
+    return()=>{sb.removeChannel(channel)};
+  },[]);
   useEffect(()=>{const id=setInterval(()=>setCurrentDate(new Date()),60000);return()=>clearInterval(id)},[]);
   useEffect(()=>{const id=setInterval(load,60000);return()=>clearInterval(id)},[]);
   useEffect(()=>{const h=()=>setIsFullscreen(!!document.fullscreenElement);document.addEventListener('fullscreenchange',h);return()=>document.removeEventListener('fullscreenchange',h)},[]);
