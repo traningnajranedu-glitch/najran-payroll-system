@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound } from 'lucide-react';
 import DisciplinePanel from '../../components/DisciplinePanel';
 import AchievementPanel from '../../components/AchievementPanel';
 import { supabaseBrowser } from '../../lib/supabase';
@@ -157,6 +157,7 @@ export default function Dashboard() {
   const [savingActivity, setSavingActivity] = useState(false);
   const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
   const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
+  const [profileCompletion,setProfileCompletion]=useState(0);
 
   async function load() {
     setLoading(true);
@@ -174,6 +175,8 @@ export default function Dashboard() {
 
     const currentSchool = su.schools as unknown as School;
     setSchool(currentSchool);
+    const {data:profile}=await sb.from('school_profiles').select('completion_percent').eq('school_id',su.school_id).maybeSingle();
+    setProfileCompletion(Number(profile?.completion_percent||0));
     // يسجل زيارة واحدة فقط لكل جلسة متصفح حتى لا يتحول تحديث الصفحة إلى نقاط مصطنعة.
     const loginKey='school-login-'+su.school_id+'-'+new Date().toISOString().slice(0,10);
     if(!sessionStorage.getItem(loginKey)){
