@@ -18,7 +18,7 @@ type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
 type Period={id:string;period_name:string;start_hijri:string|null;end_hijri:string|null;start_date:string;end_date:string;is_open:boolean};
 type PayrollRecord={id:string;period_id:string;school_id:string;status:string;approved_at:string|null};
-type SchoolProfile={school_id:string;completion_percent:number;completed_step:number;updated_at:string};
+type SchoolProfile={school_id:string;completion_percent:number;completed_step:number;updated_at:string;gender:string|null;stage:string|null;merged_stages:string[]|null;study_type:string|null;governorate:string|null;total_students:number|null;total_classes:number|null};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;assessed_count:number;target_percent:number|null;notes:string|null};
 type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
 type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
@@ -82,7 +82,7 @@ export default function KpiDashboard(){
       sb.from('school_achievement_settings').select('*').single(),
       sb.from('payroll_periods').select('id,period_name,start_hijri,end_hijri,start_date,end_date,is_open').order('start_date',{ascending:false}),
       sb.from('payroll_records').select('id,period_id,school_id,status,approved_at'),
-      sb.from('school_profiles').select('school_id,completion_percent,completed_step,updated_at')
+      sb.from('school_profiles').select('school_id,completion_percent,completed_step,updated_at,gender,stage,merged_stages,study_type,governorate,total_students,total_classes')
     ]);
     const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error||sp.error;
     if(first){setError(first.message);setLoading(false);return;}
@@ -127,6 +127,15 @@ export default function KpiDashboard(){
   const completedProfiles=profileRows.filter(x=>x.percent===100).length;
   const incompleteProfiles=Math.max(0,activeSchools.length-completedProfiles);
   const profileAverage=profileRows.length?profileRows.reduce((n,x)=>n+x.percent,0)/profileRows.length:0;
+  const completeProfileData=profiles.filter(p=>activeSchools.some(s=>s.id===p.school_id));
+  const totalStudents=completeProfileData.reduce((n,p)=>n+Number(p.total_students||0),0);
+  const totalClasses=completeProfileData.reduce((n,p)=>n+Number(p.total_classes||0),0);
+  const studentsPerClass=totalClasses?totalStudents/totalClasses:0;
+  const profileGroup=(key:'gender'|'stage'|'study_type'|'governorate')=>completeProfileData.reduce((acc:any,p:any)=>{const v=p[key]||'غير محدد';acc[v]=(acc[v]||0)+1;return acc},{});
+  const genderStats=profileGroup('gender'),stageStats=profileGroup('stage'),studyStats=profileGroup('study_type'),geoStats=profileGroup('governorate');
+  const stageStudents=completeProfileData.reduce((acc:any,p)=>{const v=p.stage||'غير محدد';acc[v]=(acc[v]||0)+Number(p.total_students||0);return acc},{});
+  const profileInsights=completeProfileData.map(p=>{const s=activeSchools.find(x=>x.id===p.school_id);const students=Number(p.total_students||0),classes=Number(p.total_classes||0);return {school:s,students,classes,density:classes?students/classes:0,stage:p.stage||'غير محدد',gender:p.gender||'غير محدد',completion:Number(p.completion_percent||0)}}).filter(x=>x.school);
+  const highestDensity=[...profileInsights].sort((a,b)=>b.density-a.density)[0];
 
 
   function chooseSchool(id:string){setSelectedSchool(id);}
@@ -205,6 +214,36 @@ export default function KpiDashboard(){
             <StatCard title="إجمالي الأنشطة" value={activeActivities.length} unit="نشاط" icon={Star} tone="amber" sub={"نسبة الإنجاز "+pct(overall.activities)+"%"}/>
             <StatCard title="التقارير المقدمة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير الأنشطة والاحتفاليات"/>
             <StatCard title="مؤشر مدرستي" value={pct(madrasatiAverage)} unit="%" icon={Target} tone="blue" sub="متوسط مدارس اليوم"/>
+          </section>
+
+          <section className="grid xl:grid-cols-12 gap-5 mb-6">
+            <Panel title="مؤشرات بيانات المدارس والطلاب" sub="مؤشرات مترابطة مستخرجة من الملفات الشخصية للمدارس" icon={GraduationCap} className="xl:col-span-12">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <StatCard title="إجمالي الطلاب" value={totalStudents.toLocaleString('ar-SA')} unit="طالب" icon={GraduationCap} tone="blue" sub="من بيانات الملفات الشخصية"/>
+                <StatCard title="إجمالي الفصول" value={totalClasses.toLocaleString('ar-SA')} unit="فصل" icon={Building2} tone="green" sub="الفصول المسجلة"/>
+                <StatCard title="متوسط الطلاب لكل فصل" value={pct(studentsPerClass)} unit="طالب" icon={Users} tone="amber" sub="إجمالي الطلاب ÷ إجمالي الفصول"/>
+                <StatCard title="الملفات المكتملة" value={completedProfiles} unit="مدرسة" icon={CheckCircle2} tone="violet" sub={"من أصل "+activeSchools.length+" مدرسة"}/>
+              </div>
+              <div className="grid lg:grid-cols-4 gap-4">
+                {[
+                  ['المرحلة الدراسية',stageStats,stageStudents],
+                  ['الجنس',genderStats,null],
+                  ['نوع الدراسة',studyStats,null],
+                  ['التوزيع الجغرافي',geoStats,null]
+                ].map(([title,data,studentData]:any)=><div key={title} className="rounded-2xl border border-[#e1ebe9] bg-[#fbfdfc] p-4"><h3 className="font-black text-sm text-[#173e3a] mb-3">{title}</h3><div className="space-y-3">{Object.entries(data).sort((a:any,b:any)=>b[1]-a[1]).map(([label,value]:any)=><div key={label}><div className="flex justify-between text-xs font-bold mb-1"><span>{label}</span><span>{value} مدرسة{studentData?.[label]!=null?' · '+Number(studentData[label]).toLocaleString('ar-SA')+' طالب':''}</span></div><Progress value={completeProfileData.length?value/completeProfileData.length*100:0}/></div>)}</div></div>)}
+              </div>
+            </Panel>
+          </section>
+
+          <section className="grid xl:grid-cols-12 gap-5 mb-6">
+            <Panel title="مؤشر الكثافة الطلابية والتشغيلية" sub="يربط عدد الطلاب بعدد الفصول والمرحلة والجنس لاكتشاف المدارس الأعلى كثافة" icon={TrendingUp} className="xl:col-span-12">
+              <div className="grid lg:grid-cols-3 gap-4 mb-5">
+                <div className="rounded-2xl bg-[#e7f6f1] border border-[#cce9df] p-4"><div className="text-xs text-[#607a75] font-bold">متوسط الكثافة العام</div><div className="text-3xl font-black text-[#087f69] mt-2">{pct(studentsPerClass)} <span className="text-xs">طالب/فصل</span></div></div>
+                <div className="rounded-2xl bg-[#fff4dc] border border-[#f4dfae] p-4"><div className="text-xs text-[#607a75] font-bold">أعلى كثافة مسجلة</div><div className="text-xl font-black text-[#9a6908] mt-2">{highestDensity?.school?.school_name||'—'}</div><div className="text-xs mt-1">{highestDensity?pct(highestDensity.density)+' طالب/فصل':'لا توجد بيانات'}</div></div>
+                <div className="rounded-2xl bg-[#eaf1fb] border border-[#d8e4f4] p-4"><div className="text-xs text-[#607a75] font-bold">تغطية بيانات المؤشر</div><div className="text-3xl font-black text-[#2867b2] mt-2">{activeSchools.length?pct(completeProfileData.filter(p=>Number(p.total_classes||0)>0).length/activeSchools.length*100):0}%</div><div className="text-xs mt-1">مدارس لديها بيانات طلاب وفصول</div></div>
+              </div>
+              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[760px]"><thead><tr className="bg-[#f3f7f6] text-[#58706b]"><th className="p-3 text-right">المدرسة</th><th>المرحلة</th><th>الجنس</th><th>الطلاب</th><th>الفصول</th><th>طالب/فصل</th><th>اكتمال الملف</th></tr></thead><tbody>{[...profileInsights].sort((a,b)=>b.density-a.density).map(x=><tr key={x.school!.id} className="border-b border-[#edf2f1]"><td className="p-3 font-bold">{x.school!.school_name}</td><td className="text-center">{x.stage}</td><td className="text-center">{x.gender}</td><td className="text-center font-black">{x.students}</td><td className="text-center">{x.classes}</td><td className="text-center"><span className="font-black">{pct(x.density)}</span></td><td><div className="flex items-center justify-center gap-2"><div className="w-20"><Progress value={x.completion}/></div><b>{x.completion}%</b></div></td></tr>)}</tbody></table></div>
+            </Panel>
           </section>
 
           <section className="grid xl:grid-cols-12 gap-5 mb-6">
