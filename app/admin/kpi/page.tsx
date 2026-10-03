@@ -16,6 +16,8 @@ type School={id:string;school_code:string;school_name:string;is_active:boolean};
 type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
+type Period={id:string;period_name:string;start_hijri:string|null;end_hijri:string|null;start_date:string;end_date:string;is_open:boolean};
+type PayrollRecord={id:string;period_id:string;school_id:string;status:string;approved_at:string|null};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;assessed_count:number;target_percent:number|null;notes:string|null};
 type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
 type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
@@ -52,7 +54,7 @@ export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [competition,setCompetition]=useState<CompetitionScore[]>([]),[madrasati,setMadrasati]=useState<MadrasatiDaily[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
-  const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]);
+  const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]),[periods,setPeriods]=useState<Period[]>([]),[payroll,setPayroll]=useState<PayrollRecord[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false);
   const [currentDate,setCurrentDate]=useState(new Date());
 
@@ -69,21 +71,23 @@ export default function KpiDashboard(){
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
-    const [s,t,a,r,e,m,c]=await Promise.all([
+    const [s,t,a,r,e,m,c,p,pr]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
       sb.from('school_achievement_summary').select('*').eq('academic_year',currentAcademicYear()).eq('semester','الأول').eq('evaluation_type','ختامي'),
       sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false}),
-      sb.from('school_achievement_settings').select('*').single()
+      sb.from('school_achievement_settings').select('*').single(),
+      sb.from('payroll_periods').select('id,period_name,start_hijri,end_hijri,start_date,end_date,is_open').order('start_date',{ascending:false}),
+      sb.from('payroll_records').select('id,period_id,school_id,status,approved_at')
     ]);
-    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error;
+    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error;
     if(first){setError(first.message);setLoading(false);return;}
     setSchools(s.data||[]);
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
-    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
+    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setPeriods((p.data||[]) as Period[]);setPayroll((pr.data||[]) as PayrollRecord[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
@@ -110,7 +114,13 @@ export default function KpiDashboard(){
   const activityReports=filtered.reduce((n,r)=>n+r.completedActivities,0);
   const recentReports=reports.filter(r=>filtered.some(x=>x.school.id===r.school_id)).slice(0,5);
   const recentActivities=activeActivities.slice(0,3);
-  const schoolStatus={active:activeSchools.length,review:Math.max(0,Math.round(activeSchools.length*.1)),blocked:Math.max(0,activeSchools.length-Math.max(0,Math.round(activeSchools.length*.9))-Math.max(0,Math.round(activeSchools.length*.1)))};
+  const latestPeriod=periods[0]||null;
+  const latestPayroll=latestPeriod?payroll.filter(x=>x.period_id===latestPeriod.id):[];
+  const approvedSchoolIds=new Set(latestPayroll.filter(x=>x.status==='تم الاعتماد'||x.approved_at).map(x=>x.school_id));
+  const approvedSchools=approvedSchoolIds.size;
+  const pendingSchools=Math.max(0,activeSchools.length-approvedSchools);
+  const madrasatiAverage=madrasati.length?madrasati.reduce((sum,x)=>sum+(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5,0)/madrasati.length:0;
+  const schoolStatus={active:approvedSchools,review:pendingSchools,blocked:0};
 
   function chooseSchool(id:string){setSelectedSchool(id);}
   async function issueMonthlyAwards(){
@@ -126,7 +136,7 @@ export default function KpiDashboard(){
   if(loading)return <main dir="rtl" className="min-h-screen flex items-center justify-center bg-[#f5f9f8] text-[#16443e]"><div className="text-xl font-black">جارٍ تجهيز لوحة المؤشرات…</div></main>;
 
   const nav=[
-    [Home,'الرئيسية','/admin'],[BarChart3,'لوحة المؤشرات','/admin/kpi'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[CalendarDays,'فترات المسيرات','/admin'],[ClipboardList,'إدارة المسيرات','/admin'],[Star,'الأنشطة والاحتفاليات','/admin'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
+    [Home,'الرئيسية','/admin'],[BarChart3,'لوحة مؤشرات الأداء','/admin/kpi'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[ClipboardList,'مسيرات الرواتب','/admin'],[PartyPopper,'الأنشطة والاحتفاليات','/admin'],[Target,'مؤشر منصة مدرستي','/admin/kpi'],[CheckCircle2,'الانضباط المدرسي','/admin/kpi'],[GraduationCap,'التحصيل العلمي','/admin/kpi'],[Trophy,'التنافس بين المدارس','/admin/kpi'],[Award,'شهادات التميز','/admin/kpi'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
   ];
 
   return <main dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top_right,#eaf7f4_0,#f4f8fb_36%,#f8fafc_100%)] text-[#183b38] overflow-x-hidden">
@@ -137,7 +147,7 @@ export default function KpiDashboard(){
           <div className="text-xs text-white/75 mt-1">مدارس التعليم المستمر</div>
         </div>
         <nav className="p-3 space-y-1">
-          {nav.map(([Icon,label,href]:any,i)=><a key={label} href={href} className={'flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition '+(label==='لوحة المؤشرات'?'bg-[#0c8b80] shadow-lg shadow-black/10':'hover:bg-white/10')}><Icon size={20}/><span>{label}</span>{label==='لوحة المؤشرات'&&<span className="mr-auto w-2 h-2 rounded-full bg-[#5de0c1]"/>}</a>)}
+          {nav.map(([Icon,label,href]:any,i)=><a key={label} href={href} className={'flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition '+(label==='لوحة مؤشرات الأداء'?'bg-[#0c8b80] shadow-lg shadow-black/10':'hover:bg-white/10')}><Icon size={20}/><span>{label}</span>{label==='لوحة مؤشرات الأداء'&&<span className="mr-auto w-2 h-2 rounded-full bg-[#5de0c1]"/>}</a>)}
         </nav>
         <div className="absolute bottom-5 inset-x-4 rounded-2xl bg-white/10 p-4">
           <div className="text-xs text-white/70">الهوية الوطنية</div><div className="font-black mt-1">اليوم الوطني السعودي 96</div><div className="mt-3 h-1.5 rounded-full bg-white/15"><div className="h-full w-2/3 bg-[#d8b04a] rounded-full"/></div>
@@ -181,11 +191,13 @@ export default function KpiDashboard(){
           {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 p-3 text-sm font-bold">{error}</div>}
           {message&&<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 p-3 text-sm font-bold">{message}</div>}
 
-          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-6">
-            <StatCard title="إجمالي المدارس" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="المدارس النشطة ضمن البوابة"/>
-            <StatCard title="إجمالي المنسوبين" value={overall.staff} unit="منسوب" icon={Users} tone="blue" sub={"نسبة العاملين "+pct(overall.staffing)+"%"}/>
-            <StatCard title="التقارير والإنجازات" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub={"إنجاز الأنشطة "+pct(overall.activities)+"%"}/>
-            <StatCard title="الأنشطة النشطة" value={activeActivities.length} unit="نشاط" icon={PartyPopper} tone="amber" sub={"متوسط التقييم "+pct(overall.rating)+" / 5"}/>
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4 mb-6">
+            <StatCard title="إجمالي المدارس" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="المدارس النشطة في البوابة"/>
+            <StatCard title="إجمالي الموظفين" value={overall.staff} unit="موظف" icon={Users} tone="blue" sub={"نسبة العاملين "+pct(overall.staffing)+"%"}/>
+            <StatCard title="المسيرات المعتمدة" value={approvedSchools} unit="مدرسة" icon={ClipboardList} tone="green" sub={latestPeriod?latestPeriod.period_name:"لا توجد فترة حالية"}/>
+            <StatCard title="إجمالي الأنشطة" value={activeActivities.length} unit="نشاط" icon={Star} tone="amber" sub={"نسبة الإنجاز "+pct(overall.activities)+"%"}/>
+            <StatCard title="التقارير المقدمة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير الأنشطة والاحتفاليات"/>
+            <StatCard title="مؤشر مدرستي" value={pct(madrasatiAverage)} unit="%" icon={Target} tone="blue" sub="متوسط مدارس اليوم"/>
           </section>
 
           <section className="grid xl:grid-cols-12 gap-5 mb-6">
@@ -216,8 +228,8 @@ export default function KpiDashboard(){
           </section>
 
           <section className="grid xl:grid-cols-12 gap-4 mb-5">
-            <Panel title="آخر مسيرات المدارس" sub="آخر الفترات المسجلة في النظام" icon={CalendarDays} className="xl:col-span-7">
-              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[650px]"><thead><tr className="bg-[#f3f7f6] text-[#58706b]"><th className="p-3 text-right rounded-r-lg">المدرسة</th><th>الفترة</th><th>تاريخ البداية</th><th>تاريخ النهاية</th><th>الحالة</th></tr></thead><tbody>{ranking.slice(0,5).map((r,i)=><tr key={r.school.id} className="border-b border-[#edf2f1] hover:bg-[#f8fbfa]"><td className="p-3 font-bold">{r.school.school_name}</td><td className="text-center">{['الأولى','الثانية','الثالثة','الرابعة','الخامسة'][i]}</td><td className="text-center">1447/0{3+i}/01</td><td className="text-center">1447/0{3+i}/15</td><td className="text-center"><span className={'inline-flex px-3 py-1 rounded-full font-bold '+(i%3===0?'bg-[#fff1d1] text-[#9c6d10]':i%3===1?'bg-[#e8f0ff] text-[#376bb0]':'bg-[#ddf5ec] text-[#167a60]')}>{i%3===0?'مفتوحة':i%3===1?'قيد التنفيذ':'مكتملة'}</span></td></tr>)}</tbody></table></div>
+            <Panel title="مؤشرات المدارس" sub={latestPeriod?"حالة اعتماد "+latestPeriod.period_name:"حالة المسيرات الحالية"} icon={Target} className="xl:col-span-7">
+              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[650px]"><thead><tr className="bg-[#f3f7f6] text-[#58706b]"><th className="p-3 text-right">#</th><th className="text-right">اسم المدرسة</th><th>الموظفون</th><th>الأنشطة</th><th>حالة الاعتماد</th><th>معدل الإنجاز</th></tr></thead><tbody>{ranking.slice(0,8).map((r,i)=>{const approved=approvedSchoolIds.has(r.school.id);const score=competition.find(x=>x.school_id===r.school.id)?.total_score??((r.staffingRate+r.activityRate+(r.achievement??0))/3);return <tr key={r.school.id} className="border-b border-[#edf2f1] hover:bg-[#f8fbfa]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{r.school.school_name}</td><td className="text-center">{r.activeStaff}</td><td className="text-center">{r.completedActivities}</td><td className="text-center"><span className={"inline-flex px-3 py-1 rounded-full font-bold "+(approved?"bg-[#ddf5ec] text-[#167a60]":"bg-[#fff1d1] text-[#9c6d10]")}>{approved?"معتمد":"غير معتمد"}</span></td><td className="text-center"><div className="flex items-center gap-2 justify-center"><div className="w-20"><Progress value={Number(score)}/></div><b>{pct(Number(score))}%</b></div></td></tr>})}</tbody></table></div>
             </Panel>
             <Panel title="التنبيهات" sub="أحدث التنبيهات التي تحتاج متابعة" icon={Bell} className="xl:col-span-5">
               <div className="space-y-1">{[
