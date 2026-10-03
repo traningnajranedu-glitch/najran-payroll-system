@@ -666,5 +666,7 @@ export default function Dashboard() {
     .print-footer-note { position:absolute; bottom:1mm; left:0; right:0; text-align:center; border-top:1px solid #d7e8e8; padding-top:4px; font-size:8px; color:#628080; }
     tr { page-break-inside:avoid; } thead { display:table-header-group; }
   }`}</style>
+      </main>
+    </div>
   </div>;
 }
