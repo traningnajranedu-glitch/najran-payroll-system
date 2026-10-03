@@ -18,6 +18,7 @@ type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
 type Period={id:string;period_name:string;start_hijri:string|null;end_hijri:string|null;start_date:string;end_date:string;is_open:boolean};
 type PayrollRecord={id:string;period_id:string;school_id:string;status:string;approved_at:string|null};
+type SchoolProfile={school_id:string;completion_percent:number;completed_step:number;updated_at:string};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;assessed_count:number;target_percent:number|null;notes:string|null};
 type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
 type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
@@ -54,7 +55,7 @@ export default function KpiDashboard(){
   const sb=supabaseBrowser();
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState('');
   const [competition,setCompetition]=useState<CompetitionScore[]>([]),[madrasati,setMadrasati]=useState<MadrasatiDaily[]>([]),[issuingAwards,setIssuingAwards]=useState(false);
-  const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]),[periods,setPeriods]=useState<Period[]>([]),[payroll,setPayroll]=useState<PayrollRecord[]>([]);
+  const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]),[periods,setPeriods]=useState<Period[]>([]),[payroll,setPayroll]=useState<PayrollRecord[]>([]),[profiles,setProfiles]=useState<SchoolProfile[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false);
   const [currentDate,setCurrentDate]=useState(new Date());
 
@@ -71,7 +72,7 @@ export default function KpiDashboard(){
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
-    const [s,t,a,r,e,m,c,p,pr]=await Promise.all([
+    const [s,t,a,r,e,m,c,p,pr,sp]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
@@ -80,14 +81,15 @@ export default function KpiDashboard(){
       sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false}),
       sb.from('school_achievement_settings').select('*').single(),
       sb.from('payroll_periods').select('id,period_name,start_hijri,end_hijri,start_date,end_date,is_open').order('start_date',{ascending:false}),
-      sb.from('payroll_records').select('id,period_id,school_id,status,approved_at')
+      sb.from('payroll_records').select('id,period_id,school_id,status,approved_at'),
+      sb.from('school_profiles').select('school_id,completion_percent,completed_step,updated_at')
     ]);
-    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error;
+    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error||sp.error;
     if(first){setError(first.message);setLoading(false);return;}
     setSchools(s.data||[]);
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
-    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setPeriods((p.data||[]) as Period[]);setPayroll((pr.data||[]) as PayrollRecord[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
+    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setPeriods((p.data||[]) as Period[]);setPayroll((pr.data||[]) as PayrollRecord[]);setProfiles((sp.data||[]) as SchoolProfile[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
@@ -121,6 +123,11 @@ export default function KpiDashboard(){
   const pendingSchools=Math.max(0,activeSchools.length-approvedSchools);
   const madrasatiAverage=madrasati.length?madrasati.reduce((sum,x)=>sum+(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5,0)/madrasati.length:0;
   const schoolStatus={active:approvedSchools,review:pendingSchools,blocked:0};
+  const profileRows=activeSchools.map(s=>({school:s,percent:clamp(Number(profiles.find(p=>p.school_id===s.id)?.completion_percent||0)),step:Number(profiles.find(p=>p.school_id===s.id)?.completed_step||0)}));
+  const completedProfiles=profileRows.filter(x=>x.percent===100).length;
+  const incompleteProfiles=Math.max(0,activeSchools.length-completedProfiles);
+  const profileAverage=profileRows.length?profileRows.reduce((n,x)=>n+x.percent,0)/profileRows.length:0;
+
 
   function chooseSchool(id:string){setSelectedSchool(id);}
   async function issueMonthlyAwards(){
@@ -198,6 +205,18 @@ export default function KpiDashboard(){
             <StatCard title="إجمالي الأنشطة" value={activeActivities.length} unit="نشاط" icon={Star} tone="amber" sub={"نسبة الإنجاز "+pct(overall.activities)+"%"}/>
             <StatCard title="التقارير المقدمة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير الأنشطة والاحتفاليات"/>
             <StatCard title="مؤشر مدرستي" value={pct(madrasatiAverage)} unit="%" icon={Target} tone="blue" sub="متوسط مدارس اليوم"/>
+          </section>
+
+          <section className="grid xl:grid-cols-12 gap-5 mb-6">
+            <Panel title="اكتمال الملف الشخصي للمدارس" sub="متابعة استكمال بيانات المدارس الأساسية والعنوان والطلاب والتوقيع والختم" icon={UserRound} className="xl:col-span-12">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                <div className="rounded-2xl bg-[#e7f6f1] border border-[#cce9df] p-4"><div className="text-xs font-bold text-[#55726c]">متوسط اكتمال الملفات</div><div className="text-3xl font-black text-[#087f69] mt-2">{pct(profileAverage)}%</div><Progress value={profileAverage}/></div>
+                <div className="rounded-2xl bg-[#eaf1fb] border border-[#d8e4f4] p-4"><div className="text-xs font-bold text-[#55726c]">المدارس المكتملة</div><div className="text-3xl font-black text-[#2867b2] mt-2">{completedProfiles}<span className="text-xs mr-1">مدرسة</span></div><div className="text-xs text-[#718582] mt-2">وصل الملف إلى 100%</div></div>
+                <div className="rounded-2xl bg-[#fff4dc] border border-[#f4dfae] p-4"><div className="text-xs font-bold text-[#55726c]">تحتاج استكمال</div><div className="text-3xl font-black text-[#b57a0a] mt-2">{incompleteProfiles}<span className="text-xs mr-1">مدرسة</span></div><div className="text-xs text-[#718582] mt-2">ملفات أقل من 100%</div></div>
+                <div className="rounded-2xl bg-[#f0eafd] border border-[#e0d7f5] p-4"><div className="text-xs font-bold text-[#55726c]">إجمالي المدارس</div><div className="text-3xl font-black text-[#6950a6] mt-2">{activeSchools.length}<span className="text-xs mr-1">مدرسة</span></div><div className="text-xs text-[#718582] mt-2">المدارس النشطة</div></div>
+              </div>
+              <div className="overflow-x-auto"><table className="w-full text-xs min-w-[700px]"><thead><tr className="bg-[#f3f7f6] text-[#58706b]"><th className="p-3 text-right">اسم المدرسة</th><th>نسبة الاكتمال</th><th>المرحلة الحالية</th><th>الحالة</th></tr></thead><tbody>{profileRows.sort((a,b)=>a.percent-b.percent).map(x=><tr key={x.school.id} className="border-b border-[#edf2f1]"><td className="p-3 font-bold">{x.school.school_name}</td><td><div className="flex items-center gap-3 justify-center"><div className="w-36"><Progress value={x.percent} className={x.percent===100?'bg-[#159f7d]':'bg-[#f2a719]'}/></div><b>{pct(x.percent)}%</b></div></td><td className="text-center">{x.percent===100?'مكتمل':x.step?('الخطوة '+Math.min(4,x.step+1)+' من 4'):'لم يبدأ'}</td><td className="text-center"><span className={"inline-flex px-3 py-1 rounded-full font-black "+(x.percent===100?'bg-[#ddf5ec] text-[#167a60]':x.percent>0?'bg-[#fff1d1] text-[#9c6d10]':'bg-[#edf1f3] text-[#66747a]')}>{x.percent===100?'مكتمل':x.percent>0?'قيد الاستكمال':'لم يبدأ'}</span></td></tr>)}</tbody></table></div>
+            </Panel>
           </section>
 
           <section className="grid xl:grid-cols-12 gap-5 mb-6">
