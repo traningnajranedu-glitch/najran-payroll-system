@@ -418,15 +418,29 @@ export default function Dashboard() {
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل البيانات…</div></main>;
   if (!school) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-8 text-center text-red-700">{message || 'تعذر تحميل بيانات المدرسة.'}</div></main>;
 
-  return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
-    <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-[var(--navy)] text-white print:hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 py-4 flex items-center justify-between gap-3">
-        <div><div className="portal-title font-bold text-base sm:text-lg">البوابة الإلكترونية لمدارس التعليم المستمر</div><div className="text-sm text-blue-100 mt-1">{school.school_name}</div></div>
-        <button type="button" onClick={logout} className="flex gap-2 items-center bg-white/10 px-3 sm:px-4 py-2 rounded-xl shrink-0"><LogOut size={17}/> <span className="hidden sm:inline">خروج</span></button>
-      </div>
-    </header>
+  if(profileCompletion<100 && typeof window!=='undefined' && window.location.pathname==='/dashboard'){ window.location.replace('/dashboard/profile'); return <main className="min-h-screen flex items-center justify-center">جارٍ فتح الملف الشخصي…</main>; }
 
-    <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
+  return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
+    <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#003d4d] to-[#062f40] text-white flex-col p-4">
+      <div className="py-5 px-2 border-b border-white/10"><div className="font-black text-lg">وزارة التعليم</div><div className="text-xs text-cyan-100 mt-2">التعليم المستمر · نجران</div></div>
+      <nav className="py-5 space-y-2 text-sm font-bold">
+        <a href="/dashboard" className="flex items-center gap-3 rounded-xl px-3 py-3 bg-white/10"><School size={19}/> الصفحة الرئيسية</a>
+        <a href="#activities" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><PartyPopper size={19}/> الأنشطة والاحتفالات</a>
+        <a href="#employees" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><Users size={19}/> بيانات الموظفين</a>
+        <a href="#payroll" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><FileText size={19}/> مسيرات الرواتب</a>
+        <a href="/dashboard/indicators" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><BarChart3 size={19}/> مؤشرات الأداء</a>
+        <a href="/dashboard/profile" className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 bg-cyan-500/15 text-cyan-100"><span className="flex items-center gap-3"><UserRound size={19}/> الملف الشخصي</span><span className="text-[11px]">{profileCompletion}%</span></a>
+      </nav>
+      <button type="button" onClick={logout} className="mt-auto flex gap-2 items-center justify-center border border-white/20 rounded-xl px-3 py-3"><LogOut size={18}/> تسجيل الخروج</button>
+    </aside>
+    <div className="lg:mr-[230px]">
+      <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-white text-[var(--navy)] border-b print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 py-4 flex items-center justify-between gap-3">
+          <div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-slate-500 mt-1">مرحباً بك في حساب المدرسة</div></div>
+          <button type="button" onClick={logout} className="lg:hidden flex gap-2 items-center bg-slate-100 px-3 py-2 rounded-xl"><LogOut size={17}/> خروج</button>
+        </div>
+      </header>
+      <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
       <div className="print:hidden">
         {monthlyAwards.length>0&&<section className="mb-6 rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-white p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={26}/></div><div><h2 className="font-black text-lg text-amber-900">شهادة تميز شهرية</h2><p className="text-sm text-amber-800">حققت المدرسة المركز {monthlyAwards[0].rank} بنسبة إنجاز {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}.</p></div></div><button type="button" onClick={()=>window.print()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-700 text-white px-4 py-2 font-bold"><Award size={18}/> عرض / طباعة الشهادة</button></div>
