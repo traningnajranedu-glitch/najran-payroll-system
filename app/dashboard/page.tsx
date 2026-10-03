@@ -424,7 +424,7 @@ export default function Dashboard() {
     <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#003d4d] to-[#062f40] text-white flex-col p-4">
       <div className="py-5 px-2 border-b border-white/10"><div className="font-black text-lg">وزارة التعليم</div><div className="text-xs text-cyan-100 mt-2">التعليم المستمر · نجران</div></div>
       <nav className="py-5 space-y-2 text-sm font-bold">
-        <a href="/dashboard" className="flex items-center gap-3 rounded-xl px-3 py-3 bg-white/10"><School size={19}/> الصفحة الرئيسية</a>
+        <a href="/dashboard" className="flex items-center gap-3 rounded-xl px-3 py-3 bg-white/10"><ClipboardList size={19}/> الصفحة الرئيسية</a>
         <a href="#activities" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><PartyPopper size={19}/> الأنشطة والاحتفالات</a>
         <a href="#employees" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><Users size={19}/> بيانات الموظفين</a>
         <a href="#payroll" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><FileText size={19}/> مسيرات الرواتب</a>
