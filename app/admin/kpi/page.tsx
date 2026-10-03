@@ -126,18 +126,18 @@ export default function KpiDashboard(){
   if(loading)return <main dir="rtl" className="min-h-screen flex items-center justify-center bg-[#f5f9f8] text-[#16443e]"><div className="text-xl font-black">جارٍ تجهيز لوحة المؤشرات…</div></main>;
 
   const nav=[
-    [Home,'الرئيسية','/admin'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[CalendarDays,'فترات المسيرات','/admin'],[ClipboardList,'إدارة المسيرات','/admin'],[Star,'الأنشطة والاحتفاليات','/admin'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
+    [Home,'الرئيسية','/admin'],[BarChart3,'لوحة المؤشرات','/admin/kpi'],[Building2,'المدارس','/admin'],[Users,'الموظفون','/admin'],[CalendarDays,'فترات المسيرات','/admin'],[ClipboardList,'إدارة المسيرات','/admin'],[Star,'الأنشطة والاحتفاليات','/admin'],[FileText,'التقارير','/admin/daily-report'],[Settings,'الإعدادات','/admin']
   ];
 
-  return <main dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top_right,#e7f6f1_0,#f5f9f8_34%,#f8fbfa_100%)] text-[#183b38] overflow-x-hidden">
+  return <main dir="rtl" className="min-h-screen bg-[radial-gradient(circle_at_top_right,#eaf7f4_0,#f4f8fb_36%,#f8fafc_100%)] text-[#183b38] overflow-x-hidden">
     <div className="flex min-h-screen">
-      <aside className={(mobileNav?'translate-x-0':'translate-x-full')+' fixed z-40 inset-y-0 right-0 w-[285px] bg-gradient-to-b from-[#005d52] via-[#006d60] to-[#003e38] text-white shadow-2xl transition-transform lg:translate-x-0 lg:static lg:w-[250px] shrink-0'}>
+      <aside className={(mobileNav?'translate-x-0':'translate-x-full')+' fixed z-40 inset-y-0 right-0 w-[285px] bg-gradient-to-b from-[#062f3d] via-[#073f4d] to-[#052a36] text-white shadow-2xl transition-transform lg:translate-x-0 lg:static lg:w-[250px] shrink-0'}>
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center justify-between"><div className="font-black text-xl">البوابة الإلكترونية</div><button className="lg:hidden" onClick={()=>setMobileNav(false)}><X/></button></div>
           <div className="text-xs text-white/75 mt-1">مدارس التعليم المستمر</div>
         </div>
         <nav className="p-3 space-y-1">
-          {nav.map(([Icon,label,href]:any,i)=><a key={label} href={href} className={'flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition '+(i===0?'bg-white/15':'hover:bg-white/10')}><Icon size={20}/><span>{label}</span>{i===0&&<span className="mr-auto w-2 h-2 rounded-full bg-[#48d6ad]"/>}</a>)}
+          {nav.map(([Icon,label,href]:any,i)=><a key={label} href={href} className={'flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition '+(label==='لوحة المؤشرات'?'bg-[#0c8b80] shadow-lg shadow-black/10':'hover:bg-white/10')}><Icon size={20}/><span>{label}</span>{label==='لوحة المؤشرات'&&<span className="mr-auto w-2 h-2 rounded-full bg-[#5de0c1]"/>}</a>)}
         </nav>
         <div className="absolute bottom-5 inset-x-4 rounded-2xl bg-white/10 p-4">
           <div className="text-xs text-white/70">الهوية الوطنية</div><div className="font-black mt-1">اليوم الوطني السعودي 96</div><div className="mt-3 h-1.5 rounded-full bg-white/15"><div className="h-full w-2/3 bg-[#d8b04a] rounded-full"/></div>
@@ -169,10 +169,11 @@ export default function KpiDashboard(){
           </div>
         </header>
 
-        <div className="p-4 lg:p-6 xl:p-8 max-w-[1600px] mx-auto">
+        <div className="p-4 lg:p-6 xl:p-8 max-w-[1700px] mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-6">
             <div className="flex items-start gap-4"><div className="hidden sm:flex w-14 h-14 rounded-2xl bg-white border border-[#d6e8e3] shadow-sm items-center justify-center text-[#087f69]"><BarChart3 size={28}/></div><div><div className="text-xs text-[#78908b] font-black mb-1">مركز المتابعة والتحليل</div><h2 className="text-2xl lg:text-3xl font-black text-[#073f38] tracking-tight">لوحة مؤشرات الأداء</h2><p className="text-sm text-[#6e817e] mt-1">متابعة تشغيلية موحدة لمدارس التعليم المستمر في نجران</p></div></div>
             <div className="flex flex-wrap gap-2">
+              <div className="rounded-xl border border-[#d4e3e0] bg-white px-4 py-2.5 font-bold text-sm text-[#516a66] shadow-sm">العام الدراسي {currentAcademicYear()} هـ</div>
               <select value={selectedSchool} onChange={e=>chooseSchool(e.target.value)} className="rounded-xl border border-[#d4e3e0] bg-white text-[#173e3a] px-4 py-2.5 min-w-[220px] font-bold text-sm shadow-sm"><option value="all">جميع المدارس</option>{activeSchools.map(s=><option key={s.id} value={s.id}>{s.school_code} — {s.school_name}</option>)}</select>
             </div>
           </div>
@@ -181,13 +182,16 @@ export default function KpiDashboard(){
           {message&&<div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 p-3 text-sm font-bold">{message}</div>}
 
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 mb-6">
-            <StatCard title="المدارس النشطة" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="مدارس مفعلة ضمن المتابعة"/>
-            <StatCard title="المنسوبون النشطون" value={overall.staff} unit="منسوب" icon={Users} tone="blue" sub="إجمالي المنسوبين النشطين"/>
-            <StatCard title="التقارير المنجزة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير أنشطة مكتملة المراجعة"/>
-            <StatCard title="الأنشطة النشطة" value={activeActivities.length} unit="نشاط" icon={PartyPopper} tone="amber" sub="أنشطة متاحة حاليًا للمدارس"/>
+            <StatCard title="إجمالي المدارس" value={activeSchools.length} unit="مدرسة" icon={Building2} tone="green" sub="المدارس النشطة ضمن البوابة"/>
+            <StatCard title="إجمالي المنسوبين" value={overall.staff} unit="منسوب" icon={Users} tone="blue" sub={"نسبة العاملين "+pct(overall.staffing)+"%"}/>
+            <StatCard title="التقارير والإنجازات" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub={"إنجاز الأنشطة "+pct(overall.activities)+"%"}/>
+            <StatCard title="الأنشطة النشطة" value={activeActivities.length} unit="نشاط" icon={PartyPopper} tone="amber" sub={"متوسط التقييم "+pct(overall.rating)+" / 5"}/>
           </section>
 
           <section className="grid xl:grid-cols-12 gap-5 mb-6">
+            <div className="xl:col-span-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[['نسبة العاملين',overall.staffing,'#159f7d'],['إنجاز الأنشطة',overall.activities,'#3677c8'],['تقييم الأنشطة',overall.rating*20,'#7b61b5'],['التحصيل العلمي',overall.achievement??0,'#f2a719']].map(([label,value,color]:any)=><div key={label} className="rounded-2xl border border-[#dce8e6] bg-white p-4 shadow-[0_3px_14px_rgba(15,74,66,.05)] flex items-center gap-4"><div className="relative w-20 h-20 rounded-full flex items-center justify-center" style={{background:`conic-gradient(${color} ${clamp(value)*3.6}deg,#edf2f1 0)`}}><div className="absolute inset-[8px] rounded-full bg-white"/><b className="relative text-lg text-[#173e3a]">{pct(value)}%</b></div><div><div className="text-xs text-[#718582]">مؤشر الأداء</div><div className="font-black text-[#173e3a] mt-1">{label}</div><div className="text-[10px] text-[#8a9996] mt-1">تحديث مباشر من بيانات النظام</div></div></div>)}
+            </div>
             <Panel title="حالة المدارس" sub="توزيع المدارس حسب حالة المتابعة" icon={Building2} className="xl:col-span-5">
               <div className="flex flex-col sm:flex-row items-center gap-7">
                 <Donut active={schoolStatus.active} review={schoolStatus.review} blocked={schoolStatus.blocked}/>
