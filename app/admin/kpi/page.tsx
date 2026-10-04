@@ -150,10 +150,10 @@ export default function KpiDashboard(){
   function chooseSchool(id:string){setSelectedSchool(id);}
   async function issueMonthlyAwards(){
     setIssuingAwards(true);setError('');setMessage('');
-    const d=new Date(); d.setUTCMonth(d.getUTCMonth()-1,1);
-    const month=d.toISOString().slice(0,10);
+    const d=new Date();
+    const month=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)).toISOString().slice(0,10);
     const {data,error}=await sb.rpc('issue_school_monthly_awards',{p_month:month});
-    if(error)setError('تعذر إصدار شهادات التميز: '+error.message);else setMessage('تم إصدار شهادات التميز لأول '+String(data||3)+' مدارس عن الشهر السابق، وستظهر تلقائيًا في حساباتها.');
+    if(error)setError('تعذر إصدار شهادات التميز: '+error.message);else setMessage('تم تحديث وإصدار شهادات التميز لأول '+String(data||3)+' مدارس للشهر الحالي، مع إرسال إشعار تلقائي إلى حساب كل مدرسة فائزة.');
     setIssuingAwards(false);
   }
   async function toggleFullscreen(){try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch{}}
