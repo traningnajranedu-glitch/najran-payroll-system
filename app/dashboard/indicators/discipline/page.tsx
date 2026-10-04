@@ -24,6 +24,9 @@ const blank = (): DisciplineInput => ({
   excused_absent_count: "",
   unexcused_absent_count: "",
   notes: "",
+  noor_absence_confirmed: false,
+  noor_excused_absence_percent: "0",
+  noor_unexcused_absence_percent: "0",
 });
 export default function DisciplineForm() {
   const sb = supabaseBrowser();
@@ -96,6 +99,9 @@ export default function DisciplineForm() {
       excused_absent_count: String(r.excused_absent_count),
       unexcused_absent_count: String(r.unexcused_absent_count),
       notes: r.notes || "",
+      noor_absence_confirmed: Boolean(r.noor_absence_confirmed),
+      noor_excused_absence_percent: String(r.noor_excused_absence_percent ?? 0),
+      noor_unexcused_absence_percent: String(r.noor_unexcused_absence_percent ?? 0),
     });
     setMessage("تم تحميل سجل اليوم للتحديث.");
     setError("");
@@ -133,6 +139,9 @@ export default function DisciplineForm() {
             excused_absent_count: Number(form.excused_absent_count),
             unexcused_absent_count: Number(form.unexcused_absent_count),
             notes: form.notes.trim() || null,
+            noor_absence_confirmed: form.noor_absence_confirmed,
+            noor_excused_absence_percent: form.noor_absence_confirmed ? Number(form.noor_excused_absence_percent) : null,
+            noor_unexcused_absence_percent: form.noor_absence_confirmed ? Number(form.noor_unexcused_absence_percent) : null,
             submitted_by: user.id,
           },
           { onConflict: "school_id,attendance_date" },
@@ -266,6 +275,19 @@ export default function DisciplineForm() {
                 {field("excused_absent_count", "الغائبون بعذر")}
                 {field("unexcused_absent_count", "الغائبون دون عذر")}
               </div>
+              <section className="mt-6 rounded-3xl border border-sky-200 bg-gradient-to-l from-sky-50 via-white to-indigo-50 p-5 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div><h2 className="text-lg font-black text-slate-900">تثبيت الغياب في نظام نور</h2><p className="mt-1 text-sm text-slate-500">حدد حالة تثبيت الغياب، ثم أدخل نسب الغياب المعتمدة في نظام نور.</p></div>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-sky-200 bg-white px-4 py-3 shadow-sm">
+                    <input type="checkbox" className="peer sr-only" checked={form.noor_absence_confirmed} onChange={(e)=>setForm({...form,noor_absence_confirmed:e.target.checked})}/>
+                    <span className="relative h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-emerald-600 after:absolute after:right-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-all peer-checked:after:-translate-x-5"></span>
+                    <span className={"text-sm font-black "+(form.noor_absence_confirmed?"text-emerald-700":"text-slate-600")}>{form.noor_absence_confirmed?"تم تثبيت الغياب":"لم يتم تثبيت الغياب"}</span>
+                  </label>
+                </div>
+                {form.noor_absence_confirmed&&<div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {([["noor_excused_absence_percent","نسبة الغياب بعذر","emerald"],["noor_unexcused_absence_percent","نسبة الغياب بدون عذر","rose"]] as const).map(([key,label,tone])=><label key={key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between gap-3"><span className="font-black text-slate-800">{label}</span><span className={"rounded-xl px-3 py-1 text-xl font-black "+(tone==="emerald"?"bg-emerald-50 text-emerald-700":"bg-rose-50 text-rose-700")}>{form[key]}%</span></div><input type="range" min="0" max="100" step="1" value={form[key]} onChange={(e)=>setForm({...form,[key]:e.target.value})} className="mt-5 w-full accent-emerald-600"/><div className="mt-3 flex items-center gap-2"><input type="number" min="0" max="100" step="1" value={form[key]} onChange={(e)=>{const v=Math.min(100,Math.max(0,Number(e.target.value)||0));setForm({...form,[key]:String(v)})}} className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-center font-black"/><span className="text-sm font-bold text-slate-500">من 100%</span></div></label>)}
+                </div>}
+              </section>
               <div className="grid grid-cols-3 gap-3 my-5">
                 {[
                   [
