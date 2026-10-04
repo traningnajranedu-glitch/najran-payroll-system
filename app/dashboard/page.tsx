@@ -160,7 +160,7 @@ export default function Dashboard() {
   const [notifications,setNotifications]=useState<SchoolNotification[]>([]);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
-  const [profileCompletion,setProfileCompletion]=useState(0);
+  const [profileCompletion,setProfileCompletion]=useState(0);\n  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
 
   async function load() {
     setLoading(true);
@@ -454,12 +454,12 @@ export default function Dashboard() {
             <div className="relative">
               <button type="button" onClick={()=>setNotificationsOpen(v=>!v)} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[var(--navy)] shadow-sm transition hover:bg-cyan-50" aria-label="الإشعارات">
                 <Bell size={21}/>
-                {(notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0))>0&&<span className="absolute -left-1 -top-1 min-w-5 h-5 rounded-full bg-red-600 px-1 text-[10px] font-black text-white flex items-center justify-center">{Math.min(99,notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0))}</span>}
+                {(notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + (madrasatiWeeklyMissing?1:0))>0&&<span className="absolute -left-1 -top-1 min-w-5 h-5 rounded-full bg-red-600 px-1 text-[10px] font-black text-white flex items-center justify-center">{Math.min(99,notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + (madrasatiWeeklyMissing?1:0))}</span>}
               </button>
               {notificationsOpen&&<div className="absolute left-0 mt-3 w-[min(92vw,390px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl z-50">
                 <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3"><div><div className="font-black text-slate-900">الإشعارات</div><div className="text-[11px] text-slate-500">آخر التنبيهات والرسائل الخاصة بالمدرسة</div></div><button type="button" onClick={()=>setNotificationsOpen(false)} className="rounded-xl p-2 hover:bg-slate-200"><X size={18}/></button></div>
                 <div className="max-h-[420px] overflow-y-auto">
-                  {monthlyAwards[0]&&<a href="/dashboard/awards" className="block border-b bg-amber-50 px-4 py-4 hover:bg-amber-100"><div className="flex gap-3"><div className="mt-0.5 text-amber-700"><Trophy size={20}/></div><div><div className="font-black text-sm text-amber-950">شهادة تميز جديدة</div><div className="mt-1 text-xs leading-5 text-amber-800">المركز {monthlyAwards[0].rank} بنسبة {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}</div></div></div></a>}
+                  {madrasatiWeeklyMissing&&<a href="/dashboard/indicators/madrasati" className="block border-b bg-cyan-50 px-4 py-4 hover:bg-cyan-100"><div className="font-black text-sm text-cyan-950">مطلوب إدخال مؤشر منصة مدرستي</div><div className="mt-1 text-xs leading-5 text-cyan-800">لم يتم إدخال مؤشر هذا الأسبوع بعد. يرجى استكماله خلال الفترة من الأحد إلى الخميس.</div></a>}\n                  {monthlyAwards[0]&&<a href="/dashboard/awards" className="block border-b bg-amber-50 px-4 py-4 hover:bg-amber-100"><div className="flex gap-3"><div className="mt-0.5 text-amber-700"><Trophy size={20}/></div><div><div className="font-black text-sm text-amber-950">شهادة تميز جديدة</div><div className="mt-1 text-xs leading-5 text-amber-800">المركز {monthlyAwards[0].rank} بنسبة {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}</div></div></div></a>}
                   {notifications.map(n=><button type="button" key={n.id} onClick={async()=>{await markNotificationRead(n.id); if(n.action_url) location.href=n.action_url;}} className={`block w-full border-b px-4 py-4 text-right transition hover:bg-slate-50 ${n.is_read?'bg-white':'bg-cyan-50/70'}`}><div className="flex gap-3"><div className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${n.is_read?'bg-slate-300':'bg-cyan-600'}`}/><div><div className="font-black text-sm text-slate-900">{n.title}</div><div className="mt-1 text-xs leading-5 text-slate-600">{n.message}</div><div className="mt-2 text-[10px] text-slate-400">{new Date(n.created_at).toLocaleString('ar-SA')}</div></div></div></button>)}
                   {!notifications.length&&!monthlyAwards.length&&<div className="px-5 py-10 text-center text-sm text-slate-500">لا توجد إشعارات حاليًا.</div>}
                 </div>
