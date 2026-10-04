@@ -161,7 +161,7 @@ export default function Dashboard() {
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
   const [profileCompletion,setProfileCompletion]=useState(0);
-  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
+  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);\n  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState({start:'',end:''});
 
   async function load() {
     setLoading(true);
@@ -497,8 +497,8 @@ export default function Dashboard() {
         <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-l from-violet-50 via-white to-blue-50 shadow-sm">
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200"><BarChart3 size={25}/></div><div><h2 className="text-lg font-black text-slate-900">مؤشر منصة مدرستي — اليوم</h2><p className="mt-1 text-sm text-slate-500">يعكس آخر إدخال يومي خاص بـ {school.school_name}</p></div></div>
-              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiToday?'تحديث المؤشر':'إدخال مؤشر اليوم'}</a>
+              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200"><BarChart3 size={25}/></div><div><h2 className="text-lg font-black text-slate-900">مؤشر منصة مدرستي</h2><p className="mt-1 text-sm text-slate-500"><span className="font-black text-violet-700">فترة الإدخال:</span> {madrasatiWeekRange.start} إلى {madrasatiWeekRange.end} — الأحد إلى الخميس</p></div></div>
+              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiToday?'تحديث مؤشر الأسبوع':'إدخال مؤشر الأسبوع'}</a>
             </div>
             {madrasatiToday?(()=>{
               const avg=(madrasatiToday.manager_login_percent+madrasatiToday.teachers_login_percent+madrasatiToday.teachers_tools_percent+madrasatiToday.students_login_percent+madrasatiToday.students_tools_percent)/5;
@@ -511,7 +511,7 @@ export default function Dashboard() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{metrics.map(([label,value])=><div key={String(label)} className="rounded-2xl border border-slate-100 bg-white p-4 text-center shadow-sm"><div className="text-2xl font-black text-violet-700">{value}%</div><div className="mt-1 text-xs font-bold text-slate-600">{label}</div></div>)}</div>
               </div>
-            })():<div className="rounded-2xl border border-dashed border-violet-300 bg-white/70 p-6 text-center"><div className="font-black text-slate-800">لم يتم إدخال مؤشر منصة مدرستي لليوم بعد</div><div className="mt-1 text-sm text-slate-500">أدخل بيانات اليوم لتظهر نسبة الإنجاز مباشرة في الصفحة الرئيسية.</div></div>}
+            })():<div className="rounded-2xl border border-dashed border-violet-300 bg-white/70 p-6 text-center"><div className="font-black text-slate-800">لم يتم إدخال مؤشر منصة مدرستي لهذا الأسبوع بعد</div><div className="mt-1 text-sm text-slate-500">أدخل بيانات الأسبوع خلال فترة الإدخال لتظهر نسبة الإنجاز مباشرة في الصفحة الرئيسية.</div></div>}
           </div>
         </section>
 
