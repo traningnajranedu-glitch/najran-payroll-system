@@ -433,10 +433,10 @@ export default function Dashboard() {
       <button type="button" onClick={logout} className="mt-auto flex gap-2 items-center justify-center border border-white/20 rounded-xl px-3 py-3"><LogOut size={18}/> تسجيل الخروج</button>
     </aside>
     <div className="lg:mr-[230px]">
-      <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-white text-[var(--navy)] border-b print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-5 py-4 flex items-center justify-between gap-3">
+      <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-white text-[var(--navy)] border-b print:hidden sticky top-0 z-30">
+        <div className="w-full px-4 sm:px-5 lg:px-8 py-4 flex items-center justify-between gap-3">
           <div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-slate-500 mt-1">مرحباً بك في حساب المدرسة</div></div>
-          <button type="button" onClick={logout} className="flex gap-2 items-center bg-red-50 text-red-700 border border-red-100 px-3 py-2 rounded-xl font-bold"><LogOut size={17}/> تسجيل الخروج</button>
+          <button type="button" onClick={logout} className="flex shrink-0 gap-2 items-center bg-red-50 text-red-700 border border-red-200 px-3 sm:px-4 py-2.5 rounded-xl font-black shadow-sm hover:bg-red-100"><LogOut size={18}/> تسجيل الخروج</button>
         </div>
       </header>
       <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
