@@ -178,7 +178,8 @@ export default function DisciplineForm() {
     ) && total > 0;
   const input =
     "mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900";
-  const field = (k: keyof DisciplineInput, label: string, type = "number") => (
+  type TextDisciplineKey = Exclude<keyof DisciplineInput, "noor_absence_confirmed">;
+  const field = (k: TextDisciplineKey, label: string, type = "number") => (
     <label key={k} className="text-sm font-bold">
       {label}
       <input
