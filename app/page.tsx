@@ -26,12 +26,12 @@ export default function Home(){
 
   return <main className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(circle_at_top,#e7f3ee_0%,#f5f8f6_38%,#ffffff_75%)]">
     <div className="w-full max-w-xl">
-      <div className="national-day-96-hero mb-5 overflow-hidden">
-        <div className="national-day-96-celebration">اليوم الوطني السعودي 96</div>
-        <div className="national-day-96-hero-inner">
-          <img src="https://cdn.gea.gov.sa/ND-2026/brand/brand-emblem-wide.png" alt="الهوية الرسمية لليوم الوطني السعودي 96 — عزّنا بطبعنا" className="national-day-96-logo"/>
-          <div className="national-day-96-slogan">عزّنا بطبعنا</div>
-          <div className="national-day-96-date">23 سبتمبر 2026</div>
+      <div className="teacher-day-hero mb-5">
+        <div className="teacher-day-hero-inner">
+          <div className="teacher-day-icon">✦</div>
+          <div className="teacher-day-title">بمناسبة يوم المعلم العالمي</div>
+          <div className="teacher-day-message">شكرًا لكل معلم ومعلمة يصنعون أثرًا، ويبنون معرفة، ويُلهمون أجيال المستقبل.</div>
+          <div className="teacher-day-date">5 أكتوبر 2026 · تعليم نجران</div>
         </div>
       </div>
 
