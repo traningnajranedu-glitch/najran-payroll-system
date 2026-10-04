@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, FileText, MessageCircle, RefreshCw, Send, Users, Building2, AlertCircle } from 'lucide-react';
+import { ArrowRight, FileText, MessageCircle, RefreshCw, Send, Users, Building2, AlertCircle, Link2 } from 'lucide-react';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name?: string | null; whatsapp_number?: string | null };
@@ -21,6 +21,9 @@ export default function WhatsAppSchoolsPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [sendErrors, setSendErrors] = useState<SendError[]>([]);
+  const [metaNotice, setMetaNotice] = useState('');
+  const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID || '';
+  const metaConfigId = process.env.NEXT_PUBLIC_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID || '';
 
   async function load() {
     setLoading(true); setNotice(''); setSendErrors([]);
@@ -37,6 +40,25 @@ export default function WhatsAppSchoolsPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!metaAppId || document.getElementById('facebook-jssdk')) return;
+    (window as any).fbAsyncInit = () => (window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: false, version: 'v23.0' });
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk'; script.async = true; script.defer = true; script.crossOrigin = 'anonymous';
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    document.body.appendChild(script);
+  }, [metaAppId]);
+
+  function startEmbeddedSignup() {
+    setMetaNotice('');
+    if (!metaAppId || !metaConfigId) return setMetaNotice('يلزم إضافة App ID وEmbedded Signup Configuration ID في Vercel أولاً.');
+    const FB = (window as any).FB;
+    if (!FB) return setMetaNotice('جارٍ تجهيز اتصال Meta. انتظر لحظات ثم أعد المحاولة.');
+    FB.login((response: any) => {
+      setMetaNotice(response?.authResponse?.code ? 'اكتملت نافذة التسجيل المضمّن في Meta. لا تفصل الرقم من تطبيق WhatsApp Business.' : 'لم تكتمل عملية الربط، ولم يتم تغيير رقم واتساب الحالي.');
+    }, { config_id: metaConfigId, response_type: 'code', override_default_response_type: true, extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' } });
+  }
 
   const selectedSchool = schools.find(s => s.id === schoolId);
   const targetCount = useMemo(() => mode === 'single' ? (phone || selectedSchool?.whatsapp_number ? 1 : 0) : schools.filter(s => s.whatsapp_number).length, [mode, phone, selectedSchool, schools]);
@@ -69,6 +91,14 @@ export default function WhatsAppSchoolsPage() {
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div><h1 className="text-2xl font-bold flex items-center gap-2"><MessageCircle/> التواصل مع المدارس عبر واتساب</h1><p className="text-gray-500 mt-1">إرسال التعاميم والخطابات لجميع المدارس أو لمدرسة محددة.</p></div>
         <div className="flex gap-2"><button onClick={load} className="border bg-white rounded-xl p-3"><RefreshCw size={18}/></button><button onClick={() => location.href='/admin'} className="border bg-white rounded-xl px-4 py-3 flex items-center gap-2"><ArrowRight size={17}/> لوحة المدير</button></div>
+      </div>
+
+      <div className="card p-5 mb-5 border border-emerald-100 bg-emerald-50/40">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div><h2 className="font-bold">ربط WhatsApp Business الحالي</h2><p className="text-sm text-gray-600 mt-1">التسجيل المضمّن عبر Meta مع الحفاظ على الرقم الحالي وعدم استخدام الترحيل أو إلغاء الربط.</p></div>
+          <button onClick={startEmbeddedSignup} className="bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><Link2 size={18}/> ربط WhatsApp Business</button>
+        </div>
+        {metaNotice && <div className="mt-3 bg-white border rounded-xl px-4 py-3 text-sm">{metaNotice}</div>}
       </div>
 
       {notice && <div className="bg-blue-50 text-blue-800 border border-blue-100 rounded-xl px-4 py-3 mb-5">{notice}</div>}
