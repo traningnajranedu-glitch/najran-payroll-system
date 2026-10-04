@@ -161,7 +161,8 @@ export default function Dashboard() {
   const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
   const [profileCompletion,setProfileCompletion]=useState(0);
-  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);\n  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState({start:'',end:''});
+  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
+  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState({start:'',end:''});
 
   async function load() {
     setLoading(true);
