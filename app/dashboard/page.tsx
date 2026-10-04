@@ -418,7 +418,14 @@ export default function Dashboard() {
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل البيانات…</div></main>;
   if (!school) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-8 text-center text-red-700">{message || 'تعذر تحميل بيانات المدرسة.'}</div></main>;
 
-  if(profileCompletion<100 && typeof window!=='undefined' && window.location.pathname==='/dashboard'){ window.location.replace('/dashboard/profile'); return <main className="min-h-screen flex items-center justify-center">جارٍ فتح الملف الشخصي…</main>; }
+  if(profileCompletion<100 && typeof window!=='undefined' && window.location.pathname==='/dashboard'){
+    const profileAutoOpenKey=school?.id?`school-profile-auto-opened-${school.id}`:'school-profile-auto-opened';
+    if(!sessionStorage.getItem(profileAutoOpenKey)){
+      sessionStorage.setItem(profileAutoOpenKey,'1');
+      window.location.replace('/dashboard/profile');
+      return <main className="min-h-screen flex items-center justify-center">جارٍ فتح الملف الشخصي…</main>;
+    }
+  }
 
   return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
     <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#003d4d] to-[#062f40] text-white flex-col p-4">
