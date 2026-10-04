@@ -98,3 +98,22 @@ input:focus, select:focus, textarea:focus { border-color:var(--moe-green) !impor
   .national-day-96-hero-inner{gap:.65rem;padding:.8rem}
   .national-day-96-date{width:100%;text-align:center}
 }
+
+/* يوم المعلم العالمي — 5 أكتوبر */
+.teacher-day-bar{
+  position:relative;overflow:hidden;color:#fff;
+  background:linear-gradient(105deg,#5b3a29 0%,#8b5e3c 42%,#0b6b50 100%);
+  border-bottom:3px solid #d9b86c;
+}
+.teacher-day-bar::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 30%,rgba(255,255,255,.13),transparent 24%),repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 20px)}
+.teacher-day-content{position:relative;z-index:1}
+.teacher-day-badge{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);font-size:1.35rem}
+.teacher-day-mark{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.09);border-radius:999px;padding:.38rem .8rem;font-weight:800}
+.teacher-day-hero{position:relative;overflow:hidden;color:#fff;background:linear-gradient(135deg,#4b3024 0%,#8b5e3c 48%,#0b6b50 100%);border-radius:24px;border:1px solid rgba(255,255,255,.18);box-shadow:0 16px 38px rgba(68,45,31,.16)}
+.teacher-day-hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 15% 25%,rgba(255,255,255,.15),transparent 22%),repeating-linear-gradient(135deg,rgba(255,255,255,.04) 0 2px,transparent 2px 20px)}
+.teacher-day-hero-inner{position:relative;z-index:1;padding:1.35rem 1.5rem;text-align:center}
+.teacher-day-icon{width:70px;height:70px;margin:0 auto .8rem;border-radius:22px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.24);font-size:2rem}
+.teacher-day-title{font-size:1.35rem;font-weight:900}
+.teacher-day-message{margin-top:.45rem;font-size:.9rem;line-height:1.8;color:rgba(255,255,255,.9)}
+.teacher-day-date{display:inline-flex;margin-top:.8rem;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);padding:.3rem .75rem;font-size:.75rem;font-weight:800}
+@media(max-width:640px){.teacher-day-title{font-size:1.1rem}.teacher-day-message{font-size:.8rem}.teacher-day-badge{width:38px;height:38px}}
