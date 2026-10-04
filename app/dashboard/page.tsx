@@ -418,14 +418,6 @@ export default function Dashboard() {
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل البيانات…</div></main>;
   if (!school) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-8 text-center text-red-700">{message || 'تعذر تحميل بيانات المدرسة.'}</div></main>;
 
-  if(profileCompletion<100 && typeof window!=='undefined' && window.location.pathname==='/dashboard'){
-    const profileAutoOpenKey=school?.id?`school-profile-auto-opened-${school.id}`:'school-profile-auto-opened';
-    if(!sessionStorage.getItem(profileAutoOpenKey)){
-      sessionStorage.setItem(profileAutoOpenKey,'1');
-      window.location.replace('/dashboard/profile');
-      return <main className="min-h-screen flex items-center justify-center">جارٍ فتح الملف الشخصي…</main>;
-    }
-  }
 
   return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
     <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#003d4d] to-[#062f40] text-white flex-col p-4">
@@ -444,7 +436,7 @@ export default function Dashboard() {
       <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-white text-[var(--navy)] border-b print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-5 py-4 flex items-center justify-between gap-3">
           <div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-slate-500 mt-1">مرحباً بك في حساب المدرسة</div></div>
-          <button type="button" onClick={logout} className="lg:hidden flex gap-2 items-center bg-slate-100 px-3 py-2 rounded-xl"><LogOut size={17}/> خروج</button>
+          <button type="button" onClick={logout} className="flex gap-2 items-center bg-red-50 text-red-700 border border-red-100 px-3 py-2 rounded-xl font-bold"><LogOut size={17}/> تسجيل الخروج</button>
         </div>
       </header>
       <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
