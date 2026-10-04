@@ -165,17 +165,16 @@ export default function DisciplineForm() {
     late = Number(form.late_count),
     absence =
       Number(form.excused_absent_count) + Number(form.unexcused_absent_count);
+  const countFields: Array<"expected_count" | "on_time_count" | "late_count" | "excused_absent_count" | "unexcused_absent_count"> = [
+    "expected_count",
+    "on_time_count",
+    "late_count",
+    "excused_absent_count",
+    "unexcused_absent_count",
+  ];
   const ready =
-    [
-      "expected_count",
-      "on_time_count",
-      "late_count",
-      "excused_absent_count",
-      "unexcused_absent_count",
-    ].every(
-      (k) =>
-        form[k as keyof DisciplineInput].trim() !== "" &&
-        Number.isFinite(Number(form[k as keyof DisciplineInput])),
+    countFields.every(
+      (k) => form[k].trim() !== "" && Number.isFinite(Number(form[k])),
     ) && total > 0;
   const input =
     "mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900";
