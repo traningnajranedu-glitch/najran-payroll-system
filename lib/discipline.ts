@@ -12,6 +12,9 @@ export type DisciplineRecord = {
   excused_absent_count: number;
   unexcused_absent_count: number;
   notes: string | null;
+  noor_absence_confirmed: boolean;
+  noor_excused_absence_percent: number | null;
+  noor_unexcused_absence_percent: number | null;
   regularity_percent: number;
   late_percent: number;
   absence_percent: number;
@@ -26,6 +29,9 @@ export type DisciplineInput = {
   excused_absent_count: string;
   unexcused_absent_count: string;
   notes: string;
+  noor_absence_confirmed: boolean;
+  noor_excused_absence_percent: string;
+  noor_unexcused_absence_percent: string;
 };
 export function validateDiscipline(f: DisciplineInput) {
   if (
@@ -55,6 +61,12 @@ export function validateDiscipline(f: DisciplineInput) {
       Number(f[k]) > 2147483647
     )
       return "أدخل جميع أعداد الطلاب بأرقام صحيحة غير سالبة.";
+  if (f.noor_absence_confirmed) {
+    for (const k of ["noor_excused_absence_percent","noor_unexcused_absence_percent"] as const) {
+      const v=Number(f[k]);
+      if (f[k].trim()==="" || !Number.isFinite(v) || v<0 || v>100) return "أدخل نسب الغياب المثبتة في نظام نور من 0 إلى 100%.";
+    }
+  }
   if (Number(f.expected_count) <= 0)
     return "عدد الطلاب المتوقع حضورهم يجب أن يكون أكبر من صفر.";
   if (
