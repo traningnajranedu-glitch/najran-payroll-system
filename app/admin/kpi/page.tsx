@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import {
   BarChart3, Building2, Users, PartyPopper, Star, GraduationCap, RefreshCw,
   Maximize2, Minimize2, Target, TrendingUp, Home, UserRound, CalendarDays,
@@ -10,6 +10,7 @@ import {
 import DisciplinePanel from '../../../components/DisciplinePanel';
 import AchievementPanel from '../../../components/AchievementPanel';
 import {currentAcademicYear} from '../../../lib/achievement';
+import {indicatorWeek, madrasatiMean, absenceSummary, validAbsence, type WeeklyAbsence} from '../../../lib/weekly-indicators';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School={id:string;school_code:string;school_name:string;is_active:boolean};
@@ -21,7 +22,7 @@ type PayrollRecord={id:string;period_id:string;school_id:string;status:string;ap
 type SchoolProfile={school_id:string;completion_percent:number;completed_step:number;updated_at:string;gender:string|null;stage:string|null;merged_stages:string[]|null;study_type:string|null;governorate:string|null;total_students:number|null;total_classes:number|null};
 type Achievement={id:string;school_id:string;academic_year:string;achievement_percent:number;assessed_count:number;target_percent:number|null;notes:string|null};
 type CompetitionScore={school_id:string;school_name:string;login_score:number;payroll_score:number;achievements_score:number;activities_score:number;employee_updates_score:number;total_score:number};
-type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;updated_at:string};
+type MadrasatiDaily={id:string;school_id:string;indicator_date:string;manager_login_percent:number;teachers_login_percent:number;teachers_tools_percent:number;students_login_percent:number;students_tools_percent:number;support_challenges_count:number;challenge_notes:string|null;updated_at:string};
 type Row={school:School;totalStaff:number;activeStaff:number;staffingRate:number;completedActivities:number;activityRate:number;avgRating:number;achievement:number|null;target:number|null;achievementYear:string|null};
 
 const pct=(n:number)=>Number.isFinite(n)?Math.round(n*10)/10:0;
@@ -58,6 +59,9 @@ export default function KpiDashboard(){
   const [schools,setSchools]=useState<School[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[activities,setActivities]=useState<Activity[]>([]),[reports,setReports]=useState<Report[]>([]),[achievements,setAchievements]=useState<Achievement[]>([]),[periods,setPeriods]=useState<Period[]>([]),[payroll,setPayroll]=useState<PayrollRecord[]>([]),[profiles,setProfiles]=useState<SchoolProfile[]>([]);
   const [selectedSchool,setSelectedSchool]=useState('all'),[isFullscreen,setIsFullscreen]=useState(false),[mobileNav,setMobileNav]=useState(false);
   const [currentDate,setCurrentDate]=useState(new Date());
+  const [discipline,setDiscipline]=useState<WeeklyAbsence[]>([]);
+  const week=indicatorWeek(currentDate);
+  const loadSequence=useRef(0);
 
   const gregorianDate=useMemo(()=>new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{
     timeZone:'Asia/Riyadh',weekday:'long',day:'numeric',month:'long',year:'numeric'
@@ -66,29 +70,33 @@ export default function KpiDashboard(){
     timeZone:'Asia/Riyadh',day:'numeric',month:'long',year:'numeric'
   }).format(currentDate),[currentDate]);
 
-  async function load(){
-    setLoading(true);setError('');
+  async function load(background=false){
+    const sequence=++loadSequence.current;
+    if(!background)setLoading(true);setError('');
     const {data:{user}}=await sb.auth.getUser();
     if(!user){location.href='/';return;}
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
-    const [s,t,a,r,e,m,c,p,pr,sp]=await Promise.all([
+    const [s,t,a,r,e,m,c,p,pr,sp,d]=await Promise.all([
       sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
       sb.from('school_achievement_summary').select('*').eq('academic_year',currentAcademicYear()).eq('semester','الأول').eq('evaluation_type','ختامي'),
-      sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())).order('updated_at',{ascending:false}),
+      sb.from('school_madrasati_daily_indicators').select('*').eq('indicator_date',indicatorWeek().start).order('updated_at',{ascending:false}),
       sb.from('school_achievement_settings').select('*').single(),
       sb.from('payroll_periods').select('id,period_name,start_hijri,end_hijri,start_date,end_date,is_open').order('start_date',{ascending:false}),
       sb.from('payroll_records').select('id,period_id,school_id,status,approved_at'),
-      sb.from('school_profiles').select('school_id,completion_percent,completed_step,updated_at,gender,stage,merged_stages,study_type,governorate,total_students,total_classes')
+      sb.from('school_profiles').select('school_id,completion_percent,completed_step,updated_at,gender,stage,merged_stages,study_type,governorate,total_students,total_classes'),
+      sb.from('school_discipline_daily').select('school_id,attendance_date,noor_absence_confirmed,noor_excused_absence_percent,noor_unexcused_absence_percent,notes').eq('attendance_date',indicatorWeek().start)
     ]);
-    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error||sp.error;
+    if(sequence!==loadSequence.current)return;
+    const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error||sp.error||d.error;
     if(first){setError(first.message);setLoading(false);return;}
-    setSchools(s.data||[]);
+    setSchools(s.data||[]);setDiscipline((d.data||[]) as WeeklyAbsence[]);setCurrentDate(new Date());
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
+    if(sequence!==loadSequence.current)return;
     setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setPeriods((p.data||[]) as Period[]);setPayroll((pr.data||[]) as PayrollRecord[]);setProfiles((sp.data||[]) as SchoolProfile[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
     setLoading(false);
   }
@@ -103,7 +111,7 @@ export default function KpiDashboard(){
     return()=>{sb.removeChannel(channel)};
   },[]);
   useEffect(()=>{const id=setInterval(()=>setCurrentDate(new Date()),60000);return()=>clearInterval(id)},[]);
-  useEffect(()=>{const id=setInterval(load,60000);return()=>clearInterval(id)},[]);
+  useEffect(()=>{const refresh=()=>void load(true);const id=setInterval(refresh,60000);const channel=sb.channel('admin-weekly-indicators').on('postgres_changes',{event:'*',schema:'public',table:'school_madrasati_daily_indicators'},refresh).on('postgres_changes',{event:'*',schema:'public',table:'school_discipline_daily'},refresh).subscribe();window.addEventListener('focus',refresh);return()=>{clearInterval(id);window.removeEventListener('focus',refresh);void sb.removeChannel(channel)}},[]);
   useEffect(()=>{const h=()=>setIsFullscreen(!!document.fullscreenElement);document.addEventListener('fullscreenchange',h);return()=>document.removeEventListener('fullscreenchange',h)},[]);
 
   const activeSchools=useMemo(()=>schools.filter(s=>s.is_active),[schools]);
@@ -130,7 +138,11 @@ export default function KpiDashboard(){
   const approvedSchoolIds=new Set(latestPayroll.filter(x=>x.status==='تم الاعتماد'||x.approved_at).map(x=>x.school_id));
   const approvedSchools=approvedSchoolIds.size;
   const pendingSchools=Math.max(0,activeSchools.length-approvedSchools);
-  const madrasatiAverage=madrasati.length?madrasati.reduce((sum,x)=>sum+(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5,0)/madrasati.length:0;
+  const indicatorSchools=selectedSchool==='all'?activeSchools:activeSchools.filter(s=>s.id===selectedSchool);
+  const weeklyMadrasati=madrasati.filter(x=>x.indicator_date===week.start && indicatorSchools.some(s=>s.id===x.school_id));
+  const madrasatiAverage=indicatorSchools.length?weeklyMadrasati.reduce((sum,x)=>sum+madrasatiMean(x),0)/indicatorSchools.length:0;
+  const weeklyDiscipline=discipline.filter(x=>x.attendance_date===week.start && indicatorSchools.some(s=>s.id===x.school_id));
+  const absence=absenceSummary(weeklyDiscipline);
   const schoolStatus={active:approvedSchools,review:pendingSchools,blocked:0};
   const profileRows=activeSchools.map(s=>({school:s,percent:clamp(Number(profiles.find(p=>p.school_id===s.id)?.completion_percent||0)),step:Number(profiles.find(p=>p.school_id===s.id)?.completed_step||0)}));
   const completedProfiles=profileRows.filter(x=>x.percent===100).length;
@@ -194,7 +206,7 @@ export default function KpiDashboard(){
               <div className="flex items-center gap-2"><div className="w-9 h-9 rounded-full bg-[#e7f4f0] text-[#087f69] flex items-center justify-center"><UserRound size={19}/></div><span>مرحباً بك في البوابة</span></div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={load} className="p-2.5 rounded-xl border border-[#dce8e6] bg-white text-[#087f69]" title="تحديث"><RefreshCw size={19}/></button>
+              <button onClick={()=>void load()} className="p-2.5 rounded-xl border border-[#dce8e6] bg-white text-[#087f69]" title="تحديث"><RefreshCw size={19}/></button>
               <button onClick={toggleFullscreen} className="p-2.5 rounded-xl border border-[#dce8e6] bg-white text-[#087f69]" title="ملء الشاشة">{isFullscreen?<Minimize2 size={19}/>:<Maximize2 size={19}/>}</button>
             </div>
           </div>
@@ -222,7 +234,7 @@ export default function KpiDashboard(){
             <StatCard title="المسيرات المعتمدة" value={approvedSchools} unit="مدرسة" icon={ClipboardList} tone="green" sub={latestPeriod?latestPeriod.period_name:"لا توجد فترة حالية"}/>
             <StatCard title="إجمالي الأنشطة" value={activeActivities.length} unit="نشاط" icon={Star} tone="amber" sub={"نسبة الإنجاز "+pct(overall.activities)+"%"}/>
             <StatCard title="التقارير المقدمة" value={activityReports} unit="تقرير" icon={FileText} tone="violet" sub="تقارير الأنشطة والاحتفاليات"/>
-            <StatCard title="مؤشر مدرستي" value={pct(madrasatiAverage)} unit="%" icon={Target} tone="blue" sub="متوسط مدارس اليوم"/>
+            <StatCard title="مؤشر مدرستي" value={pct(madrasatiAverage)} unit="%" icon={Target} tone="blue" sub={`متوسط مدارس الأسبوع؛ أدخلت ${weeklyMadrasati.length} من ${indicatorSchools.length}`}/>
           </section>
 
           <section className="grid xl:grid-cols-12 gap-5 mb-6">
@@ -325,14 +337,14 @@ export default function KpiDashboard(){
             </Panel>
           </section>
 
-          <DisciplinePanel schools={activeSchools} admin/>
+          <DisciplinePanel schools={indicatorSchools} admin/>
           <AchievementPanel schools={activeSchools} admin/>
 
-          <Panel title="التنافس اليومي — مؤشر منصة مدرستي" sub="جميع المدارس النشطة تظهر يوميًا؛ المدرسة التي لم تُدخل بياناتها تظهر بقيمة 0% حتى يتم تحديث النموذج" icon={BarChart3} className="mb-5">
-            {activeSchools.length>0&&<div className="space-y-3">
-              {activeSchools.map(s=>{
-                const x=madrasati.find(m=>m.school_id===s.id);
-                const avg=x?(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5:0;
+          <Panel title="التنافس الأسبوعي — مؤشر منصة مدرستي" sub={`من ${week.start} إلى ${week.end} — متوسط البنود الخمسة بأوزان متساوية؛ غير المدخلة تظهر صفرًا مع تمييز حالتها`} icon={BarChart3} className="mb-5">
+            {indicatorSchools.length>0&&<div className="space-y-3">
+              {indicatorSchools.map(s=>{
+                const x=weeklyMadrasati.find(m=>m.school_id===s.id);
+                const avg=x?madrasatiMean(x):0;
                 return {school:s,data:x,avg,support:x?.support_challenges_count??0};
               }).sort((a,b)=>b.avg-a.avg||a.school.school_name.localeCompare(b.school.school_name,'ar')).map((x,i)=>{
                 const tone=x.avg>=90?'from-emerald-700 to-emerald-500':x.avg>=80?'from-green-600 to-green-400':x.avg>=70?'from-blue-600 to-sky-400':x.avg>=60?'from-amber-500 to-yellow-400':x.avg>0?'from-orange-600 to-red-500':'from-slate-300 to-slate-400';
@@ -346,12 +358,20 @@ export default function KpiDashboard(){
                   <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500"><span>0%</span><span>{x.data?<>التحديات/الدعم: <b className="text-slate-700">{x.support}</b></>:'بانتظار إدخال المدرسة'}</span><span>100%</span></div>
                 </div>
               })}
-              <div className="flex flex-wrap gap-3 pt-2 text-[11px] font-bold text-slate-600"><span>● 90–100% متفوق</span><span>● 80–89% مرتفع</span><span>● 70–79% جيد</span><span>● 60–69% متوسط</span><span>● 1–59% يحتاج متابعة</span><span>● 0% لم يتم الإدخال</span></div>
+              <div className="flex flex-wrap gap-3 pt-2 text-[11px] font-bold text-slate-600"><span>● 90–100% متفوق</span><span>● 80–89% مرتفع</span><span>● 70–79% جيد</span><span>● 60–69% متوسط</span><span>● 1–59% يحتاج متابعة</span><span>● المدرسة دون إدخال تُميّز بشارة مستقلة</span></div>
             </div>}
           </Panel>
 
-          <Panel title="مؤشر منصة مدرستي — تفاصيل اليوم" sub="تفاصيل جميع المدارس؛ القيم صفر حتى تقوم المدرسة بإدخال نموذج اليوم" icon={BarChart3} className="mb-5">
-            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[1050px]"><thead className="bg-[#eef6f3] text-[#48655f]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>دخول المدير</th><th>دخول المعلمين</th><th>تفعيل المعلمين</th><th>دخول الطلاب</th><th>تفعيل الطلاب</th><th>التحديات/الدعم</th><th>المتوسط</th></tr></thead><tbody>{activeSchools.map(s=>{const x=madrasati.find(m=>m.school_id===s.id);const avg=x?(x.manager_login_percent+x.teachers_login_percent+x.teachers_tools_percent+x.students_login_percent+x.students_tools_percent)/5:0;return {school:s,data:x,avg};}).sort((a,b)=>b.avg-a.avg||a.school.school_name.localeCompare(b.school.school_name,'ar')).map((x,i)=><tr key={x.school.id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{x.school.school_name}{!x.data&&<span className="mr-2 text-[10px] text-slate-400">لم يتم الإدخال</span>}</td><td className="text-center">{x.data?.manager_login_percent??0}%</td><td className="text-center">{x.data?.teachers_login_percent??0}%</td><td className="text-center">{x.data?.teachers_tools_percent??0}%</td><td className="text-center">{x.data?.students_login_percent??0}%</td><td className="text-center">{x.data?.students_tools_percent??0}%</td><td className="text-center">{x.data?.support_challenges_count??0}</td><td className="text-center font-black text-[#087f69]">{pct(x.avg)}%</td></tr>)}</tbody></table></div>
+          <Panel title="مؤشر منصة مدرستي — تفاصيل الأسبوع" sub={`الفترة ${week.start} إلى ${week.end} — الملاحظات وتصنيف التحديات مرتبطة بسجل الأسبوع`} icon={BarChart3} className="mb-5">
+            <div className="overflow-x-auto rounded-2xl border border-[#e4eeeb]"><table className="w-full text-xs min-w-[1050px]"><thead className="bg-[#eef6f3] text-[#48655f]"><tr><th className="p-3 text-right">الترتيب</th><th className="text-right">المدرسة</th><th>دخول المدير</th><th>دخول المعلمين</th><th>تفعيل المعلمين</th><th>دخول الطلاب</th><th>تفعيل الطلاب</th><th>التحديات/الدعم</th><th>الملاحظات / تصنيف التحديات</th><th>المتوسط</th></tr></thead><tbody>{indicatorSchools.map(s=>{const x=weeklyMadrasati.find(m=>m.school_id===s.id);const avg=x?madrasatiMean(x):0;return {school:s,data:x,avg};}).sort((a,b)=>b.avg-a.avg||a.school.school_name.localeCompare(b.school.school_name,'ar')).map((x,i)=><tr key={x.school.id} className="border-b border-[#edf2f1]"><td className="p-3 font-black">{i+1}</td><td className="font-bold">{x.school.school_name}{!x.data&&<span className="mr-2 text-[10px] text-slate-400">لم يتم الإدخال</span>}</td><td className="text-center">{x.data?.manager_login_percent??0}%</td><td className="text-center">{x.data?.teachers_login_percent??0}%</td><td className="text-center">{x.data?.teachers_tools_percent??0}%</td><td className="text-center">{x.data?.students_login_percent??0}%</td><td className="text-center">{x.data?.students_tools_percent??0}%</td><td className="text-center">{x.data?.support_challenges_count??0}</td><td className="max-w-xs whitespace-pre-wrap p-3">{x.data?.challenge_notes||'—'}</td><td className="text-center font-black text-[#087f69]">{pct(x.avg)}%</td></tr>)}</tbody></table></div>
+          </Panel>
+
+          <Panel title="متابعة إدخال المؤشرات الأسبوعية وعلاقاتها" sub={`الفترة ${week.start} إلى ${week.end} — ربط المدرستي والانضباط والتحصيل حسب المدرسة، دون افتراض علاقة سببية`} icon={Target} className="mb-5">
+            <p className="mb-3 text-sm">إدخال مدرستي: {weeklyMadrasati.length}/{indicatorSchools.length} · إدخال الانضباط: {absence.submitted}/{indicatorSchools.length} · تثبيت الغياب بنسب صحيحة: {absence.confirmed}/{indicatorSchools.length}</p>
+            <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-xs"><thead><tr>{['المدرسة','اكتمال المؤشرين','مدرستي','تثبيت الغياب','بعذر','بدون عذر','التحصيل العلمي'].map(h=><th key={h} className="p-3 text-right bg-slate-50">{h}</th>)}</tr></thead><tbody>{indicatorSchools.map(s=>{
+              const m=weeklyMadrasati.find(x=>x.school_id===s.id), d=weeklyDiscipline.find(x=>x.school_id===s.id), a=rows.find(x=>x.school.id===s.id);
+              return <tr key={s.id} className="border-b"><td className="p-3 font-bold">{s.school_name}</td><td>{(Number(!!m)+Number(!!d))*50}%</td><td>{m?pct(madrasatiMean(m))+'%':'لم يتم الإدخال'}</td><td>{!d?'لم يتم الإدخال':d.noor_absence_confirmed?'تم التثبيت':'لم يتم التثبيت'}</td><td>{d&&validAbsence(d)?pct(Number(d.noor_excused_absence_percent))+'%':'—'}</td><td>{d&&validAbsence(d)?pct(Number(d.noor_unexcused_absence_percent))+'%':'—'}</td><td>{a?.achievement==null?'لم يتم الإدخال':pct(a.achievement)+'%'}</td></tr>;
+            })}</tbody></table></div><p className="mt-3 text-xs text-slate-500">اكتمال الإدخال = عدد النموذجين المدخلين ÷ 2 × 100؛ يعكس تسليم النماذج فقط. التحصيل العلمي يعرض بيانات الفترة الدراسية الحالية، وليس قياسًا أسبوعيًا. التحديات لا تُخصم من متوسط مدرستي.</p>
           </Panel>
 
           <Panel title="التنافس الشهري بين المدارس" sub="ترتيب المدارس حسب نسبة الإنجاز من 100 نقطة" icon={Trophy} className="mb-5">
