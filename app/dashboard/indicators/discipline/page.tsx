@@ -110,72 +110,37 @@ export default function DisciplineForm() {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!school) return;
-    setMessage("");
-    setError("");
-    const invalid = validateDiscipline(form);
-    if (invalid) {
-      setError(invalid);
-      return;
+    setMessage(""); setError("");
+    if (form.noor_absence_confirmed) {
+      const excused=Number(form.noor_excused_absence_percent);
+      const unexcused=Number(form.noor_unexcused_absence_percent);
+      if (!Number.isFinite(excused)||!Number.isFinite(unexcused)||excused<0||excused>100||unexcused<0||unexcused>100) {
+        setError("أدخل نسب الغياب من 0 إلى 100%."); return;
+      }
     }
     setSaving(true);
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await sb.auth.getUser();
-      if (authError) throw authError;
-      if (!user) throw new Error("انتهت جلسة الدخول.");
-      const { error } = await sb
-        .from("school_discipline_daily")
-        .upsert(
-          {
-            school_id: school.id,
-            academic_year: form.academic_year,
-            semester: form.semester,
-            attendance_date: form.attendance_date,
-            expected_count: Number(form.expected_count),
-            on_time_count: Number(form.on_time_count),
-            late_count: Number(form.late_count),
-            excused_absent_count: Number(form.excused_absent_count),
-            unexcused_absent_count: Number(form.unexcused_absent_count),
-            notes: form.notes.trim() || null,
-            noor_absence_confirmed: form.noor_absence_confirmed,
-            noor_excused_absence_percent: form.noor_absence_confirmed ? Number(form.noor_excused_absence_percent) : null,
-            noor_unexcused_absence_percent: form.noor_absence_confirmed ? Number(form.noor_unexcused_absence_percent) : null,
-            submitted_by: user.id,
-          },
-          { onConflict: "school_id,attendance_date" },
-        );
-      if (error) throw error;
-      await load();
-      setRevision((v) => v + 1);
-      setMessage(
-        "تم حفظ واعتماد سجل الانضباط وتحديث مؤشر المدرسة ولوحة مدير النظام.",
-      );
-    } catch (e) {
-      setError(
-        String((e as { message?: string }).message || "تعذر حفظ سجل الانضباط."),
-      );
-    } finally {
-      setSaving(false);
-    }
+      const {data:{user},error:authError}=await sb.auth.getUser();
+      if(authError) throw authError;
+      if(!user) throw new Error("انتهت جلسة الدخول.");
+      const {error}=await sb.from("school_discipline_daily").upsert({
+        school_id:school.id,
+        attendance_date:riyadhDate(),
+        academic_year:null, semester:null,
+        expected_count:null,on_time_count:null,late_count:null,
+        excused_absent_count:null,unexcused_absent_count:null,
+        notes:form.notes.trim()||null,
+        noor_absence_confirmed:form.noor_absence_confirmed,
+        noor_excused_absence_percent:form.noor_absence_confirmed?Number(form.noor_excused_absence_percent):null,
+        noor_unexcused_absence_percent:form.noor_absence_confirmed?Number(form.noor_unexcused_absence_percent):null,
+        submitted_by:user.id,updated_at:new Date().toISOString()
+      },{onConflict:"school_id,attendance_date"});
+      if(error) throw error;
+      await load(); setRevision(v=>v+1);
+      setMessage("تم حفظ حالة تثبيت الغياب في نظام نور والنسب بنجاح.");
+    } catch(e){setError(String((e as {message?:string}).message||"تعذر حفظ مؤشر الانضباط."));}
+    finally{setSaving(false);}
   }
-  const total = Number(form.expected_count),
-    onTime = Number(form.on_time_count),
-    late = Number(form.late_count),
-    absence =
-      Number(form.excused_absent_count) + Number(form.unexcused_absent_count);
-  const countFields: Array<"expected_count" | "on_time_count" | "late_count" | "excused_absent_count" | "unexcused_absent_count"> = [
-    "expected_count",
-    "on_time_count",
-    "late_count",
-    "excused_absent_count",
-    "unexcused_absent_count",
-  ];
-  const ready =
-    countFields.every(
-      (k) => form[k].trim() !== "" && Number.isFinite(Number(form[k])),
-    ) && total > 0;
   const input =
     "mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-slate-900";
   type TextDisciplineKey = Exclude<keyof DisciplineInput, "noor_absence_confirmed">;
@@ -247,34 +212,7 @@ export default function DisciplineForm() {
               onSubmit={save}
               className="mb-6 rounded-3xl border bg-white p-5"
             >
-              <p className="mb-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-                كل طالب ضمن فئة واحدة: حاضر في الوقت أو متأخر أو غائب بعذر أو
-                غائب دون عذر. أدخل بيانات يوم دراسي فعلي فقط. الحفظ لنفس اليوم
-                يحدّث سجله ويمنع تكراره.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {field("academic_year", "العام الدراسي الهجري", "text")}
-                <label className="text-sm font-bold">
-                  الفصل الدراسي
-                  <select
-                    className={input}
-                    value={form.semester}
-                    onChange={(e) =>
-                      setForm({ ...form, semester: e.target.value })
-                    }
-                  >
-                    {["الأول", "الثاني", "الثالث"].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                </label>
-                {field("attendance_date", "تاريخ الحضور", "date")}
-                {field("expected_count", "عدد الطلاب المتوقع حضورهم")}
-                {field("on_time_count", "الحاضرون في الوقت")}
-                {field("late_count", "المتأخرون")}
-                {field("excused_absent_count", "الغائبون بعذر")}
-                {field("unexcused_absent_count", "الغائبون دون عذر")}
-              </div>
+
               <section className="mt-6 rounded-3xl border border-sky-200 bg-gradient-to-l from-sky-50 via-white to-indigo-50 p-5 shadow-sm">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div><h2 className="text-lg font-black text-slate-900">تثبيت الغياب في نظام نور</h2><p className="mt-1 text-sm text-slate-500">حدد حالة تثبيت الغياب، ثم أدخل نسب الغياب المعتمدة في نظام نور.</p></div>
@@ -288,37 +226,6 @@ export default function DisciplineForm() {
                   {([["noor_excused_absence_percent","نسبة الغياب بعذر","emerald"],["noor_unexcused_absence_percent","نسبة الغياب بدون عذر","rose"]] as const).map(([key,label,tone])=><label key={key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between gap-3"><span className="font-black text-slate-800">{label}</span><span className={"rounded-xl px-3 py-1 text-xl font-black "+(tone==="emerald"?"bg-emerald-50 text-emerald-700":"bg-rose-50 text-rose-700")}>{form[key]}%</span></div><input type="range" min="0" max="100" step="1" value={form[key]} onChange={(e)=>setForm({...form,[key]:e.target.value})} className="mt-5 w-full accent-emerald-600"/><div className="mt-3 flex items-center gap-2"><input type="number" min="0" max="100" step="1" value={form[key]} onChange={(e)=>{const v=Math.min(100,Math.max(0,Number(e.target.value)||0));setForm({...form,[key]:String(v)})}} className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-center font-black"/><span className="text-sm font-bold text-slate-500">من 100%</span></div></label>)}
                 </div>}
               </section>
-              <div className="grid grid-cols-3 gap-3 my-5">
-                {[
-                  [
-                    "انتظام الحضور",
-                    onTime,
-                    "text-emerald-800",
-                    "bg-emerald-50",
-                  ],
-                  ["التأخر", late, "text-blue-700", "bg-blue-50"],
-                  ["الغياب", absence, "text-amber-700", "bg-amber-50"],
-                ].map(([label, value, tone, bg]) => (
-                  <div key={String(label)} className={"rounded-xl p-3 " + bg}>
-                    <span className="text-xs font-bold">{label}</span>
-                    <b className={"block text-2xl mt-2 " + tone}>
-                      {ready ? percent((Number(value) / total) * 100) : "—"}
-                    </b>
-                  </div>
-                ))}
-              </div>
-              {ready && (
-                <p
-                  className={
-                    "mb-4 text-sm " +
-                    (onTime + late + absence === total
-                      ? "text-emerald-700"
-                      : "text-red-700")
-                  }
-                >
-                  مجموع الفئات: {onTime + late + absence} / المتوقع: {total}
-                </p>
-              )}
               <label className="block text-sm font-bold">
                 الملاحظات وخطة المتابعة
                 <textarea
@@ -334,7 +241,7 @@ export default function DisciplineForm() {
                   disabled={saving}
                   className="rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white disabled:opacity-50"
                 >
-                  {saving ? "جارٍ الحفظ…" : "حفظ واعتماد سجل اليوم"}
+                  {saving ? "جارٍ الحفظ…" : "حفظ مؤشر الانضباط"}
                 </button>
                 <button
                   type="button"
@@ -346,7 +253,7 @@ export default function DisciplineForm() {
                   }}
                   className="rounded-xl border px-4"
                 >
-                  سجل جديد
+                  إعادة تعيين
                 </button>
               </div>
             </form>
