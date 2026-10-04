@@ -5,15 +5,12 @@ import { supabaseBrowser } from "../../../../lib/supabase";
 import {
   currentAcademicYear,
   riyadhDate,
-  percent,
 } from "../../../../lib/achievement";
 import {
   fetchDiscipline,
-  validateDiscipline,
   type DisciplineInput,
   type DisciplineRecord,
 } from "../../../../lib/discipline";
-import DisciplinePanel from "../../../../components/DisciplinePanel";
 const blank = (): DisciplineInput => ({
   academic_year: currentAcademicYear(),
   semester: "الأول",
@@ -257,64 +254,21 @@ export default function DisciplineForm() {
                 </button>
               </div>
             </form>
-            <DisciplinePanel key={revision} schools={[school]} />
             <section className="rounded-3xl border bg-white p-5">
-              <h2 className="text-xl font-black mb-4">
-                سجلات الانضباط المعتمدة
-              </h2>
+              <h2 className="mb-4 text-xl font-black">سجلات تثبيت الغياب في نظام نور</h2>
               <div className="overflow-x-auto">
-                <table className="min-w-[800px] w-full text-sm">
-                  <thead>
-                    <tr>
-                      {[
-                        "التاريخ",
-                        "العام / الفصل",
-                        "المتوقع",
-                        "في الوقت",
-                        "المتأخرون",
-                        "الغائبون",
-                        "الانتظام",
-                        "الإجراء",
-                      ].map((h) => (
-                        <th key={h} className="bg-slate-50 p-3 text-right">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((r) => (
-                      <tr key={r.id} className="border-b">
-                        <td className="p-3">{r.attendance_date}</td>
-                        <td>
-                          {r.academic_year} / {r.semester}
-                        </td>
-                        <td>{r.expected_count}</td>
-                        <td>{r.on_time_count}</td>
-                        <td>{r.late_count}</td>
-                        <td>
-                          {Number(r.excused_absent_count) +
-                            Number(r.unexcused_absent_count)}
-                        </td>
-                        <td>{percent(r.regularity_percent)}</td>
-                        <td>
-                          <button
-                            onClick={() => edit(r)}
-                            className="text-emerald-700 underline"
-                          >
-                            تحديث
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                <table className="min-w-[650px] w-full text-sm">
+                  <thead><tr>{["التاريخ","حالة التثبيت","نسبة الغياب بعذر","نسبة الغياب بدون عذر","الإجراء"].map(h=><th key={h} className="bg-slate-50 p-3 text-right">{h}</th>)}</tr></thead>
+                  <tbody>{records.map(r=><tr key={r.id} className="border-b">
+                    <td className="p-3">{r.attendance_date}</td>
+                    <td><span className={"rounded-full px-3 py-1 text-xs font-black "+(r.noor_absence_confirmed?"bg-emerald-50 text-emerald-700":"bg-slate-100 text-slate-600")}>{r.noor_absence_confirmed?"تم التثبيت":"لم يتم التثبيت"}</span></td>
+                    <td>{r.noor_absence_confirmed ? (r.noor_excused_absence_percent ?? 0)+"%" : "—"}</td>
+                    <td>{r.noor_absence_confirmed ? (r.noor_unexcused_absence_percent ?? 0)+"%" : "—"}</td>
+                    <td><button onClick={()=>edit(r)} className="font-bold text-emerald-700 underline">تحديث</button></td>
+                  </tr>)}</tbody>
                 </table>
               </div>
-              {!records.length && (
-                <p className="p-5 text-slate-500">
-                  لم تُدخل سجلات الانضباط بعد.
-                </p>
-              )}
+              {!records.length&&<p className="p-5 text-slate-500">لم تُدخل بيانات تثبيت الغياب بعد.</p>}
             </section>
           </>
         )}
