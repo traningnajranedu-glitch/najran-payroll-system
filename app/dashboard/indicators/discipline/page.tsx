@@ -11,6 +11,7 @@ import {
   type DisciplineInput,
   type DisciplineRecord,
 } from "../../../../lib/discipline";
+function disciplineWeek(){ const today=riyadhDate(); const noon=new Date(today+"T12:00:00+03:00"); const day=noon.getDay(); const sunday=new Date(noon); sunday.setDate(noon.getDate()-day); const thursday=new Date(sunday); thursday.setDate(sunday.getDate()+4); const fmt=(d:Date)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Riyadh",year:"numeric",month:"2-digit",day:"2-digit"}).format(d); return {start:fmt(sunday),end:fmt(thursday),canSubmit:day<=4}; }
 const blank = (): DisciplineInput => ({
   academic_year: currentAcademicYear(),
   semester: "الأول",
@@ -38,6 +39,7 @@ export default function DisciplineForm() {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [revision, setRevision] = useState(0);
+  const week=disciplineWeek();
   async function load() {
     try {
       const {
@@ -72,6 +74,8 @@ export default function DisciplineForm() {
       if (!s.data.is_active) throw new Error("المدرسة غير مفعلة.");
       setSchool(s.data);
       setRecords(r);
+      const current=r.find(x=>x.attendance_date===disciplineWeek().start);
+      if(current) edit(current,false);
     } catch (e) {
       setError(
         String(
@@ -85,7 +89,7 @@ export default function DisciplineForm() {
   useEffect(() => {
     void load();
   }, []);
-  function edit(r: DisciplineRecord) {
+  function edit(r: DisciplineRecord, scroll=true) {
     setForm({
       academic_year: r.academic_year,
       semester: r.semester,
@@ -100,13 +104,14 @@ export default function DisciplineForm() {
       noor_excused_absence_percent: String(r.noor_excused_absence_percent ?? 0),
       noor_unexcused_absence_percent: String(r.noor_unexcused_absence_percent ?? 0),
     });
-    setMessage("تم تحميل سجل اليوم للتحديث.");
+    setMessage("تم تحميل سجل هذا الأسبوع للتحديث.");
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if(scroll) window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!school) return;
+    if (!week.canSubmit) { setError("فترة الإدخال الأسبوعية من الأحد إلى الخميس. سيتجدد الإدخال يوم الأحد القادم."); return; }
     setMessage(""); setError("");
     if (form.noor_absence_confirmed) {
       const excused=Number(form.noor_excused_absence_percent);
@@ -122,7 +127,7 @@ export default function DisciplineForm() {
       if(!user) throw new Error("انتهت جلسة الدخول.");
       const {error}=await sb.from("school_discipline_daily").upsert({
         school_id:school.id,
-        attendance_date:riyadhDate(),
+        attendance_date:week.start,
         academic_year:null, semester:null,
         expected_count:null,on_time_count:null,late_count:null,
         excused_absent_count:null,unexcused_absent_count:null,
@@ -134,7 +139,7 @@ export default function DisciplineForm() {
       },{onConflict:"school_id,attendance_date"});
       if(error) throw error;
       await load(); setRevision(v=>v+1);
-      setMessage("تم حفظ حالة تثبيت الغياب في نظام نور والنسب بنجاح.");
+      setMessage("تم حفظ مؤشر الانضباط لهذا الأسبوع بنجاح. يمكنك تحديثه حتى نهاية يوم الخميس.");
     } catch(e){setError(String((e as {message?:string}).message||"تعذر حفظ مؤشر الانضباط."));}
     finally{setSaving(false);}
   }
@@ -184,8 +189,7 @@ export default function DisciplineForm() {
           إدخال الانضباط المدرسي
         </h1>
         <p className="my-3 text-slate-600">
-          {school?.school_name} — سجل إجمالي حضور الطلاب يوميًا، دون إدخال
-          بيانات شخصية.
+          {school?.school_name} — إدخال أسبوعي واحد من الأحد إلى الخميس لتثبيت الغياب في نظام نور.
         </p>
         {error && (
           <p
@@ -205,6 +209,8 @@ export default function DisciplineForm() {
         )}
         {school && (
           <>
+            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="text-sm font-black text-emerald-900">فترة الإدخال الأسبوعية</div><div className="mt-1 text-lg font-black text-slate-900">{week.start} إلى {week.end}</div><div className="mt-1 text-xs text-slate-600">الأحد إلى الخميس — سجل واحد لكل أسبوع</div></div>
+            {!week.canSubmit&&<div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">انتهت فترة إدخال هذا الأسبوع. سيتجدد النموذج تلقائيًا يوم الأحد القادم.</div>}
             <form
               onSubmit={save}
               className="mb-6 rounded-3xl border bg-white p-5"
@@ -235,7 +241,7 @@ export default function DisciplineForm() {
               </label>
               <div className="flex gap-3 mt-5">
                 <button
-                  disabled={saving}
+                  disabled={saving || !week.canSubmit}
                   className="rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white disabled:opacity-50"
                 >
                   {saving ? "جارٍ الحفظ…" : "حفظ مؤشر الانضباط"}
