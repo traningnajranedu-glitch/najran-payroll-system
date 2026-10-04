@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound, Bell, X } from 'lucide-react';
 import DisciplinePanel from '../../components/DisciplinePanel';
 import AchievementPanel from '../../components/AchievementPanel';
 import { supabaseBrowser } from '../../lib/supabase';
@@ -13,6 +13,7 @@ type School = { id: string; school_code: string; school_name: string; manager_na
 type Activity = { id: string; name: string; description: string | null; is_active: boolean };
 type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
 type MonthlyAward = { id:string; month_key:string; rank:number; total_score:number; issued_at:string };
+type SchoolNotification = { id:string; title:string; message:string; notification_type:string; action_url:string|null; is_read:boolean; created_at:string };
 type MadrasatiDaily = { manager_login_percent:number; teachers_login_percent:number; teachers_tools_percent:number; students_login_percent:number; students_tools_percent:number; support_challenges_count:number; indicator_date:string };
 
 function hijriKey(value: string): number | null {
@@ -156,6 +157,8 @@ export default function Dashboard() {
   const [activityFiles, setActivityFiles] = useState<Record<string, File | null>>({});
   const [savingActivity, setSavingActivity] = useState(false);
   const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
+  const [notifications,setNotifications]=useState<SchoolNotification[]>([]);
+  const [notificationsOpen,setNotificationsOpen]=useState(false);
   const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
   const [profileCompletion,setProfileCompletion]=useState(0);
 
@@ -185,6 +188,8 @@ export default function Dashboard() {
     }
     const {data:awards}=await sb.from('school_monthly_awards').select('id,month_key,rank,total_score,issued_at').eq('school_id',su.school_id).order('month_key',{ascending:false}).limit(12);
     setMonthlyAwards((awards||[]) as MonthlyAward[]);
+    const {data:schoolNotifications}=await sb.from('school_notifications').select('id,title,message,notification_type,action_url,is_read,created_at').eq('school_id',su.school_id).order('created_at',{ascending:false}).limit(30);
+    setNotifications((schoolNotifications||[]) as SchoolNotification[]);
     const riyadhToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const {data:madrasati}=await sb.from('school_madrasati_daily_indicators').select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date').eq('school_id',su.school_id).eq('indicator_date',riyadhToday).maybeSingle();
     setMadrasatiToday((madrasati||null) as MadrasatiDaily|null);
@@ -413,6 +418,15 @@ export default function Dashboard() {
     window.print();
   }
 
+  async function markNotificationRead(id:string) {
+    await sb.from('school_notifications').update({is_read:true}).eq('id',id);
+    setNotifications(xs=>xs.map(n=>n.id===id?{...n,is_read:true}:n));
+  }
+  async function markAllNotificationsRead() {
+    if(!school) return;
+    await sb.from('school_notifications').update({is_read:true}).eq('school_id',school.id).eq('is_read',false);
+    setNotifications(xs=>xs.map(n=>({...n,is_read:true})));
+  }
   async function logout() { await sb.auth.signOut(); location.href = '/'; }
 
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل البيانات…</div></main>;
@@ -436,20 +450,37 @@ export default function Dashboard() {
       <div className="national-day-96-bar print:hidden"><div className="national-day-96-content max-w-7xl mx-auto px-4 sm:px-5 py-2 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="national-day-96-number">96</span><div><div className="font-black text-sm sm:text-base">عزّنا بطبعنا</div><div className="text-[11px] sm:text-xs text-white/80">اليوم الوطني السعودي 2026</div></div></div><span className="national-day-96-mark hidden sm:inline-flex">🇸🇦 23 سبتمبر</span></div></div><header className="bg-white text-[var(--navy)] border-b print:hidden sticky top-0 z-30">
         <div className="w-full px-4 sm:px-5 lg:px-8 py-4 flex items-center justify-between gap-3">
           <div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-slate-500 mt-1">مرحباً بك في حساب المدرسة</div></div>
-          <button type="button" onClick={logout} className="flex shrink-0 gap-2 items-center bg-red-50 text-red-700 border border-red-200 px-3 sm:px-4 py-2.5 rounded-xl font-black shadow-sm hover:bg-red-100"><LogOut size={18}/> تسجيل الخروج</button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative">
+              <button type="button" onClick={()=>setNotificationsOpen(v=>!v)} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[var(--navy)] shadow-sm transition hover:bg-cyan-50" aria-label="الإشعارات">
+                <Bell size={21}/>
+                {(notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0))>0&&<span className="absolute -left-1 -top-1 min-w-5 h-5 rounded-full bg-red-600 px-1 text-[10px] font-black text-white flex items-center justify-center">{Math.min(99,notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0))}</span>}
+              </button>
+              {notificationsOpen&&<div className="absolute left-0 mt-3 w-[min(92vw,390px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl z-50">
+                <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3"><div><div className="font-black text-slate-900">الإشعارات</div><div className="text-[11px] text-slate-500">آخر التنبيهات والرسائل الخاصة بالمدرسة</div></div><button type="button" onClick={()=>setNotificationsOpen(false)} className="rounded-xl p-2 hover:bg-slate-200"><X size={18}/></button></div>
+                <div className="max-h-[420px] overflow-y-auto">
+                  {monthlyAwards[0]&&<a href="/dashboard/awards" className="block border-b bg-amber-50 px-4 py-4 hover:bg-amber-100"><div className="flex gap-3"><div className="mt-0.5 text-amber-700"><Trophy size={20}/></div><div><div className="font-black text-sm text-amber-950">شهادة تميز جديدة</div><div className="mt-1 text-xs leading-5 text-amber-800">المركز {monthlyAwards[0].rank} بنسبة {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}</div></div></div></a>}
+                  {notifications.map(n=><button type="button" key={n.id} onClick={async()=>{await markNotificationRead(n.id); if(n.action_url) location.href=n.action_url;}} className={`block w-full border-b px-4 py-4 text-right transition hover:bg-slate-50 ${n.is_read?'bg-white':'bg-cyan-50/70'}`}><div className="flex gap-3"><div className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${n.is_read?'bg-slate-300':'bg-cyan-600'}`}/><div><div className="font-black text-sm text-slate-900">{n.title}</div><div className="mt-1 text-xs leading-5 text-slate-600">{n.message}</div><div className="mt-2 text-[10px] text-slate-400">{new Date(n.created_at).toLocaleString('ar-SA')}</div></div></div></button>)}
+                  {!notifications.length&&!monthlyAwards.length&&<div className="px-5 py-10 text-center text-sm text-slate-500">لا توجد إشعارات حاليًا.</div>}
+                </div>
+                {notifications.some(n=>!n.is_read)&&<button type="button" onClick={markAllNotificationsRead} className="w-full border-t bg-white px-4 py-3 text-sm font-black text-cyan-800 hover:bg-cyan-50">تحديد جميع الرسائل كمقروءة</button>}
+              </div>}
+            </div>
+            <button type="button" onClick={logout} className="flex shrink-0 gap-2 items-center bg-red-50 text-red-700 border border-red-200 px-3 sm:px-4 py-2.5 rounded-xl font-black shadow-sm hover:bg-red-100"><LogOut size={18}/><span className="hidden sm:inline">تسجيل الخروج</span></button>
+          </div>
         </div>
       </header>
       <main className="max-w-7xl mx-auto p-3 sm:p-5 md:p-8">
       <div className="print:hidden">
         {monthlyAwards.length>0&&<section className="mb-6 rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-white p-5 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={26}/></div><div><h2 className="font-black text-lg text-amber-900">شهادة تميز شهرية</h2><p className="text-sm text-amber-800">حققت المدرسة المركز {monthlyAwards[0].rank} بنسبة إنجاز {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}.</p></div></div><button type="button" onClick={()=>window.print()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-700 text-white px-4 py-2 font-bold"><Award size={18}/> عرض / طباعة الشهادة</button></div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center"><Trophy size={26}/></div><div><h2 className="font-black text-lg text-amber-900">شهادة تميز شهرية</h2><p className="text-sm text-amber-800">حققت المدرسة المركز {monthlyAwards[0].rank} بنسبة إنجاز {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}.</p></div></div><button type="button" onClick={()=>location.href='/dashboard/awards'} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-700 text-white px-4 py-2 font-bold"><Award size={18}/> عرض / طباعة الشهادة</button></div>
         </section>}
         <section className="mb-7" aria-labelledby="services-title">
           <div className="mb-4">
             <h2 id="services-title" className="text-xl sm:text-2xl font-black text-[var(--navy)]">خدمات المدرسة</h2>
             <p className="text-sm text-gray-500 mt-1">الوصول السريع إلى الخدمات الإلكترونية المتاحة لحساب المدرسة</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><a href="/dashboard/profile" className="group relative overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"><div className="flex items-center justify-between gap-3"><div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center"><UserRound size={28}/></div><span className="text-2xl font-black text-emerald-700">{profileCompletion}%</span></div><h3 className="font-black text-lg mt-4 text-emerald-950">الملف الشخصي</h3><p className="text-xs text-slate-500 mt-1">{profileCompletion===100?'الملف مكتمل — يمكنك تعديل البيانات':'أكمل معلومات المدرسة والعنوان والطلاب والتوقيع'}</p><div className="h-2.5 bg-emerald-100 rounded-full overflow-hidden mt-4"><div className="h-full bg-emerald-600 rounded-full" style={{width:profileCompletion+'%'}}/></div></a>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><a href="/dashboard/awards" className="group relative overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-b from-amber-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"><div className="flex items-center justify-between"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-600 to-yellow-400 text-white shadow-lg flex items-center justify-center"><Trophy size={31}/></div><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">{monthlyAwards.length} شهادة</span></div><h3 className="font-black text-xl mt-5 text-amber-900">شهادات التميز</h3><p className="text-sm text-slate-500 mt-2 min-h-10">عرض شهادات التميز الشهرية وطباعتها والاحتفاظ بسجل الإنجاز</p><div className="mt-5 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-black text-amber-800 group-hover:bg-amber-100 transition">عرض الشهادات ←</div></a><a href="/dashboard/profile" className="group relative overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"><div className="flex items-center justify-between gap-3"><div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center"><UserRound size={28}/></div><span className="text-2xl font-black text-emerald-700">{profileCompletion}%</span></div><h3 className="font-black text-lg mt-4 text-emerald-950">الملف الشخصي</h3><p className="text-xs text-slate-500 mt-1">{profileCompletion===100?'الملف مكتمل — يمكنك تعديل البيانات':'أكمل معلومات المدرسة والعنوان والطلاب والتوقيع'}</p><div className="h-2.5 bg-emerald-100 rounded-full overflow-hidden mt-4"><div className="h-full bg-emerald-600 rounded-full" style={{width:profileCompletion+'%'}}/></div></a>
             <a href="#activities" className="group relative overflow-hidden rounded-3xl border border-orange-200 bg-gradient-to-b from-orange-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-orange-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-200 flex items-center justify-center mb-5"><PartyPopper size={31}/></div><div className="font-black text-xl text-orange-700">الأنشطة والاحتفاليات</div><div className="text-sm text-slate-500 mt-2 min-h-10">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div><div className="mt-5 rounded-xl bg-orange-50 px-3 py-2.5 text-sm font-black text-orange-700 group-hover:bg-orange-100 transition">الدخول إلى الخدمة ←</div></div></a>
             <a href="#employees" className="group relative overflow-hidden rounded-3xl border border-blue-200 bg-gradient-to-b from-blue-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-blue-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-400 text-white shadow-lg shadow-blue-200 flex items-center justify-center mb-5"><Users size={31}/></div><div className="font-black text-xl text-blue-700">بيانات الموظفين</div><div className="text-sm text-slate-500 mt-2 min-h-10">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div><div className="mt-5 rounded-xl bg-blue-50 px-3 py-2.5 text-sm font-black text-blue-700 group-hover:bg-blue-100 transition">الدخول إلى الخدمة ←</div></div></a>
             <a href="#payroll" className="group relative overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-emerald-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-400 text-white shadow-lg shadow-emerald-200 flex items-center justify-center mb-5"><FileText size={31}/></div><div className="font-black text-xl text-emerald-700">مسيرات الرواتب</div><div className="text-sm text-slate-500 mt-2 min-h-10">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-5 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-black text-emerald-700 group-hover:bg-emerald-100 transition">الدخول إلى الخدمة ←</div></div></a>
