@@ -193,7 +193,11 @@ export default function Dashboard() {
     const {data:schoolNotifications}=await sb.from('school_notifications').select('id,title,message,notification_type,action_url,is_read,created_at').eq('school_id',su.school_id).order('created_at',{ascending:false}).limit(30);
     setNotifications((schoolNotifications||[]) as SchoolNotification[]);
     const riyadhToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    const {data:madrasati}=await sb.from('school_madrasati_daily_indicators').select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date').eq('school_id',su.school_id).eq('indicator_date',riyadhToday).maybeSingle();
+    const riyadhNoon=new Date(riyadhToday+'T12:00:00+03:00');
+    const madrasatiSunday=new Date(riyadhNoon);
+    madrasatiSunday.setDate(riyadhNoon.getDate()-riyadhNoon.getDay());
+    const madrasatiWeekStart=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(madrasatiSunday);
+    const {data:madrasati}=await sb.from('school_madrasati_daily_indicators').select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date').eq('school_id',su.school_id).eq('indicator_date',madrasatiWeekStart).maybeSingle();
     setMadrasatiToday((madrasati||null) as MadrasatiDaily|null);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
