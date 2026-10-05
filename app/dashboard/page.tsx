@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound, Bell, X } from 'lucide-react';
 import DisciplinePanel from '../../components/DisciplinePanel';
 import AchievementPanel from '../../components/AchievementPanel';
+import { indicatorWeek, madrasatiMean } from '../../lib/weekly-indicators';
 import { supabaseBrowser } from '../../lib/supabase';
 
 type Teacher = { id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
@@ -14,7 +15,7 @@ type Activity = { id: string; name: string; description: string | null; is_activ
 type ActivityReport = { id?: string; activity_id: string; school_id: string; report_text: string; statistics: string; attachment_path: string | null; status: string; rating: number | null };
 type MonthlyAward = { id:string; month_key:string; rank:number; total_score:number; issued_at:string };
 type SchoolNotification = { id:string; title:string; message:string; notification_type:string; action_url:string|null; is_read:boolean; created_at:string };
-type MadrasatiDaily = { manager_login_percent:number; teachers_login_percent:number; teachers_tools_percent:number; students_login_percent:number; students_tools_percent:number; support_challenges_count:number; indicator_date:string };
+type MadrasatiDaily = { manager_login_percent:number; teachers_login_percent:number; teachers_tools_percent:number; students_login_percent:number; students_tools_percent:number; support_challenges_count:number; indicator_date:string; challenge_notes:string|null };
 
 function hijriKey(value: string): number | null {
   const m = value.trim().match(/^(\d{4})[\/]([01]\d)[\/]([0-3]\d)$/);
@@ -159,10 +160,33 @@ export default function Dashboard() {
   const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
   const [notifications,setNotifications]=useState<SchoolNotification[]>([]);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
-  const [madrasatiToday, setMadrasatiToday] = useState<MadrasatiDaily | null>(null);
+  const [madrasatiWeekRecord, setMadrasatiWeekRecord] = useState<MadrasatiDaily | null>(null);
   const [profileCompletion,setProfileCompletion]=useState(0);
   const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
-  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState({start:'',end:''});
+  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState(()=>indicatorWeek());
+  const [madrasatiError,setMadrasatiError]=useState('');
+
+  async function refreshMadrasati(schoolId:string) {
+    const week=indicatorWeek();
+    const {data,error}=await sb.from('school_madrasati_daily_indicators')
+      .select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date,challenge_notes')
+      .eq('school_id',schoolId).eq('indicator_date',week.start).maybeSingle();
+    setMadrasatiWeekRange(week);
+    if(error){setMadrasatiError('تعذر تحميل مؤشر منصة مدرستي: '+error.message);setMadrasatiWeeklyMissing(false);return;}
+    setMadrasatiError('');
+    setMadrasatiWeekRecord((data||null) as MadrasatiDaily|null);
+    setMadrasatiWeeklyMissing(!data);
+  }
+  useEffect(()=>{
+    if(!school?.id)return;
+    const schoolId=school.id;
+    const refresh=()=>void refreshMadrasati(schoolId);
+    const timer=setInterval(refresh,60000);
+    window.addEventListener('focus',refresh);
+    const channel=sb.channel('school-weekly-madrasati-'+schoolId)
+      .on('postgres_changes',{event:'*',schema:'public',table:'school_madrasati_daily_indicators',filter:'school_id=eq.'+schoolId},refresh).subscribe();
+    return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);void sb.removeChannel(channel)};
+  },[school?.id,sb]);
 
   async function load() {
     setLoading(true);
@@ -192,13 +216,7 @@ export default function Dashboard() {
     setMonthlyAwards((awards||[]) as MonthlyAward[]);
     const {data:schoolNotifications}=await sb.from('school_notifications').select('id,title,message,notification_type,action_url,is_read,created_at').eq('school_id',su.school_id).order('created_at',{ascending:false}).limit(30);
     setNotifications((schoolNotifications||[]) as SchoolNotification[]);
-    const riyadhToday=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    const riyadhNoon=new Date(riyadhToday+'T12:00:00+03:00');
-    const madrasatiSunday=new Date(riyadhNoon);
-    madrasatiSunday.setDate(riyadhNoon.getDate()-riyadhNoon.getDay());
-    const madrasatiWeekStart=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).format(madrasatiSunday);
-    const {data:madrasati}=await sb.from('school_madrasati_daily_indicators').select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date').eq('school_id',su.school_id).eq('indicator_date',madrasatiWeekStart).maybeSingle();
-    setMadrasatiToday((madrasati||null) as MadrasatiDaily|null);
+    await refreshMadrasati(su.school_id);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
@@ -503,15 +521,15 @@ export default function Dashboard() {
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200"><BarChart3 size={25}/></div><div><h2 className="text-lg font-black text-slate-900">مؤشر منصة مدرستي</h2><p className="mt-1 text-sm text-slate-500"><span className="font-black text-violet-700">فترة الإدخال:</span> {madrasatiWeekRange.start} إلى {madrasatiWeekRange.end} — الأحد إلى الخميس</p></div></div>
-              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiToday?'تحديث مؤشر الأسبوع':'إدخال مؤشر الأسبوع'}</a>
+              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiWeekRecord?'تحديث مؤشر الأسبوع':'إدخال مؤشر الأسبوع'}</a>
             </div>
-            {madrasatiToday?(()=>{
-              const avg=(madrasatiToday.manager_login_percent+madrasatiToday.teachers_login_percent+madrasatiToday.teachers_tools_percent+madrasatiToday.students_login_percent+madrasatiToday.students_tools_percent)/5;
+            {madrasatiError?<p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">{madrasatiError}</p>:madrasatiWeekRecord?(()=>{
+              const avg=madrasatiMean(madrasatiWeekRecord);
               const tone=avg>=90?'from-emerald-600 to-green-400':avg>=80?'from-green-500 to-lime-400':avg>=70?'from-blue-600 to-sky-400':avg>=60?'from-amber-500 to-yellow-400':'from-orange-600 to-red-500';
-              const metrics=[['دخول المدير',madrasatiToday.manager_login_percent],['دخول المعلمين',madrasatiToday.teachers_login_percent],['تفعيل المعلمين',madrasatiToday.teachers_tools_percent],['دخول الطلاب',madrasatiToday.students_login_percent],['تفعيل الطلاب',madrasatiToday.students_tools_percent]];
+              const metrics=[['دخول المدير',madrasatiWeekRecord.manager_login_percent],['دخول المعلمين',madrasatiWeekRecord.teachers_login_percent],['تفعيل المعلمين',madrasatiWeekRecord.teachers_tools_percent],['دخول الطلاب',madrasatiWeekRecord.students_login_percent],['تفعيل الطلاب',madrasatiWeekRecord.students_tools_percent]];
               return <div>
                 <div className="mb-5 grid gap-4 lg:grid-cols-[180px_1fr]">
-                  <div className="rounded-2xl bg-slate-900 p-5 text-center text-white"><div className="text-xs text-slate-300">متوسط الإنجاز</div><div className="mt-1 text-4xl font-black">{avg.toFixed(0)}%</div><div className="mt-2 text-xs text-slate-300">التحديات/الدعم: {madrasatiToday.support_challenges_count}</div></div>
+                  <div className="rounded-2xl bg-slate-900 p-5 text-center text-white"><div className="text-xs text-slate-300">متوسط الإنجاز</div><div className="mt-1 text-4xl font-black">{avg.toFixed(0)}%</div><div className="mt-2 text-xs text-slate-300">التحديات/الدعم: {madrasatiWeekRecord.support_challenges_count}</div></div>
                   <div className="flex flex-col justify-center"><div className="mb-2 flex justify-between text-xs font-bold text-slate-500"><span>مستوى الإنجاز اليومي</span><span>100%</span></div><div className="h-6 overflow-hidden rounded-full bg-slate-100 shadow-inner" dir="ltr"><div className={`h-full rounded-full bg-gradient-to-r ${tone}`} style={{width:`${avg}%`}} /></div></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{metrics.map(([label,value])=><div key={String(label)} className="rounded-2xl border border-slate-100 bg-white p-4 text-center shadow-sm"><div className="text-2xl font-black text-violet-700">{value}%</div><div className="mt-1 text-xs font-bold text-slate-600">{label}</div></div>)}</div>
