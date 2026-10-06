@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound, Bell, X } from 'lucide-react';
+import { LogOut, Users, FileText, CalendarDays, CheckCircle2, Lock, RefreshCw, Printer, Upload, ShieldCheck, PartyPopper, Paperclip, Star, BarChart3, Trophy, Award, ClipboardList, UserRound, Bell, X, Clock3 } from 'lucide-react';
 import DisciplinePanel from '../../components/DisciplinePanel';
 import AchievementPanel from '../../components/AchievementPanel';
 import { indicatorWeek, madrasatiMean } from '../../lib/weekly-indicators';
