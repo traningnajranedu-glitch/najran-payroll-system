@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null };
+type SchoolProfileApproval = { school_id:string; signature_path:string|null; stamp_path:string|null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null };
 type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; payroll_days: number; notes: string | null; approved_at?: string | null };
@@ -31,6 +32,7 @@ export default function SchoolPayrollPrint() {
   const [allowed, setAllowed] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [profileApprovals,setProfileApprovals]=useState<SchoolProfileApproval[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [search, setSearch] = useState('');
@@ -52,15 +54,17 @@ export default function SchoolPayrollPrint() {
     if (!admin) { setAllowed(false); setLoading(false); return; }
     setAllowed(true);
 
-    const [s, t, p, committee] = await Promise.all([
+    const [s, t, p, committee, profileApproval] = await Promise.all([
       sb.from('schools').select('*').order('school_name'),
       sb.from('teachers').select('id,school_id,full_name,national_id,job_role,specialization').eq('is_active', true).order('full_name'),
       sb.from('payroll_periods').select('*').order('start_date', { ascending: false }),
       sb.from('payroll_print_settings').select('*').eq('id',1).maybeSingle(),
+      sb.from('school_profiles').select('school_id,signature_path,stamp_path'),
     ]);
     if (s.error || t.error || p.error) setMessage(s.error?.message || t.error?.message || p.error?.message || 'تعذر تحميل البيانات.');
     setSchools(s.data || []);
     setTeachers(t.data || []);
+    setProfileApprovals((profileApproval.data || []) as SchoolProfileApproval[]);
     setPeriods(p.data || []);
     if(committee.data){setCommitteeNames([committee.data.committee_member_1||'',committee.data.committee_member_2||'',committee.data.committee_member_3||'']);setHeadName(committee.data.continuing_education_head_name||'');}
     if (!periodId && p.data?.[0]) setPeriodId(p.data[0].id);
@@ -77,6 +81,9 @@ export default function SchoolPayrollPrint() {
 
   const selectedPeriod = periods.find(p => p.id === periodId) || null;
   const selectedSchool = schools.find(s => s.id === selectedSchoolId) || null;
+  const selectedProfileApproval = profileApprovals.find(p => p.school_id === selectedSchoolId) || null;
+  const profileSignatureUrl = selectedProfileApproval?.signature_path ? sb.storage.from('school-stamps').getPublicUrl(selectedProfileApproval.signature_path).data.publicUrl : '';
+  const profileStampUrl = selectedProfileApproval?.stamp_path ? sb.storage.from('school-stamps').getPublicUrl(selectedProfileApproval.stamp_path).data.publicUrl : '';
 
   async function saveCommitteeNames(){
     setSavingCommittee(true);setMessage('');
@@ -256,8 +263,8 @@ export default function SchoolPayrollPrint() {
         </tbody></table>
         {printMode==='school' && <div className="print-certification-text">تشهد إدارة المدرسة بأن المرشحين للعمل بالمدرسة والموضحة بياناتهم أعلاه قد أنهوا المهمة لشهر <b>{selectedPeriod.period_name}</b> للمدة من <b>{hijriOrGregorian(selectedPeriod.start_hijri,selectedPeriod.start_date)} هـ</b> إلى <b>{hijriOrGregorian(selectedPeriod.end_hijri,selectedPeriod.end_date)} هـ</b> بمدرسة <b>{selectedSchool?.school_name || '—'}</b> للفصل الدراسي الأول للعام 1448هـ<div className="print-certification-closing">للإحاطة والاطلاع ،،،،،،</div></div>}
         {printMode==='school' ? <div className="print-approval-grid">
-          <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{selectedSchool?.manager_name || '................................'}</div><div className="print-school-signature">{selectedSchool?.manager_signature_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.manager_signature_path).data.publicUrl} alt="توقيع مدير المدرسة" className="print-signature-image"/> : <span>التوقيع: ................................</span>}</div></div>
-          <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{selectedSchool?.stamp_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.stamp_path).data.publicUrl} alt="ختم المدرسة" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
+          <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{selectedSchool?.manager_name || '................................'}</div><div className="print-school-signature">{profileSignatureUrl ? <img src={profileSignatureUrl} alt="توقيع مدير المدرسة المعتمد في الملف الشخصي" className="print-signature-image"/> : <span>التوقيع: ................................</span>}</div></div>
+          <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{profileStampUrl ? <img src={profileStampUrl} alt="ختم المدرسة المعتمد في الملف الشخصي" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
           <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">رئيس التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
         </div> : <div className="print-committee"><div className="print-committee-title">لجنة المسيرات</div><div className="print-committee-grid">{committeeNames.map((name,i)=><div key={i} className="print-committee-member"><b>عضو اللجنة {i+1}</b><div>{name||'................................................'}</div><small>التوقيع: ................................</small></div>)}<div className="print-committee-member"><b>رئيس قسم التعليم المستمر</b><div>{headName||'................................................'}</div><small>التوقيع: ................................</small></div></div></div>}
         <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
