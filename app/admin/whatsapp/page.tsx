@@ -18,6 +18,7 @@ export default function WhatsAppSchoolsPage() {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [documentUrl, setDocumentUrl] = useState('');
+  const [dueDate,setDueDate]=useState('في أقرب وقت');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [sendErrors, setSendErrors] = useState<SendError[]>([]);
@@ -73,7 +74,7 @@ export default function WhatsAppSchoolsPage() {
       const recipients = mode === 'single'
         ? [{ school_id: schoolId || null, school_name: selectedSchool?.school_name || 'مدرسة', phone: phone.trim() || selectedSchool?.whatsapp_number }]
         : schools.filter(s => s.whatsapp_number).map(s => ({ school_id: s.id, school_name: s.school_name, phone: s.whatsapp_number }));
-      const res = await fetch('/api/admin/whatsapp/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipients, message: message.trim(), documentUrl: documentUrl.trim() || null }) });
+      const res = await fetch('/api/admin/whatsapp/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipients, message: message.trim(), documentUrl: documentUrl.trim() || null, dueDate: dueDate.trim() || 'في أقرب وقت' }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'تعذر إرسال الرسالة');
       setNotice(`تم إرسال الرسالة بنجاح إلى ${data.sent} مدرسة${data.failed ? `، وتعذر الإرسال إلى ${data.failed}` : ''}.`);
@@ -123,7 +124,9 @@ export default function WhatsAppSchoolsPage() {
 
         <div className="card p-5 lg:col-span-2">
           <h2 className="font-bold mb-4">محتوى الرسالة</h2>
-          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب نص التعميم أو الخطاب هنا…" className="w-full border rounded-xl px-4 py-3 resize-y" />
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب الإجراء أو المهمة المطلوبة من المدرسة…" className="w-full border rounded-xl px-4 py-3 resize-y" />
+          <div className="mt-3"><label className="block text-sm font-bold mb-2">الموعد المطلوب للتنفيذ</label><input value={dueDate} onChange={e=>setDueDate(e.target.value)} placeholder="مثال: الخميس 8 أكتوبر 2026" className="w-full border rounded-xl px-4 py-3"/></div>
+          <div className="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">سيتم الإرسال باستخدام القالب العربي المعتمد <b>school_task_notification</b>.</div>
           <div className="mt-3 flex items-center gap-2 border rounded-xl px-4 py-3"><FileText size={18}/><input value={documentUrl} onChange={e=>setDocumentUrl(e.target.value)} placeholder="رابط ملف PDF أو مستند اختياري (رابط عام)" className="outline-none flex-1"/></div>
           <p className="text-xs text-gray-500 mt-2">يمكن إرفاق الخطاب عبر رابط ملف عام، وسيتم إرساله كمستند واتساب.</p>
           <div className="mt-5 flex justify-end"><button disabled={busy} onClick={send} className="bg-[var(--navy)] text-white rounded-xl px-7 py-3 font-bold flex items-center gap-2 disabled:opacity-50"><Send size={18}/>{busy?'جاري الإرسال…':'إرسال عبر واتساب'}</button></div>
