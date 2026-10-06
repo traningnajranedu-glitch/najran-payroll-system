@@ -181,9 +181,31 @@ export default function AdminPage() {
     setMessage(''); setError('');
     if(!activityForm.name.trim()){setError('اسم النشاط أو الاحتفال مطلوب.');return;}
     setBusy(true);
-    const {error}=await sb.from('school_activities').insert({name:activityForm.name.trim(),description:activityForm.description.trim()||null,is_active:true});
+    const activityName=activityForm.name.trim();
+    const activityDescription=activityForm.description.trim()||null;
+    const {data:newActivity,error}=await sb.from('school_activities').insert({name:activityName,description:activityDescription,is_active:true}).select('id,name').single();
     if(error)setError('تعذر إضافة النشاط: '+error.message);
-    else{setMessage('تمت إضافة النشاط أو المناسبة بنجاح.');setActivityForm({name:'',description:''});await load();}
+    else{
+      // أي نشاط جديد يطلب إجراءً من المدارس يجب أن يصل فورًا إلى جرس الإشعارات.
+      const {data:activeSchools,error:schoolsError}=await sb.from('schools').select('id').eq('is_active',true);
+      if(schoolsError){
+        setError('تمت إضافة النشاط، لكن تعذر إنشاء إشعارات المدارس: '+schoolsError.message);
+      }else if(activeSchools?.length){
+        const notifications=activeSchools.map(x=>({
+          school_id:x.id,
+          title:'مطلوب تنفيذ نشاط جديد',
+          message:`تمت إضافة نشاط «${newActivity?.name||activityName}». يرجى الدخول إلى الأنشطة والاحتفاليات ورفع التقرير والمرفقات المطلوبة.`,
+          notification_type:'activity_required',
+          action_url:'/dashboard#activities',
+          is_read:false
+        }));
+        const {error:notificationError}=await sb.from('school_notifications').insert(notifications);
+        if(notificationError)setError('تمت إضافة النشاط، لكن تعذر إرسال التنبيه للمدارس: '+notificationError.message);
+      }
+      setMessage('تمت إضافة النشاط وإرسال تنبيه إلى حسابات المدارس.');
+      setActivityForm({name:'',description:''});
+      await load();
+    }
     setBusy(false);
   }
 
