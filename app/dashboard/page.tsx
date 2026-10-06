@@ -165,6 +165,7 @@ export default function Dashboard() {
   const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
   const [madrasatiWeekRange,setMadrasatiWeekRange]=useState(()=>indicatorWeek());
   const [madrasatiError,setMadrasatiError]=useState('');
+  const [payrollReopenAllowed,setPayrollReopenAllowed]=useState(false);
 
   async function refreshMadrasati(schoolId:string) {
     const week=indicatorWeek();
@@ -259,11 +260,11 @@ export default function Dashboard() {
     const sid = schoolId || school?.id;
     const pid = periodId || period?.id;
     if (!sid || !pid) return;
-    const { data: r } = await sb
-      .from('payroll_records')
-      .select('*')
-      .eq('school_id', sid)
-      .eq('period_id', pid);
+    const [{ data: r }, { data: reopen }] = await Promise.all([
+      sb.from('payroll_records').select('*').eq('school_id', sid).eq('period_id', pid),
+      sb.from('school_payroll_reopen_permissions').select('is_active').eq('school_id',sid).eq('period_id',pid).eq('is_active',true).maybeSingle()
+    ]);
+    setPayrollReopenAllowed(!!reopen?.is_active);
     const map: Record<string, PayrollRow> = {};
     (r || []).forEach((x: PayrollRow) => { map[x.teacher_id] = x; });
     setRows(map);
@@ -271,7 +272,7 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const editable = !!period && periodIsOpen(period) && !!period.allow_edit;
+  const editable = !!period && ((periodIsOpen(period) && !!period.allow_edit) || payrollReopenAllowed);
   const teacherDataEditable = !!school?.allow_school_teacher_edit;
   const approved = teachers.length > 0 && teachers.every(t => rows[t.id]?.status === 'تم الاعتماد');
   const savedCount = teachers.filter(t => rows[t.id]?.status === 'تم الحفظ' || rows[t.id]?.status === 'تم الاعتماد').length;
@@ -621,6 +622,7 @@ export default function Dashboard() {
             </div>
           </div>
           {!editable && <div className="bg-amber-50 text-amber-800 px-5 py-3 flex gap-2 items-center text-sm"><Lock size={17}/> الفترة مغلقة حاليًا حسب التاريخ الهجري المحدد أو إعدادات الفترة، لا يمكن تعديل المسير.</div>}
+          {payrollReopenAllowed && !approved && <div className="bg-amber-50 text-amber-900 px-5 py-3 flex gap-2 items-center text-sm"><Clock3 size={17}/> أعاد مدير النظام المسير للتعبئة. يرجى مراجعة البيانات وحفظها ثم إعادة اعتماد المسير.</div>}
           <div className="bg-slate-50 text-gray-600 px-5 py-3 text-sm">بيانات الاسم والسجل المدني والوظيفة والتخصص للعرض فقط داخل المسير، ولا يمكن تعديلها من هنا. للتعديل استخدم «بيانات الموظفين» أعلاه. تاريخ المباشرة والملاحظات فقط قابلة للتعديل حسب صلاحية فترة المسير.</div>
           {approved && <div className="bg-green-50 text-green-800 px-5 py-3 flex gap-2 items-center text-sm"><ShieldCheck size={18}/> تم اعتماد المسير — يمكنك الآن طباعته.</div>}
           <div className="overflow-x-auto">
