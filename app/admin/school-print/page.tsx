@@ -39,7 +39,8 @@ export default function SchoolPayrollPrint() {
   const [printRows, setPrintRows] = useState<RecordRow[]>([]);
   const [printMode, setPrintMode] = useState<'all' | 'school'>('all');
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
-  const [committeeNames,setCommitteeNames]=useState(['','','','']);
+  const [committeeNames,setCommitteeNames]=useState(['','','']);
+  const [headName,setHeadName]=useState('');
   const [savingCommittee,setSavingCommittee]=useState(false);
   const PRINT_TEMPLATE_VERSION = '2026-09-28-v3';
 
@@ -61,7 +62,7 @@ export default function SchoolPayrollPrint() {
     setSchools(s.data || []);
     setTeachers(t.data || []);
     setPeriods(p.data || []);
-    if(committee.data)setCommitteeNames([committee.data.committee_member_1||'',committee.data.committee_member_2||'',committee.data.committee_member_3||'',committee.data.committee_member_4||'']);
+    if(committee.data){setCommitteeNames([committee.data.committee_member_1||'',committee.data.committee_member_2||'',committee.data.committee_member_3||'']);setHeadName(committee.data.continuing_education_head_name||'');}
     if (!periodId && p.data?.[0]) setPeriodId(p.data[0].id);
     if (!selectedSchoolId && s.data?.[0]) setSelectedSchoolId(s.data[0].id);
     setLoading(false);
@@ -79,7 +80,7 @@ export default function SchoolPayrollPrint() {
 
   async function saveCommitteeNames(){
     setSavingCommittee(true);setMessage('');
-    const payload={id:1,committee_member_1:committeeNames[0].trim()||null,committee_member_2:committeeNames[1].trim()||null,committee_member_3:committeeNames[2].trim()||null,committee_member_4:committeeNames[3].trim()||null,updated_at:new Date().toISOString()};
+    const payload={id:1,committee_member_1:committeeNames[0].trim()||null,committee_member_2:committeeNames[1].trim()||null,committee_member_3:committeeNames[2].trim()||null,committee_member_4:null,continuing_education_head_name:headName.trim()||null,updated_at:new Date().toISOString()};
     const {error}=await sb.from('payroll_print_settings').upsert(payload,{onConflict:'id'});
     if(error)setMessage('تعذر حفظ أسماء اللجنة: '+error.message);else setMessage('تم حفظ أسماء لجنة المسيرات بنجاح.');
     setSavingCommittee(false);
@@ -222,8 +223,8 @@ export default function SchoolPayrollPrint() {
       </div>
 
       <div className="card p-5 mb-5">
-        <div className="mb-4"><b>أسماء لجنة المسيرات — للطباعة الجماعية</b><p className="text-sm text-gray-500 mt-1">أدخل الاسم الرباعي لأعضاء اللجنة الأربعة. تظهر هذه الأسماء بدل خانات توقيع وختم المدرسة عند «طباعة جميع المسيرات».</p></div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">{committeeNames.map((name,i)=><input key={i} value={name} onChange={e=>setCommitteeNames(xs=>xs.map((x,j)=>j===i?e.target.value:x))} className="border rounded-xl px-4 py-3" placeholder={`الاسم الرباعي — العضو ${i+1}`}/>)}</div>
+        <div className="mb-4"><b>أسماء لجنة المسيرات — للطباعة الجماعية</b><p className="text-sm text-gray-500 mt-1">أدخل الاسم الرباعي لثلاثة أعضاء لجنة المسيرات واسم رئيس قسم التعليم المستمر. تظهر هذه البيانات بدل خانات توقيع وختم المدرسة عند «طباعة جميع المسيرات».</p></div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">{committeeNames.map((name,i)=><input key={i} value={name} onChange={e=>setCommitteeNames(xs=>xs.map((x,j)=>j===i?e.target.value:x))} className="border rounded-xl px-4 py-3" placeholder={`الاسم الرباعي — العضو ${i+1}`}/>)}<input value={headName} onChange={e=>setHeadName(e.target.value)} className="border rounded-xl px-4 py-3" placeholder="الاسم الرباعي — رئيس قسم التعليم المستمر"/></div>
         <button disabled={savingCommittee} onClick={saveCommitteeNames} className="mt-3 bg-[var(--navy)] text-white rounded-xl px-5 py-2.5 font-bold disabled:opacity-50">{savingCommittee?'جارٍ الحفظ…':'حفظ أسماء اللجنة'}</button>
       </div>
 
@@ -258,7 +259,7 @@ export default function SchoolPayrollPrint() {
           <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{selectedSchool?.manager_name || '................................'}</div><div className="print-school-signature">{selectedSchool?.manager_signature_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.manager_signature_path).data.publicUrl} alt="توقيع مدير المدرسة" className="print-signature-image"/> : <span>التوقيع: ................................</span>}</div></div>
           <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{selectedSchool?.stamp_path ? <img src={sb.storage.from('school-stamps').getPublicUrl(selectedSchool.stamp_path).data.publicUrl} alt="ختم المدرسة" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
           <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">رئيس التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
-        </div> : <div className="print-committee"><div className="print-committee-title">لجنة المسيرات</div><div className="print-committee-grid">{committeeNames.map((name,i)=><div key={i} className="print-committee-member"><b>عضو اللجنة {i+1}</b><div>{name||'................................................'}</div><small>التوقيع: ................................</small></div>)}</div></div>}
+        </div> : <div className="print-committee"><div className="print-committee-title">لجنة المسيرات</div><div className="print-committee-grid">{committeeNames.map((name,i)=><div key={i} className="print-committee-member"><b>عضو اللجنة {i+1}</b><div>{name||'................................................'}</div><small>التوقيع: ................................</small></div>)}<div className="print-committee-member"><b>رئيس قسم التعليم المستمر</b><div>{headName||'................................................'}</div><small>التوقيع: ................................</small></div></div></div>}
         <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>
       </>}
     </section>
