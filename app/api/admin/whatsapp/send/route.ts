@@ -46,9 +46,27 @@ export async function POST(request: Request) {
       const to = normalizePhone(String(recipient.phone || ''));
       if (!to || to.length < 10) { failed++; errors.push({ school_name: recipient.school_name, error: 'رقم واتساب غير صالح' }); continue; }
 
-      const payload: any = documentUrl
-        ? { messaging_product: 'whatsapp', to, type: 'document', document: { link: documentUrl, caption: message.slice(0, 1024), filename: 'تعميم.pdf' } }
-        : { messaging_product: 'whatsapp', to, type: 'text', text: { preview_url: false, body: message } };
+      // Outside WhatsApp's 24-hour customer-service window, business-initiated messages
+      // must use an approved template. The approved Arabic utility template accepts:
+      // {{1}} school name, {{2}} requested action/message, {{3}} due date.
+      const dueDate = String(body.dueDate || 'في أقرب وقت');
+      const payload: any = {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: 'school_task_notification',
+          language: { code: 'ar' },
+          components: [{
+            type: 'body',
+            parameters: [
+              { type: 'text', text: String(recipient.school_name || 'المدرسة').slice(0, 120) },
+              { type: 'text', text: message.slice(0, 900) },
+              { type: 'text', text: dueDate.slice(0, 120) }
+            ]
+          }]
+        }
+      };
 
       const response = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await response.json().catch(() => ({}));
