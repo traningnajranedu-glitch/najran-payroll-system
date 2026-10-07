@@ -409,7 +409,8 @@ export default function SchoolAccountsPage() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <a href="/admin/change-password" className="bg-white/10 rounded-xl px-4 py-2 flex items-center gap-2"><KeyRound size={17} />تغيير كلمة مرور المدير</a>
             <button
               type="button"
               onClick={load}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3, Upload, Home, Settings, Bell, Clock3, ClipboardList, Activity } from 'lucide-react';
+import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3, Upload, Home, Settings, KeyRound, Bell, Clock3, ClipboardList, Activity } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../lib/supabase';
 
@@ -625,10 +625,10 @@ async function deletePeriod(p:Period){
 <div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
   if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
-  const nav=[['overview','الرئيسية',Home],['schools','المدارس',Building2],['teachers','الموظفون',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',ClipboardList],['activities','الأنشطة والاحتفالات',Star],['kpi','التقارير والمؤشرات',BarChart3],['accounts','الإعدادات والحسابات',Settings],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير اليومي',FileSpreadsheet]] as const;
+  const nav=[['overview','الرئيسية',Home],['schools','المدارس',Building2],['teachers','الموظفون',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',ClipboardList],['activities','الأنشطة والاحتفالات',Star],['kpi','التقارير والمؤشرات',BarChart3],['accounts','الإعدادات والحسابات',Settings],['change-password','تغيير كلمة المرور',KeyRound],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير اليومي',FileSpreadsheet]] as const;
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
 
-  function go(key:string){setTab(key);if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report';if(key==='kpi')location.href='/admin/kpi'}
+  function go(key:string){setTab(key);if(key==='change-password')location.href='/admin/change-password';if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report';if(key==='kpi')location.href='/admin/kpi'}
 
   const openPeriods=periods.filter(p=>periodIsOpen(p)).length;
   const activeTeachers=teachers.filter(t=>t.is_active).length;
