@@ -105,7 +105,7 @@ export default function DailyReportPage(){
   return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-8"><div className="max-w-7xl mx-auto">
     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
       <div><h1 className="text-2xl font-bold flex items-center gap-2"><BarChart3/> التقرير اليومي لنشاط المدارس</h1><p className="text-gray-500 mt-1">متابعة نشاط حسابات المدارس وتجهيز التقرير اليومي للإرسال عبر WhatsApp.</p></div>
-      <div className="flex gap-2"><button onClick={load} className="border bg-white rounded-xl p-3"><RefreshCw size={18}/></button><button onClick={()=>location.href='/admin'} className="border bg-white rounded-xl px-4 py-3 flex items-center gap-2"><ArrowRight size={17}/> لوحة المدير</button></div>
+      <div className="flex gap-2"><a href="/admin/weekly-report" className="border bg-teal-900 text-white rounded-xl px-4 py-3 font-bold">التقرير الأسبوعي</a><button onClick={load} className="border bg-white rounded-xl p-3"><RefreshCw size={18}/></button><button onClick={()=>location.href='/admin'} className="border bg-white rounded-xl px-4 py-3 flex items-center gap-2"><ArrowRight size={17}/> لوحة المدير</button></div>
     </div>
     {notice&&<div className="bg-green-50 text-green-800 border border-green-100 rounded-xl px-4 py-3 mb-5"><CheckCircle2 className="inline ml-2" size={18}/>{notice}</div>}
     {error&&<div className="bg-red-50 text-red-800 border border-red-100 rounded-xl px-4 py-3 mb-5"><AlertCircle className="inline ml-2" size={18}/>{error}</div>}
