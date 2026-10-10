@@ -64,6 +64,24 @@ export default function WhatsAppSchoolsPage() {
   const selectedSchool = schools.find(s => s.id === schoolId);
   const targetCount = useMemo(() => mode === 'single' ? (phone || selectedSchool?.whatsapp_number ? 1 : 0) : schools.filter(s => s.whatsapp_number).length, [mode, phone, selectedSchool, schools]);
 
+  async function sendTestReminder() {
+    if (!window.confirm('هل تريد إرسال تذكير مؤشر منصة مدرستي إلى مدرسة اختبار فقط؟')) return;
+    setBusy(true); setNotice(''); setSendErrors([]);
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) throw new Error('انتهت جلسة الدخول، يرجى تسجيل الدخول مجددًا.');
+      const response = await fetch('/api/automation/whatsapp-test', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + session.access_token },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || result.reason || 'تعذر إرسال التذكير');
+      setNotice(result.sent ? 'قبلت Meta رسالة التذكير لمدرسة اختبار. رقم التتبع: ' + result.providerMessageId : 'لم تُرسل الرسالة: ' + (result.reason || 'لم تتحقق شروط الإرسال'));
+    } catch (err) {
+      setNotice('تعذر إرسال التجربة: ' + (err instanceof Error ? err.message : 'خطأ غير معروف'));
+    } finally { setBusy(false); }
+  }
+
   async function send() {
     setNotice(''); setSendErrors([]);
     if (!message.trim()) return setNotice('اكتب نص التعميم أو الخطاب أولاً.');
@@ -123,6 +141,11 @@ export default function WhatsAppSchoolsPage() {
         </div>
 
         <div className="card p-5 lg:col-span-2">
+          <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 p-4">
+            <h3 className="font-bold text-sky-950 mb-2">اختبار تنبيه منصة مدرستي</h3>
+            <p className="text-sm text-sky-900 mb-3">يرسل القالب العربي المعتمد إلى رقم التواصل المحفوظ في الملف الشخصي لمدرسة «اختبار» فقط، إذا لم تُدخل مؤشر الأسبوع الحالي. لا يشمل بقية المدارس.</p>
+            <button type="button" disabled={busy} onClick={sendTestReminder} className="bg-sky-800 text-white rounded-xl px-5 py-3 font-bold disabled:opacity-50 flex items-center gap-2"><Send size={17}/>{busy ? 'جارٍ تنفيذ الطلب…' : 'إرسال رسالة واتساب تجريبية'}</button>
+          </div>
           <h2 className="font-bold mb-4">محتوى الرسالة</h2>
           <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب الإجراء أو المهمة المطلوبة من المدرسة…" className="w-full border rounded-xl px-4 py-3 resize-y" />
           <div className="mt-3"><label className="block text-sm font-bold mb-2">الموعد المطلوب للتنفيذ</label><input value={dueDate} onChange={e=>setDueDate(e.target.value)} placeholder="مثال: الخميس 8 أكتوبر 2026" className="w-full border rounded-xl px-4 py-3"/></div>
