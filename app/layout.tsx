@@ -11,5 +11,5 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="ar" dir="rtl"><head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-title" content="مدارس التعليم المستمر"/><meta name="theme-color" content="#0b6b50"/></head><body><MobileRegister />{children}</body></html>;
+  return <html lang="ar" dir="rtl"><head><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-title" content="مدارس التعليم المستمر"/><meta name="theme-color" content="#0b6b50"/></head><body><a href="#main-content" className="skip-link">تجاوز إلى المحتوى الرئيسي</a><MobileRegister />{children}</body></html>;
 }

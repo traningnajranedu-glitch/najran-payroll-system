@@ -24,17 +24,8 @@ export default function Home(){
     await sb.auth.signOut();setError('بيانات الدخول غير صحيحة أو حساب المدرسة غير مفعّل.');setLoading(false);
   }
 
-  return <main className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(circle_at_top,#e7f3ee_0%,#f5f8f6_38%,#ffffff_75%)]">
+  return <main id="main-content" className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-[radial-gradient(circle_at_top,#e7f3ee_0%,#f5f8f6_38%,#ffffff_75%)]">
     <div className="w-full max-w-xl">
-      <div className="teacher-day-hero mb-5">
-        <div className="teacher-day-hero-inner">
-          <div className="teacher-day-icon">✦</div>
-          <div className="teacher-day-title">بمناسبة يوم المعلم العالمي</div>
-          <div className="teacher-day-message">شكرًا لكل معلم ومعلمة يصنعون أثرًا، ويبنون معرفة، ويُلهمون أجيال المستقبل.</div>
-          <div className="teacher-day-date">5 أكتوبر 2026 · تعليم نجران</div>
-        </div>
-      </div>
-
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-3 bg-white/95 border border-emerald-100 rounded-2xl px-5 py-3 shadow-sm">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#0b6b50] to-[#0b7894] text-white flex items-center justify-center shadow-md"><School size={28}/></div>

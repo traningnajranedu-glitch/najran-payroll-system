@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3, Upload, Home, Settings, KeyRound, Bell, Clock3, ClipboardList, Activity } from 'lucide-react';
+import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Printer, MessageCircle, Plus, UserPlus, Power, FileSpreadsheet, PartyPopper, Star, BarChart3, Upload, Home, Settings, KeyRound, Bell, Clock3, ClipboardList, Activity, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../lib/supabase';
 
@@ -119,6 +119,7 @@ function HijriDatePicker({value,onChange,placeholder='اختر التاريخ ا
 
 export default function AdminPage() {
   const sb = supabaseBrowser();
+  const [navQuery,setNavQuery]=useState('');
   const [loading,setLoading]=useState(true), [allowed,setAllowed]=useState(false);
   const [tab,setTab]=useState('overview'), [schools,setSchools]=useState<School[]>([]), [teachers,setTeachers]=useState<Teacher[]>([]), [periods,setPeriods]=useState<Period[]>([]), [records,setRecords]=useState<RecordRow[]>([]), [allRecords,setAllRecords]=useState<RecordRow[]>([]);
   const [schoolId,setSchoolId]=useState(''), [periodId,setPeriodId]=useState(''), [message,setMessage]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
@@ -621,9 +622,9 @@ async function deletePeriod(p:Period){
   setBusy(false);
 }
 
-  if(loading)return <main className="min-h-screen flex items-center justify-center">
+  if(loading)return <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center">
 <div className="card p-10">جارٍ تحميل لوحة الإدارة…</div></main>;
-  if(!allowed)return <main className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
+  if(!allowed)return <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
   const nav=[['overview','الرئيسية',Home],['schools','المدارس',Building2],['teachers','الموظفون',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',ClipboardList],['activities','الأنشطة والاحتفالات',Star],['kpi','التقارير والمؤشرات',BarChart3],['accounts','الإعدادات والحسابات',Settings],['change-password','تغيير كلمة المرور',KeyRound],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير الأسبوعي',FileSpreadsheet]] as const;
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
@@ -675,16 +676,16 @@ async function deletePeriod(p:Period){
       <header className="bg-white border-b border-emerald-100 shadow-sm">
         <div className="px-4 md:px-7 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4"><div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center"><ShieldCheck size={30}/></div><div><h1 className="font-black text-lg md:text-2xl text-emerald-950">البوابة الإلكترونية لمدارس التعليم المستمر</h1><p className="text-xs md:text-sm text-slate-500 mt-1">الإدارة العامة للتعليم بمنطقة نجران — قسم التعليم المستمر</p></div></div>
-          <div className="flex items-center gap-3"><div className="hidden md:block text-left"><div className="text-xs text-slate-400">مرحبًا بك</div><div className="font-bold text-sm">مدير النظام</div></div><button onClick={logout} title="تسجيل الخروج" className="w-10 h-10 rounded-xl border bg-white flex items-center justify-center text-emerald-900 hover:bg-emerald-50"><LogOut size={18}/></button></div>
+          <div className="flex items-center gap-3"><div className="hidden md:block text-left"><div className="text-xs text-slate-400">مرحبًا بك</div><div className="font-bold text-sm">مدير النظام</div></div><button onClick={logout} title="تسجيل الخروج" aria-label="تسجيل الخروج" className="w-10 h-10 rounded-xl border bg-white flex items-center justify-center text-emerald-900 hover:bg-emerald-50"><LogOut size={18}/></button></div>
         </div>
       </header>
-      <div className="teacher-day-bar print:hidden"><div className="teacher-day-content px-4 md:px-7 py-2.5 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="teacher-day-badge">✦</span><div><div className="font-black text-sm sm:text-base">يوم المعلم العالمي</div><div className="text-[11px] sm:text-xs text-white/85">شكرًا لمعلمينا ومعلماتنا… أنتم أثرٌ يمتد إلى المستقبل</div></div></div><span className="teacher-day-mark hidden sm:inline-flex">5 أكتوبر 2026</span></div></div>
+
       <div className="mx-3 md:mx-6 mt-4 rounded-2xl overflow-hidden bg-gradient-to-l from-emerald-900 via-emerald-700 to-emerald-600 text-white shadow-sm">
-        <div className="px-6 py-5 md:py-7 flex items-center justify-between gap-4"><div><div className="text-2xl md:text-3xl font-black">وطن طموح .. تعليم مستمر</div><div className="text-emerald-100 mt-1">لنرتقي بمستقبل أبنائنا</div></div><div className="hidden sm:flex items-center gap-3"><div className="text-left"><div className="text-xs text-emerald-100">البوابة الإلكترونية</div><div className="font-black">التعليم المستمر</div></div><Building2 size={48} className="opacity-80"/></div></div>
+        <div className="px-6 py-5 md:py-7 flex items-center justify-between gap-4"><div><div className="text-2xl md:text-3xl font-black">إدارة المدارس والخدمات</div><div className="text-emerald-100 mt-1">تابع أعمال المدارس والمؤشرات والتقارير من مكان واحد</div></div><div className="hidden sm:flex items-center gap-3"><div className="text-left"><div className="text-xs text-emerald-100">البوابة الإلكترونية</div><div className="font-black">التعليم المستمر</div></div><Building2 size={48} className="opacity-80"/></div></div>
       </div>
-  <main className="p-3 sm:p-5 md:p-6"><div>
-      <aside className="fixed right-0 top-0 bottom-0 w-[220px] bg-gradient-to-b from-[#064e3b] to-[#043f34] text-white z-40 hidden lg:flex flex-col shadow-xl"><div className="h-[92px] flex items-center justify-center border-b border-white/10"><div className="text-center"><div className="font-black text-lg">التعليم المستمر</div><div className="text-[11px] text-emerald-100 mt-1">لوحة مدير النظام</div></div></div><nav className="p-3 space-y-1 flex-1 overflow-y-auto">{nav.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>go(key)} className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-right text-sm transition ${tab===key?'bg-white text-emerald-900 font-black shadow':'text-emerald-50 hover:bg-white/10'}`}><Icon size={18}/><span>{label}</span></button>)}</nav><div className="p-4 border-t border-white/10 text-center text-xs text-emerald-100">الإدارة العامة للتعليم بنجران</div></aside>
-      <div className="lg:hidden mb-4 overflow-x-auto flex gap-2 pb-1">{nav.map(([key,label,Icon])=><button key={key} onClick={()=>go(key)} className={`shrink-0 rounded-xl px-3 py-2 flex items-center gap-2 text-sm ${tab===key?'bg-emerald-800 text-white':'bg-white border'}`}><Icon size={16}/>{label}</button>)}</div>
+  <main id="main-content" tabIndex={-1} className="p-3 sm:p-5 md:p-6"><div>
+      <aside className="fixed right-0 top-0 bottom-0 w-[220px] bg-gradient-to-b from-[#064e3b] to-[#043f34] text-white z-40 hidden lg:flex flex-col shadow-xl"><div className="h-[92px] flex items-center justify-center border-b border-white/10"><div className="text-center"><div className="font-black text-lg">التعليم المستمر</div><div className="text-[11px] text-emerald-100 mt-1">لوحة مدير النظام</div></div></div><label className="mx-3 mt-4 mb-2 relative"><span className="sr-only">البحث في الخدمات</span><Search size={16} className="absolute right-3 top-3 text-emerald-800"/><input value={navQuery} onChange={e=>setNavQuery(e.target.value)} placeholder="ابحث عن خدمة" className="w-full rounded-lg py-2 pr-9 pl-3 text-sm text-slate-900"/></label><nav aria-label="خدمات مدير النظام" className="p-3 space-y-1 flex-1 overflow-y-auto">{nav.filter(([,label])=>label.includes(navQuery.trim())).map(([key,label,Icon])=><button key={key} type="button" onClick={()=>go(key)} aria-current={tab===key?'page':undefined} className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-right text-sm transition ${tab===key?'bg-white text-emerald-900 font-black shadow':'text-emerald-50 hover:bg-white/10'}`}><Icon size={18}/><span>{label}</span></button>)}</nav><div className="p-4 border-t border-white/10 text-center text-xs text-emerald-100">الإدارة العامة للتعليم بنجران</div></aside>
+      <label className="lg:hidden block mb-5 card p-4"><span className="block text-sm font-bold mb-2">الانتقال إلى الخدمة</span><select value={tab} onChange={e=>go(e.target.value)} className="w-full border rounded-xl px-3 py-3">{nav.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
       <section className="space-y-5">
         {message&&<div className="bg-green-50 text-green-800 border border-green-100 rounded-xl px-4 py-3">{message}</div>}
         {error&&<div className="bg-red-50 text-red-800 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
