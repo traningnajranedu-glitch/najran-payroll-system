@@ -36,15 +36,20 @@ export async function GET(request: NextRequest) {
  
 // Explicit, authenticated, single-school test only. No cron or bulk delivery.
 export async function POST(request: NextRequest) {
-  if (!process.env.CRON_SECRET || request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const bearer = request.headers.get('authorization') || '';
+  const accessToken = bearer.startsWith('Bearer ') ? bearer.slice(7) : '';
+  if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!url || !key || !token || !phoneId) return NextResponse.json({ error: 'Server configuration missing' }, { status: 503 });
   const db = createClient(url, key, { auth: { persistSession: false } });
+  const { data: identity, error: authError } = await db.auth.getUser(accessToken);
+  if (authError || !identity.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { data: admin, error: adminError } = await db.from('admin_users').select('id').eq('user_id', identity.user.id).eq('is_active', true).maybeSingle();
+  if (adminError || !admin) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+
   const { data: schools, error: schoolError } = await db.from('schools').select('id,school_name').eq('is_active', true);
   if (schoolError) return NextResponse.json({ error: 'School lookup failed' }, { status: 500 });
   const matches = (schools || []).filter(s => s.school_name.trim() === 'اختبار');
