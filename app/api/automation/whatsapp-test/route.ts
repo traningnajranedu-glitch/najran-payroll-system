@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
   if (!/^9665\d{8}$/.test(recipient)) return NextResponse.json({ error: 'Invalid school contact mobile' }, { status: 422 });
   const allowlisted = (process.env.WHATSAPP_TEST_ALLOWED_RECIPIENT || '').replace(/[^0-9]/g, '').replace(/^00/, '');
   const allowedRecipient = allowlisted.startsWith('966') ? allowlisted : allowlisted.startsWith('0') ? '966' + allowlisted.slice(1) : '966' + allowlisted;
-  if (!allowlisted || recipient !== allowedRecipient) return NextResponse.json({error:'رقم مدرسة اختبار لا يطابق المستلم المعتمد في Meta للتجربة'},{status:403});
+  if (!/^9665\d{8}$/.test(allowedRecipient)) return NextResponse.json({error:'يرجى ضبط WHATSAPP_TEST_ALLOWED_RECIPIENT برقم سعودي صحيح ومعتمد في Meta'},{status:422});
+  // Sandbox delivery goes exclusively to the Meta-approved test recipient; school profile is not modified.
+  const testRecipient = allowedRecipient;
   // Manual admin test: the indicator may already be submitted.
   // Use a distinct test indicator key so scheduled reminders retain their own deduplication.
   const week = indicatorWeek();
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId)}/messages`, {
       method:'POST',
       headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({messaging_product:'whatsapp',to:recipient,type:'template',template:{name:'hello_world',language:{code:'en_US'}}}),
+      body:JSON.stringify({messaging_product:'whatsapp',to:testRecipient,type:'template',template:{name:'hello_world',language:{code:'en_US'}}}),
       cache:'no-store',
     });
     const payload = await response.json();
