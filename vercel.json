@@ -3,6 +3,10 @@
     {
       "path": "/api/admin/daily-report",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/automation/weekly-test-alerts",
+      "schedule": "0 5 * * 0,3"
     }
   ]
 }
