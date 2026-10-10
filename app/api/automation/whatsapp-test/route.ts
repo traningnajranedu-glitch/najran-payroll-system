@@ -60,11 +60,10 @@ export async function POST(request: NextRequest) {
   const digits = (profile?.contact_mobile || '').replace(/[^0-9]/g, '').replace(/^00/, '');
   const recipient = digits.startsWith('966') ? digits : digits.startsWith('0') ? '966' + digits.slice(1) : '966' + digits;
   if (!/^9665\d{8}$/.test(recipient)) return NextResponse.json({ error: 'Invalid school contact mobile' }, { status: 422 });
+  // Manual admin test: the indicator may already be submitted.
+  // Use a distinct test indicator key so scheduled reminders retain their own deduplication.
   const week = indicatorWeek();
-  const { data: entries, error: indicatorError } = await db.from('school_madrasati_daily_indicators').select('id').eq('school_id', school.id).gte('indicator_date', week.start).lte('indicator_date', week.end).limit(1);
-  if (indicatorError) return NextResponse.json({ error: 'Indicator lookup failed' }, { status: 500 });
-  if (entries?.length) return NextResponse.json({ sent: false, reason: 'Indicator already submitted' });
-  const { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'madrasati',week_start:week.start,status:'reserved'}).select('id').single();
+  const { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'madrasati_manual_test',week_start:week.start,status:'reserved'}).select('id').single();
   if (reserveError || !reservation) return NextResponse.json({ sent: false, reason: 'Already reserved or sent for this week' }, { status: 409 });
   try {
     const response = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId)}/messages`, {
