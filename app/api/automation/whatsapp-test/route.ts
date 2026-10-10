@@ -63,8 +63,13 @@ export async function POST(request: NextRequest) {
   // Manual admin test: the indicator may already be submitted.
   // Use a distinct test indicator key so scheduled reminders retain their own deduplication.
   const week = indicatorWeek();
-  const { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'madrasati_manual_test',week_start:week.start,status:'reserved'}).select('id').single();
-  if (reserveError || !reservation) return NextResponse.json({ sent: false, reason: 'Already reserved or sent for this week' }, { status: 409 });
+  let { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'madrasati_manual_test',week_start:week.start,status:'reserved'}).select('id').single();
+  if (reserveError || !reservation) {
+    // Retry only a provider-confirmed failed attempt; never resend reserved or sent messages.
+    const retry = await db.from('whatsapp_test_delivery_log').update({status:'reserved',error_message:null,updated_at:new Date().toISOString()}).eq('school_id',school.id).eq('indicator','madrasati_manual_test').eq('week_start',week.start).eq('status','failed').select('id').maybeSingle();
+    reservation = retry.data;
+    if (retry.error || !reservation) return NextResponse.json({ sent:false, reason:'A message was already sent or is being processed this week' }, { status:409 });
+  }
   try {
     const response = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId)}/messages`, {
       method:'POST',
@@ -75,7 +80,7 @@ export async function POST(request: NextRequest) {
     const payload = await response.json();
     if (!response.ok || !payload?.messages?.[0]?.id) {
       await db.from('whatsapp_test_delivery_log').update({status:'failed',error_message:JSON.stringify(payload).slice(0,1000),updated_at:new Date().toISOString()}).eq('id',reservation.id);
-      return NextResponse.json({sent:false,error:'WhatsApp provider rejected the message',providerStatus:response.status},{status:502});
+      return NextResponse.json({sent:false,error:payload?.error?.code === 133010 ? 'رقم الإرسال غير مسجل أو غير مفعّل في WhatsApp Cloud API لدى Meta (133010).' : (payload?.error?.message || 'WhatsApp provider rejected the message'),providerCode:payload?.error?.code,providerStatus:response.status},{status:502});
     }
     await db.from('whatsapp_test_delivery_log').update({status:'sent',provider_message_id:payload.messages[0].id,updated_at:new Date().toISOString()}).eq('id',reservation.id);
     return NextResponse.json({sent:true,school:'اختبار',providerMessageId:payload.messages[0].id});
