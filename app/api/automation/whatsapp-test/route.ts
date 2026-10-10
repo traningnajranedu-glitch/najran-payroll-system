@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
   if (!accessToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const token = process.env.WHATSAPP_TEST_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_TEST_PHONE_NUMBER_ID;
   if (!url || !key || !token || !phoneId) return NextResponse.json({ error: 'Server configuration missing' }, { status: 503 });
   const db = createClient(url, key, { auth: { persistSession: false } });
   const { data: identity, error: authError } = await db.auth.getUser(accessToken);
@@ -60,13 +60,16 @@ export async function POST(request: NextRequest) {
   const digits = (profile?.contact_mobile || '').replace(/[^0-9]/g, '').replace(/^00/, '');
   const recipient = digits.startsWith('966') ? digits : digits.startsWith('0') ? '966' + digits.slice(1) : '966' + digits;
   if (!/^9665\d{8}$/.test(recipient)) return NextResponse.json({ error: 'Invalid school contact mobile' }, { status: 422 });
+  const allowlisted = (process.env.WHATSAPP_TEST_ALLOWED_RECIPIENT || '').replace(/[^0-9]/g, '').replace(/^00/, '');
+  const allowedRecipient = allowlisted.startsWith('966') ? allowlisted : allowlisted.startsWith('0') ? '966' + allowlisted.slice(1) : '966' + allowlisted;
+  if (!allowlisted || recipient !== allowedRecipient) return NextResponse.json({error:'رقم مدرسة اختبار لا يطابق المستلم المعتمد في Meta للتجربة'},{status:403});
   // Manual admin test: the indicator may already be submitted.
   // Use a distinct test indicator key so scheduled reminders retain their own deduplication.
   const week = indicatorWeek();
-  let { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'madrasati_manual_test',week_start:week.start,status:'reserved'}).select('id').single();
+  let { data: reservation, error: reserveError } = await db.from('whatsapp_test_delivery_log').insert({school_id:school.id,indicator:'meta_sandbox_hello_world',week_start:week.start,status:'reserved'}).select('id').single();
   if (reserveError || !reservation) {
     // Retry only a provider-confirmed failed attempt; never resend reserved or sent messages.
-    const retry = await db.from('whatsapp_test_delivery_log').update({status:'reserved',error_message:null,updated_at:new Date().toISOString()}).eq('school_id',school.id).eq('indicator','madrasati_manual_test').eq('week_start',week.start).eq('status','failed').select('id').maybeSingle();
+    const retry = await db.from('whatsapp_test_delivery_log').update({status:'reserved',error_message:null,updated_at:new Date().toISOString()}).eq('school_id',school.id).eq('indicator','meta_sandbox_hello_world').eq('week_start',week.start).eq('status','failed').select('id').maybeSingle();
     reservation = retry.data;
     if (retry.error || !reservation) return NextResponse.json({ sent:false, reason:'A message was already sent or is being processed this week' }, { status:409 });
   }
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId)}/messages`, {
       method:'POST',
       headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({messaging_product:'whatsapp',to:recipient,type:'template',template:{name:process.env.WHATSAPP_REMINDER_TEMPLATE || 'school_madrasati_reminder',language:{code:'ar'},components:[{type:'body',parameters:[{type:'text',text:school.school_name}]}]}}),
+      body:JSON.stringify({messaging_product:'whatsapp',to:recipient,type:'template',template:{name:'hello_world',language:{code:'en_US'}}}),
       cache:'no-store',
     });
     const payload = await response.json();
