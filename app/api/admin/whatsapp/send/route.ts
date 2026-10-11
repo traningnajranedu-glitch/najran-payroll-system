@@ -30,8 +30,12 @@ export async function POST(request: Request) {
     const recipients: Recipient[] = Array.isArray(body.recipients) ? body.recipients : [];
     const message = String(body.message || '').trim();
     const documentUrl = body.documentUrl ? String(body.documentUrl).trim() : '';
+    const sendMode = body.sendMode === 'direct' ? 'direct' : 'template';
+    const content = documentUrl ? `${message}\n\n${documentUrl}` : message;
     if (!recipients.length) return NextResponse.json({ error: 'لا توجد مدارس مستهدفة' }, { status: 400 });
     if (!message) return NextResponse.json({ error: 'نص الرسالة مطلوب' }, { status: 400 });
+    if (content.length > (sendMode === 'direct' ? 4096 : 900)) return NextResponse.json({ error: 'نص الرسالة مع الرابط أطول من الحد المسموح' }, { status: 400 });
+    if (documentUrl && !/^https?:\/\//i.test(documentUrl)) return NextResponse.json({ error: 'أدخل رابطًا يبدأ بـ https:// أو http://' }, { status: 400 });
 
     const token = process.env.WHATSAPP_ACCESS_TOKEN;
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -46,11 +50,12 @@ export async function POST(request: Request) {
       const to = normalizePhone(String(recipient.phone || ''));
       if (!to || to.length < 10) { failed++; errors.push({ school_name: recipient.school_name, error: 'رقم واتساب غير صالح' }); continue; }
 
-      // Outside WhatsApp's 24-hour customer-service window, business-initiated messages
-      // must use an approved template. The approved Arabic utility template accepts:
-      // {{1}} school name, {{2}} requested action/message, {{3}} due date.
+      // Meta enforces the 24-hour customer-service window for direct replies.
       const dueDate = String(body.dueDate || 'في أقرب وقت');
-      const payload: any = {
+      const payload = sendMode === 'direct' ? {
+        messaging_product: 'whatsapp', to, type: 'text',
+        text: { body: content, preview_url: false }
+      } : {
         messaging_product: 'whatsapp',
         to,
         type: 'template',
@@ -60,9 +65,9 @@ export async function POST(request: Request) {
           components: [{
             type: 'body',
             parameters: [
-              { type: 'text', text: String(recipient.school_name || 'المدرسة').slice(0, 120) },
-              { type: 'text', text: message.slice(0, 900) },
-              { type: 'text', text: dueDate.slice(0, 120) }
+              { type: 'text', parameter_name: 'school_name', text: String(recipient.school_name || 'المدرسة').slice(0, 120) },
+              { type: 'text', parameter_name: 'task_name', text: content },
+              { type: 'text', parameter_name: 'deadline', text: dueDate.slice(0, 120) }
             ]
           }]
         }
@@ -70,7 +75,15 @@ export async function POST(request: Request) {
 
       const response = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await response.json().catch(() => ({}));
-      if (response.ok) sent++; else { failed++; errors.push({ school_name: recipient.school_name, error: result?.error?.message || 'رفضت Meta عملية الإرسال' }); }
+      if (response.ok && result?.messages?.[0]?.id) sent++; else {
+        failed++;
+        const code = result?.error?.code;
+        const error = code === 131047
+          ? 'انتهت نافذة الرد المباشر. اطلب من المدرسة إرسال رسالة إلى رقم البوابة، أو استخدم قالبًا معتمدًا.'
+          : code === 132001 ? 'قالب المهمة غير متاح بالعربية في حساب واتساب الحالي. تحقق من اسمه واعتماده أو اختر رسالة مباشرة ضمن نافذة الرد.'
+          : result?.error?.message || 'رفضت Meta عملية الإرسال';
+        errors.push({ school_name: recipient.school_name, error });
+      }
     }
 
     return NextResponse.json({ sent, failed, errors: errors.slice(0, 20) });
