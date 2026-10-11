@@ -5,7 +5,7 @@ import { Building2, Users, CalendarDays, CheckCircle2, ShieldCheck, LogOut, Prin
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../lib/supabase';
 
-type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name?: string | null; allow_school_teacher_edit?: boolean };
+type School = { id: string; school_code: string; school_name: string; is_active: boolean; is_test?: boolean; manager_name?: string | null; allow_school_teacher_edit?: boolean };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null; is_active: boolean };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null; auto_open_close?: boolean; is_open: boolean; allow_edit: boolean };
 type RecordRow = { id: string; period_id: string; school_id: string; teacher_id: string; status: string; direct_start_date: string | null; pre_start_hours: number; payroll_days: number; payroll_days_manual: boolean; notes: string | null; approved_at?: string | null };
@@ -155,14 +155,16 @@ export default function AdminPage() {
       sb.from('school_madrasati_daily_indicators').select('id,school_id,indicator_date,updated_at').order('updated_at',{ascending:false}).limit(50)
     ]);
     if(s.error||t.error||p.error)setError(s.error?.message||t.error?.message||p.error?.message||'تعذر تحميل البيانات');
-    setSchools(s.data||[]);setTeachers(t.data||[]);setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports(reps.data||[]);setAllRecords(allPayroll.data||[]);setMadrasatiDaily((mad.data||[]) as MadrasatiDaily[]);
-    if(!schoolId&&s.data?.[0])setSchoolId(s.data[0].id);
+    const officialSchools = (s.data || []).filter(school => !school.is_test);
+    const officialIds = new Set(officialSchools.map(school => school.id));
+    setSchools(officialSchools);setTeachers((t.data||[]).filter(row=>officialIds.has(row.school_id)));setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports((reps.data||[]).filter(row=>officialIds.has(row.school_id)));setAllRecords((allPayroll.data||[]).filter(row=>officialIds.has(row.school_id)));setMadrasatiDaily(((mad.data||[]) as MadrasatiDaily[]).filter(row=>officialIds.has(row.school_id)));
+    if(!schoolId&&officialSchools[0])setSchoolId(officialSchools[0].id);
     if(!periodId&&p.data?.[0])setPeriodId(p.data[0].id);
-    if(!teacherForm.school_id&&s.data?.[0])setTeacherForm(x=>({...x,school_id:s.data[0].id}));
+    if(!teacherForm.school_id&&officialSchools[0])setTeacherForm(x=>({...x,school_id:officialSchools[0].id}));
     setLoading(false);
   }
 
-  async function loadRecords(){if(!periodId)return;let q=sb.from('payroll_records').select('*').eq('period_id',periodId);if(schoolId)q=q.eq('school_id',schoolId);const {data,error}=await q;if(error)setError(error.message);else setRecords(data||[])}
+  async function loadRecords(){if(!periodId)return;let q=sb.from('payroll_records').select('*').eq('period_id',periodId);if(schoolId)q=q.eq('school_id',schoolId);const {data,error}=await q;if(error)setError(error.message);else setRecords((data||[]).filter(row=>schools.some(s=>s.id===row.school_id)))}
   useEffect(()=>{load()},[]); useEffect(()=>{if(allowed)loadRecords()},[allowed,schoolId,periodId]);
   async function logout(){await sb.auth.signOut();location.href='/'}
 
