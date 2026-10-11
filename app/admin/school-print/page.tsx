@@ -5,7 +5,7 @@ import { Printer, Search, RefreshCw, ArrowRight, FileSpreadsheet } from 'lucide-
 import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../../lib/supabase';
 
-type School = { id: string; school_code: string; school_name: string; is_active: boolean; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null };
+type School = { id: string; school_code: string; school_name: string; is_active: boolean; is_test?: boolean; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null };
 type SchoolProfileApproval = { school_id:string; signature_path:string|null; stamp_path:string|null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null };
@@ -62,13 +62,13 @@ export default function SchoolPayrollPrint() {
       sb.from('school_profiles').select('school_id,signature_path,stamp_path'),
     ]);
     if (s.error || t.error || p.error) setMessage(s.error?.message || t.error?.message || p.error?.message || 'تعذر تحميل البيانات.');
-    setSchools(s.data || []);
+    setSchools((s.data || []).filter(school => !school.is_test));
     setTeachers(t.data || []);
     setProfileApprovals((profileApproval.data || []) as SchoolProfileApproval[]);
     setPeriods(p.data || []);
     if(committee.data){setCommitteeNames([committee.data.committee_member_1||'',committee.data.committee_member_2||'',committee.data.committee_member_3||'']);setHeadName(committee.data.continuing_education_head_name||'');}
     if (!periodId && p.data?.[0]) setPeriodId(p.data[0].id);
-    if (!selectedSchoolId && s.data?.[0]) setSelectedSchoolId(s.data[0].id);
+    if (!selectedSchoolId && (s.data || []).some(school => !school.is_test)) setSelectedSchoolId((s.data || []).find(school => !school.is_test)!.id);
     setLoading(false);
   }
 
@@ -104,7 +104,7 @@ export default function SchoolPayrollPrint() {
       setBusy(false);
       return null;
     }
-    const rows = (data || []) as RecordRow[];
+    const rows = ((data || []) as RecordRow[]).filter(row => schools.some(school => school.id === row.school_id));
     if (!rows.length) {
       setMessage('لا توجد سجلات مسيرات مطابقة للاختيار الحالي.');
       setBusy(false);
