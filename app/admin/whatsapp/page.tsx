@@ -9,6 +9,9 @@ function validMobile(value?: string | null) {
   return /^(?:05\d{8}|5\d{8}|9665\d{8}|009665\d{8})$/.test((value || '').replace(/\D/g, ''));
 }
 type TargetMode = 'all' | 'single';
+type ContactWindow = { phone: string; last_inbound_at: string };
+function normalizedMobile(value?: string | null) { const d = (value || '').replace(/\D/g, ''); return d.startsWith('00966') ? d.slice(2) : d.startsWith('05') ? '966' + d.slice(1) : d.startsWith('5') ? '966' + d : d; }
+function windowActive(value?: string) { const t = Date.parse(value || ''); return Number.isFinite(t) && t <= Date.now() && Date.now() - t < 86400000; }
 type SendError = { school_name?: string; error: string };
 
 export default function WhatsAppSchoolsPage() {
@@ -16,6 +19,9 @@ export default function WhatsAppSchoolsPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
+  const [contactWindows, setContactWindows] = useState<ContactWindow[]>([]);
+  const [windowError, setWindowError] = useState('');
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const [mode, setMode] = useState<TargetMode>('all');
   const [schoolId, setSchoolId] = useState('');
   const [phone, setPhone] = useState('');
@@ -37,14 +43,17 @@ export default function WhatsAppSchoolsPage() {
     const { data: admin } = await sb.from('admin_users').select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle();
     if (!admin) { setLoading(false); return; }
     setAllowed(true);
-    const [{ data, error }, { data: profiles, error: profileError }] = await Promise.all([
+    const [{ data, error }, { data: profiles, error: profileError }, { data: windows, error: windowsError }] = await Promise.all([
       sb.from('schools').select('*').order('school_name'),
       sb.from('school_profiles').select('school_id,contact_mobile'),
+      sb.from('whatsapp_contact_windows').select('phone,last_inbound_at'),
     ]);
     if (error || profileError) {
       setNotice('تعذر تحميل المدارس وأرقام التواصل: ' + (error || profileError)?.message);
       setSchools([]); setLoading(false); return;
     }
+    setContactWindows(windows || []);
+    setWindowError(windowsError ? 'تعذر قراءة سجل المحادثات: ' + windowsError.message : '');
     const mobiles = new Map((profiles || []).map(p => [p.school_id, p.contact_mobile]));
     setSchools((data || []).map(s => ({ ...s, contact_mobile: mobiles.get(s.id) || null })));
     if (!schoolId && data?.[0]) setSchoolId(data[0].id);
@@ -52,6 +61,7 @@ export default function WhatsAppSchoolsPage() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { const timer = setInterval(() => setCurrentTime(Date.now()), 60000); return () => clearInterval(timer); }, []);
 
   useEffect(() => {
     if (!metaAppId || document.getElementById('facebook-jssdk')) return;
@@ -73,6 +83,9 @@ export default function WhatsAppSchoolsPage() {
   }
 
   const selectedSchool = schools.find(s => s.id === schoolId);
+  const inboundByPhone = new Map(contactWindows.map(w => [w.phone, w.last_inbound_at]));
+  function schoolStatus(s: School) { const date = inboundByPhone.get(normalizedMobile(s.contact_mobile)); const t = Date.parse(date || ''); return date && Number.isFinite(t) && t <= currentTime && currentTime - t < 86400000 ? 'متاح الرد المباشر' : date ? 'انتهت نافذة 24 ساعة' : 'لم تبدأ محادثة مسجلة'; }
+  const activeWindows = schools.filter(s => s.is_active && validMobile(s.contact_mobile) && schoolStatus(s) === 'متاح الرد المباشر').length;
   const allRecipients = useMemo(() => schools.filter(s => s.is_active && validMobile(s.contact_mobile)), [schools]);
   const missingContacts = useMemo(() => schools.filter(s => s.is_active && !validMobile(s.contact_mobile)), [schools]);
   const targetCount = mode === 'single' ? (validMobile(phone || selectedSchool?.contact_mobile) ? 1 : 0) : allRecipients.length;
@@ -142,6 +155,12 @@ export default function WhatsAppSchoolsPage() {
         </div>
       </div>}
 
+      <div className="card p-5 mb-5 border border-slate-200 bg-white">
+        <h2 className="font-bold mb-2">حالة التواصل المباشر مع المدارس</h2>
+        <p className="text-sm text-gray-600 mb-3">مدارس ضمن نافذة 24 ساعة: {activeWindows} من {allRecipients.length}. تعتمد الحالة على آخر رسالة واردة مسجلة من رقم المدرسة، وليس على قبول طلب الإرسال.</p>
+        {windowError && <p className="text-sm text-red-700 mb-3">{windowError}</p>}
+        <div className="max-h-72 overflow-auto space-y-2">{schools.filter(s => s.is_active).map(s => <div key={s.id} className="flex flex-wrap justify-between gap-2 border rounded-lg px-3 py-2 text-sm"><span>{s.school_name}</span><span className={schoolStatus(s) === 'متاح الرد المباشر' ? 'text-emerald-700 font-semibold' : 'text-amber-700'}>{validMobile(s.contact_mobile) ? schoolStatus(s) : 'رقم غير صالح'}</span></div>)}</div>
+      </div>
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="card p-5 lg:col-span-1">
           <h2 className="font-bold mb-4">جهة الإرسال</h2>
