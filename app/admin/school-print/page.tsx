@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { supabaseBrowser } from '../../../lib/supabase';
 
 type School = { id: string; school_code: string; school_name: string; is_active: boolean; is_test?: boolean; manager_name: string | null; stamp_path: string | null; manager_signature_path: string | null };
-type SchoolProfileApproval = { school_id:string; signature_path:string|null; stamp_path:string|null };
+type SchoolProfileApproval = { school_id:string; signature_path:string|null; stamp_path:string|null; gender?:string|null };
 type Teacher = { id: string; school_id: string; full_name: string; national_id: string; job_role: string; specialization: string | null };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; start_hijri?: string | null; end_hijri?: string | null };
 type RecordRow = { id: string; school_id: string; teacher_id: string; period_id: string; status: string; direct_start_date: string | null; absence_days: number; payroll_days: number; pre_start_hours: number; notes: string | null; approved_at?: string | null };
@@ -59,7 +59,7 @@ export default function SchoolPayrollPrint() {
       sb.from('teachers').select('id,school_id,full_name,national_id,job_role,specialization').eq('is_active', true).order('full_name'),
       sb.from('payroll_periods').select('*').order('start_date', { ascending: false }),
       sb.from('payroll_print_settings').select('*').eq('id',1).maybeSingle(),
-      sb.from('school_profiles').select('school_id,signature_path,stamp_path'),
+      sb.from('school_profiles').select('school_id,signature_path,stamp_path,gender'),
     ]);
     if (s.error || t.error || p.error) setMessage(s.error?.message || t.error?.message || p.error?.message || 'تعذر تحميل البيانات.');
     setSchools((s.data || []).filter(school => !school.is_test));
@@ -193,10 +193,12 @@ export default function SchoolPayrollPrint() {
       });
   }
 
+  const schoolGender = (id:string) => profileApprovals.find(p=>p.school_id===id)?.gender?.trim() || '';
+  const schoolOrder = (id:string) => { const gender=schoolGender(id); return gender==='بنين'||gender==='ذكر'||gender==='male'||gender==='boys' ? 0 : gender==='بنات'||gender==='أنثى'||gender==='female'||gender==='girls' ? 1 : 2; };
   const printRowsFiltered = useMemo(() => {
     if (printMode === 'school' && selectedSchoolId) return printRows.filter(r => r.school_id === selectedSchoolId);
-    return printRows;
-  }, [printRows, printMode, selectedSchoolId]);
+    return [...printRows].sort((a,b)=>schoolOrder(a.school_id)-schoolOrder(b.school_id) || (schools.find(s=>s.id===a.school_id)?.school_name||'').localeCompare(schools.find(s=>s.id===b.school_id)?.school_name||'','ar') || a.teacher_id.localeCompare(b.teacher_id));
+  }, [printRows, printMode, selectedSchoolId, schools, profileApprovals]);
 
   const approvedAt = useMemo(() => {
     const dates = printRowsFiltered.map(r => r.approved_at).filter(Boolean) as string[];
@@ -273,12 +275,12 @@ export default function SchoolPayrollPrint() {
     </section>
     <style jsx global>{`@media print {
     @page { size:A4 landscape; margin:8mm; } body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .print-payroll-sheet{font-family:Tahoma,Arial,sans-serif;color:#064f50;position:relative;min-height:190mm;padding:2mm 3mm 0}
+    .print-payroll-sheet{font-family:Tahoma,Arial,sans-serif;color:#064f50;position:relative;padding:2mm 3mm 0}
     .print-letterhead{position:relative;height:34mm}.print-letterhead-right{position:absolute;right:0;top:1mm;width:34%;text-align:right;font-weight:800;font-size:13px;line-height:1.7}.print-ministry{font-size:17px}.print-letterhead-center{position:absolute;left:50%;top:-2mm;transform:translateX(-50%);width:32%;text-align:center}.print-moe-logo{width:145px;height:98px}.print-letterhead-left{position:absolute;left:0;top:3mm;width:25%;border:1px solid #9ccbd0;border-radius:7px;padding:8px 10px;text-align:right;line-height:1.9;font-size:11px}.print-letterhead-left small{display:block;font-size:9px}
     .print-template-version{text-align:center;font-size:8px;color:#6b8b8b;margin:-5px 0 7px}.print-main-title{width:310px;margin:0 auto 4px;padding:8px 22px;border-radius:16px;background:linear-gradient(135deg,#006b78,#078b82)!important;color:#fff!important;text-align:center;font-size:24px;font-weight:900}.print-portal-title{text-align:center;font-size:17px;font-weight:900;margin-bottom:10px}
     .print-meta{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-bottom:10px;font-size:11px}.print-meta>div{border:1px solid #b7d9dc;border-radius:6px;padding:6px 10px;background:#fbfefe!important}.print-reward-title{text-align:center;font-size:14px;font-weight:900;color:#064f50;margin:5px 0 9px;line-height:1.8}.print-certification-text{margin:10px 3px 6px;padding:8px 12px;border:1px solid #b7d9dc;border-radius:7px;background:#fbfefe!important;font-size:11px;font-weight:600;line-height:2;text-align:right;color:#203f40}.print-certification-closing{margin-top:3px;font-weight:800}
     .print-payroll-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:10px;color:#173f41;border:1px solid #0b7e7b;border-radius:7px;overflow:hidden}.print-payroll-table th{background:#087f78!important;color:#fff!important;padding:8px 5px;font-weight:900;border-left:1px solid rgba(255,255,255,.45)}.print-payroll-table td{height:25px;padding:5px;text-align:center;border-left:1px solid #77b5b8;border-top:1px solid #9ac9cb}.print-payroll-table tbody tr:nth-child(even) td{background:#f6fbfb!important}.employee-name{text-align:right!important;font-weight:700}.print-payroll-table.admin-fields{font-size:8px}.print-payroll-table.admin-fields th{padding:7px 3px}.print-payroll-table.admin-fields td{padding:4px 3px;overflow-wrap:anywhere}.print-payroll-table.admin-fields th:nth-child(1){width:3%}.print-payroll-table.admin-fields th:nth-child(2){width:7%}.print-payroll-table.admin-fields th:nth-child(3){width:10%}.print-payroll-table.admin-fields th:nth-child(4){width:15%}.print-payroll-table.admin-fields th:nth-child(5){width:10%}.print-payroll-table.admin-fields th:nth-child(6){width:8%}.print-payroll-table.admin-fields th:nth-child(7){width:9%}.print-payroll-table.admin-fields th:nth-child(8){width:10%}.print-payroll-table.admin-fields th:nth-child(9){width:7%}.print-payroll-table.admin-fields th:nth-child(10){width:7%}.print-payroll-table.admin-fields th:nth-child(11){width:7%}.print-payroll-table.admin-fields th:nth-child(12){width:7%}.print-payroll-table.admin-fields th:nth-child(13){width:7%}
-    .print-approval-grid{display:grid;grid-template-columns:1fr .8fr 1fr;gap:22px;align-items:center;margin:12px auto 0;width:82%;page-break-inside:avoid}.print-signature-box,.print-stamp-box{min-height:72px;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px 12px}.approval-name,.approval-role{margin-top:8px;font-size:11px;font-weight:700}.approval-line{margin-top:10px;font-size:10px}.print-stamp-area{height:52px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8aa}.print-stamp-image{max-width:72px;max-height:58px;object-fit:contain}.print-school-signature{height:42px;display:flex;align-items:center;justify-content:center;margin-top:3px}.print-signature-image{max-width:110px;max-height:42px;object-fit:contain}.print-committee{margin:12px auto 0;width:92%;page-break-inside:avoid}.print-committee-title{text-align:center;font-weight:900;font-size:13px;margin-bottom:7px}.print-committee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.print-committee-member{border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px;min-height:68px;font-size:10px}.print-committee-member div{font-weight:800;margin:7px 0}.print-committee-member small{font-size:8px}.print-footer-note{position:absolute;bottom:1mm;left:0;right:0;text-align:center;border-top:1px solid #d7e8e8;padding-top:4px;font-size:8px;color:#628080}tr{page-break-inside:avoid}thead{display:table-header-group}
+    .print-approval-grid{display:grid;grid-template-columns:1fr .8fr 1fr;gap:22px;align-items:center;margin:12px auto 0;width:82%;page-break-inside:avoid}.print-signature-box,.print-stamp-box{min-height:72px;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px 12px}.approval-name,.approval-role{margin-top:8px;font-size:11px;font-weight:700}.approval-line{margin-top:10px;font-size:10px}.print-stamp-area{height:52px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8aa}.print-stamp-image{max-width:72px;max-height:58px;object-fit:contain}.print-school-signature{height:42px;display:flex;align-items:center;justify-content:center;margin-top:3px}.print-signature-image{max-width:110px;max-height:42px;object-fit:contain}.print-committee{margin:3mm auto 0;width:92%;break-inside:avoid;page-break-inside:avoid}.print-committee-title{text-align:center;font-weight:900;font-size:12px;margin-bottom:3px}.print-committee-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.print-committee-member{border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:4px;min-height:48px;font-size:10px}.print-committee-member div{font-weight:800;margin:3px 0}.print-committee-member small{font-size:8px}.print-footer-note{position:static;margin-top:3mm;text-align:center;border-top:1px solid #d7e8e8;padding-top:4px;font-size:8px;color:#628080}tr{page-break-inside:avoid}thead{display:table-header-group}
   }`}</style>
   </div>;
 }
