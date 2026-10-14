@@ -6,7 +6,7 @@ export const metadata = {
   description: 'البوابة الإلكترونية لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران',
   manifest: '/manifest.json',
   themeColor: '#0b6b50',
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/portal-brand.svg', apple: '/portal-brand.svg' },
   appleWebApp: { capable: true, title: 'مدارس التعليم المستمر', statusBarStyle: 'default' },
 };
 
