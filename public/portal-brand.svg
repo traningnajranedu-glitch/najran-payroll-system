@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="البوابة الإلكترونية لمدارس التعليم المستمر">
+<defs><radialGradient id="bg"><stop stop-color="#11634b"/><stop offset="1" stop-color="#002b25"/></radialGradient><linearGradient id="gold" x2="1" y2="1"><stop stop-color="#a87320"/><stop offset=".45" stop-color="#ffefad"/><stop offset=".7" stop-color="#d69c39"/><stop offset="1" stop-color="#fff1b3"/></linearGradient></defs>
+<circle cx="256" cy="256" r="250" fill="url(#bg)"/><circle cx="256" cy="256" r="239" fill="none" stroke="url(#gold)" stroke-width="9"/><circle cx="256" cy="256" r="226" fill="none" stroke="#6b4b19" stroke-width="2"/>
+<path d="M179 221V139Q220 122 256 77Q291 122 333 139V221L315 207V153Q281 139 256 113Q230 139 197 153V207Z" fill="url(#gold)"/>
+<path d="M100 267Q166 221 250 273L256 287Q171 252 100 281ZM412 267Q345 221 262 273L256 287Q343 252 412 281Z" fill="#ffebaa"/>
+<path d="M106 283Q177 258 256 298Q337 258 406 283Q324 278 256 314Q188 278 106 283Z" fill="url(#gold)"/>
+<path d="M256 158V254M230 184V240M283 190V242M208 209V249M309 210V252" stroke="#c2a158" stroke-width="4" stroke-dasharray="9 9"/>
+<text x="256" y="371" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="38" font-weight="bold" fill="#fff2c8">البوابة الإلكترونية</text>
+<text x="256" y="406" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="24" font-weight="bold" fill="#fff2c8">لمدارس</text>
+<text x="256" y="453" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="43" font-weight="bold" fill="#fff2c8">التعليم المستمر</text>
+</svg>
