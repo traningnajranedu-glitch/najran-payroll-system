@@ -33,6 +33,8 @@ export default function WhatsAppSchoolsPage() {
   const [notice, setNotice] = useState('');
   const [sendErrors, setSendErrors] = useState<SendError[]>([]);
   const [metaNotice, setMetaNotice] = useState('');
+  const [reminderPreview, setReminderPreview] = useState<any>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const metaAppId = process.env.NEXT_PUBLIC_META_APP_ID || '';
   const metaConfigId = process.env.NEXT_PUBLIC_WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID || '';
 
@@ -89,6 +91,19 @@ export default function WhatsAppSchoolsPage() {
   const allRecipients = useMemo(() => schools.filter(s => s.is_active && validMobile(s.contact_mobile)), [schools]);
   const missingContacts = useMemo(() => schools.filter(s => s.is_active && !validMobile(s.contact_mobile)), [schools]);
   const targetCount = mode === 'single' ? (validMobile(phone || selectedSchool?.contact_mobile) ? 1 : 0) : allRecipients.length;
+
+  async function previewWeeklyReminders() {
+    setPreviewBusy(true);
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) throw new Error('يرجى تسجيل الدخول مجددًا');
+      const res = await fetch('/api/automation/weekly-reminders', { headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'تعذر جلب المعاينة');
+      setReminderPreview(data);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'تعذر عرض المعاينة'); }
+    finally { setPreviewBusy(false); }
+  }
 
   async function sendTestReminder() {
     if (!window.confirm('هل تريد إرسال تذكير مؤشر منصة مدرستي إلى مدرسة اختبار فقط؟')) return;
@@ -154,6 +169,23 @@ export default function WhatsAppSchoolsPage() {
           {sendErrors.map((item, index) => <div key={index} className="bg-white/70 rounded-lg px-3 py-2 text-sm"><b>{item.school_name || 'المدرسة'}</b><div className="mt-1">{item.error}</div></div>)}
         </div>
       </div>}
+
+      <section className="card p-5 mb-5 border border-[#d7af62] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 className="font-bold text-[#00523d]">التذكيرات الأسبوعية المجدولة — معاينة فقط</h2><p className="text-sm text-gray-600 mt-1">الأربعاء 9:00 صباحًا بتوقيت السعودية. فحص مؤشر منصة مدرستي والانضباط المدرسي، دون إرسال واتساب حتى اعتماد التشغيل.</p></div>
+          <button type="button" disabled={previewBusy} onClick={previewWeeklyReminders} className="rounded-xl bg-[#00523d] text-white px-4 py-3 font-semibold disabled:opacity-50">{previewBusy ? 'جارٍ الفحص…' : 'معاينة المدارس غير المنجزة'}</button>
+        </div>
+        {reminderPreview && <div className="mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_schools}</div><div className="text-xs">مدارس غير منجزة</div></div>
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_madrasati}</div><div className="text-xs">منصة مدرستي</div></div>
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_discipline}</div><div className="text-xs">الانضباط المدرسي</div></div>
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.valid_recipients}</div><div className="text-xs">أرقام صالحة</div></div>
+          </div>
+          <p className="text-xs text-amber-700 mt-3 font-bold">وضع الاختبار: لم يتم إرسال أي رسالة. مدرسة اختبار مستثناة من الاستهداف الجماعي.</p>
+          <div className="max-h-72 overflow-y-auto mt-3 divide-y">{reminderPreview.schools.map((item:any)=><div key={item.school_id} className="py-2 flex flex-wrap justify-between gap-2 text-sm"><span>{item.school_name}</span><span>{item.tasks.map((t:string)=>t==='madrasati'?'منصة مدرستي':'الانضباط').join('، ')} — {item.has_valid_mobile?'رقم صالح':'رقم غير متاح'}</span></div>)}</div>
+        </div>}
+      </section>
 
       <div className="card p-5 mb-5 border border-slate-200 bg-white">
         <h2 className="font-bold mb-2">حالة التواصل المباشر مع المدارس</h2>
