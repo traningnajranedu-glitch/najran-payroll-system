@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     const endpoint = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
     let sent = 0, failed = 0;
-    const errors: { school_name?: string; error: string }[] = [];
+    const errors: { school_name?: string; error: string; code?: number; subcode?: number; fbtrace_id?: string; error_type?: string }[] = [];
 
     for (const recipient of recipients) {
       const to = normalizePhone(String(recipient.phone || ''));
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
           ? 'انتهت نافذة الرد المباشر. اطلب من المدرسة إرسال رسالة إلى رقم البوابة، أو استخدم قالبًا معتمدًا.'
           : code === 132001 ? 'قالب المهمة غير متاح بالعربية في حساب واتساب الحالي. تحقق من اسمه واعتماده أو اختر رسالة مباشرة ضمن نافذة الرد.'
           : result?.error?.message || 'رفضت Meta عملية الإرسال';
-        errors.push({ school_name: recipient.school_name, error });
+        errors.push({ school_name: recipient.school_name, error, ...(typeof code === 'number' ? { code } : {}), ...(typeof result?.error?.error_subcode === 'number' ? { subcode: result.error.error_subcode } : {}), ...(typeof result?.error?.fbtrace_id === 'string' ? { fbtrace_id: result.error.fbtrace_id } : {}), ...(typeof result?.error?.type === 'string' ? { error_type: result.error.type } : {}) });
       }
     }
 
