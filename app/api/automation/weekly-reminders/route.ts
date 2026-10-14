@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 // Read-only preview. Deliberately no WhatsApp API calls or database writes.
 // Scheduling this endpoint does not authorize live sending.
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const cronAuthorized = Boolean(cronSecret) && request.headers.get('authorization') === 'Bearer ' + cronSecret;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,8 +54,42 @@ export async function GET(request: NextRequest) {
     ];
     return { school_id: s.id, school_name: s.school_name, tasks, has_valid_mobile: /^9665\d{8}$/.test(normalize(String(phones.get(s.id) || ''))) };
   }).filter(s => s.tasks.length > 0);
+  const live = request.method === 'POST' || (cronAuthorized && weekday === 'Wed' && hour === 9);
+  if (live) {
+    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    if (!token || !phoneId) return NextResponse.json({error:'WhatsApp sender configuration missing'}, {status:503});
+    let accepted = 0, failed = 0, skipped = 0;
+    const outcomes: {school_name:string; status:string; code?:number}[] = [];
+    for (const school of pending) {
+      if (!school.has_valid_mobile) { skipped++; continue; }
+      const reservation = await db.from('weekly_whatsapp_reminder_delivery_log').insert({school_id:school.school_id,week_start:week.start,tasks:school.tasks,status:'reserved'}).select('id').single();
+      if (reservation.error) {
+        if (reservation.error.code === '23505') { skipped++; continue; }
+        return NextResponse.json({error:'Reminder log reservation failed',accepted,failed,skipped}, {status:503});
+      }
+      const to = normalize(String(phones.get(school.school_id) || ''));
+      const taskText = school.tasks.map(t => t === 'madrasati' ? 'إدخال مؤشر منصة مدرستي الأسبوعي' : 'إدخال مؤشر الانضباط المدرسي الأسبوعي').join('، و');
+      const payload = {messaging_product:'whatsapp',to,type:'template',template:{name:'school_task_notification',language:{code:'ar'},components:[{type:'body',parameters:[{type:'text',parameter_name:'school_name',text:school.school_name.slice(0,120)},{type:'text',parameter_name:'task_name',text:taskText},{type:'text',parameter_name:'deadline',text:'الخميس من الأسبوع الحالي'}]}]}};
+      try {
+        const res = await fetch(`https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || 'v23.0'}/${phoneId}/messages`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const result = await res.json().catch(()=>({}));
+        const messageId = result?.messages?.[0]?.id;
+        const ok = res.ok && typeof messageId === 'string';
+        const code = result?.error?.code;
+        await db.from('weekly_whatsapp_reminder_delivery_log').update({status:ok?'accepted':'failed',meta_message_id:ok?messageId:null,error_code:ok?null:String(code || res.status),updated_at:new Date().toISOString()}).eq('id',reservation.data.id);
+        if(ok) accepted++; else failed++;
+        outcomes.push({school_name:school.school_name,status:ok?'accepted':'failed',...(typeof code==='number'?{code}:{})});
+      } catch {
+        failed++;
+        await db.from('weekly_whatsapp_reminder_delivery_log').update({status:'unknown',error_code:'network_error',updated_at:new Date().toISOString()}).eq('id',reservation.data.id);
+        outcomes.push({school_name:school.school_name,status:'unknown'});
+      }
+    }
+    return NextResponse.json({mode:'live',accepted,failed,skipped,delivery_confirmed:0,outcomes},{headers:{'Cache-Control':'no-store'}});
+  }
   return NextResponse.json({
-    mode: 'dry-run', sent: 0, live_sending_enabled: false,
+    mode: 'dry-run', sent: 0, live_sending_enabled: true,
     schedule: { weekday: 'Wednesday', time: '09:00', timezone: 'Asia/Riyadh', on_schedule: weekday === 'Wed' && hour === 9 },
     week, active_schools: eligible.length,
     pending_madrasati: pending.filter(s => s.tasks.includes('madrasati')).length,
@@ -65,3 +99,6 @@ export async function GET(request: NextRequest) {
     schools: pending
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
+
+export async function GET(request: NextRequest) { return handler(request); }
+export async function POST(request: NextRequest) { return handler(request); }
