@@ -472,9 +472,9 @@ export default function Dashboard() {
       <button type="button" onClick={logout} aria-label="تسجيل الخروج" className="mt-auto flex gap-2 items-center justify-center border border-white/20 rounded-xl px-3 py-3"><LogOut size={18}/> تسجيل الخروج</button>
     </aside>
     <div className="lg:mr-[230px]">
-<header className="bg-white text-[var(--navy)] border-b print:hidden sticky top-0 z-30">
+<header className="bg-[#003e34] text-white border-b-4 border-[#d7af62] print:hidden sticky top-0 z-30">
         <div className="w-full px-4 sm:px-5 lg:px-8 py-4 flex items-center justify-between gap-3">
-          <div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-slate-500 mt-1">مرحباً بك في حساب المدرسة</div></div>
+          <div className="flex items-center gap-3"><img src="/portal-brand.svg" alt="شعار البوابة" className="w-12 h-12 rounded-full border border-[#d7af62]"/><div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-emerald-100 mt-1">مرحباً بك في حساب المدرسة</div></div></div>
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative">
               <button type="button" onClick={()=>setNotificationsOpen(v=>!v)} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[var(--navy)] shadow-sm transition hover:bg-cyan-50" aria-label="الإشعارات" aria-expanded={notificationsOpen}>
