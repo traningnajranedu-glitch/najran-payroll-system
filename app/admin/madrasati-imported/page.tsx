@@ -37,7 +37,7 @@ function matchSchoolName(a:string,b:string){
 }
 function asPercent(v:unknown):number|null{if(typeof v==='number')return v>=0&&v<=1?v*100:v>=0&&v<=100?v:null;const s=String(v??'').trim().replace('%','').replace('٪','').replace(',','.');if(!s)return null;const n=Number(s);return Number.isFinite(n)&&n>=0&&n<=100?n:null;}
 function percentageColumn(k:string){return k.includes('نسب') || k.includes('%') || k.includes('٪') || k.includes('معدل');}
-function match(a:string,b:string){const x=schoolKey(a),y=schoolKey(b);if(!x||!y)return false;return x===y||(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)));}
+
 export default function MadrasatiImported(){
  const [files,setFiles]=useState<(Dataset|null)[]>([null,null,null,null]);
  const [roster,setRoster]=useState<string[]>([]);
