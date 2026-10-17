@@ -9,7 +9,7 @@ const titles=['الدخول والوصول','الجدول المدرسي','ال�
 function normalize(v:unknown){
  return String(v??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
  .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ')
- .replace(/\b/g,'').replace(/\s+/g,' ').trim()
+ .replace(/\s+/g,' ').trim()
  .replace(/بتدائيه/g,'ابتدائيه').replace(/بشروره/g,'شروره')
  .replace(/الانصاري/g,'الانصاري').replace(/عبد العزيز/g,'عبدالعزيز')
  .replace(/لتعليم الكبار|للتعليم المستمر|تعليم الكبيرات|تعليم الكبار|التعليم المستمر|الليليه|الليلي|مسارات|مدرسه|مركز/g,' ')
@@ -23,7 +23,7 @@ function features(v:string){
  const core=n.replace(/ابتدائيه|متوسطه|ثانويه|بنين|بنات|الثانيه|الثاني|شروره/g,' ').replace(/\s+/g,' ').trim();
  return {n,level,second,core,tokens:core.split(' ').filter(x=>x.length>1)};
 }
-function match(a:string,b:string){
+function matchSchoolName(a:string,b:string){
  const x=features(a),y=features(b);
  if(!x.core||!y.core)return false;
  // Prevent conflating the second Al-Wadiah girls' school with the combined Al-Wadiah school.
@@ -36,7 +36,7 @@ function match(a:string,b:string){
  return common.length>=2 && common.length/Math.min(x.tokens.length,y.tokens.length)>=0.75;
 }
 function asPercent(v:unknown):number|null{if(typeof v==='number')return v>=0&&v<=1?v*100:v>=0&&v<=100?v:null;const s=String(v??'').trim().replace('%','').replace('٪','').replace(',','.');if(!s)return null;const n=Number(s);return Number.isFinite(n)&&n>=0&&n<=100?n:null;}
-function percentageColumn(k:string){return /نسب|نسبة|%|٪|معدل/.test(k);}
+function percentageColumn(k:string){return k.includes('نسب') || k.includes('%') || k.includes('٪') || k.includes('معدل');}
 function match(a:string,b:string){const x=schoolKey(a),y=schoolKey(b);if(!x||!y)return false;return x===y||(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)));}
 export default function MadrasatiImported(){
  const [files,setFiles]=useState<(Dataset|null)[]>([null,null,null,null]);
@@ -46,7 +46,7 @@ export default function MadrasatiImported(){
  async function readSheet(file:File){const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json<Row>(ws,{defval:''});}
  async function loadRoster(file:File){try{const rows=await readSheet(file);const col=Object.keys(rows[0]||{}).find(k=>/اسم.*مدرس|مدرس.*اسم/.test(k));if(!col)throw Error('لم يتم العثور على عمود اسم المدرسة');const names=[...new Set(rows.map(r=>String(r[col]||'').trim()).filter(Boolean))];setRoster(names);setSelected('');setMessage('تم تحميل أسماء '+names.length+' مدرسة للمطابقة بالاسم فقط.');}catch(e){setMessage(String(e));}}
  async function loadFile(i:number,file:File){try{const rows=await readSheet(file);const col=Object.keys(rows[0]||{}).find(k=>/اسم.*مدرس|مدرس.*اسم/.test(k));if(!col)throw Error('لم يتم العثور على عمود اسم المدرسة');setFiles(old=>old.map((v,j)=>i===j?{name:file.name,rows,schoolColumn:col}:v));setMessage('تم تحميل '+file.name+' محليًا للعرض. لم تُحفظ البيانات في قاعدة البوابة.');}catch(e){setMessage(String(e));}}
- const summaries=useMemo(()=>roster.map(name=>({name,sections:files.map(f=>{if(!f)return null;const rows=f.rows.filter(r=>match(name,String(r[f.schoolColumn]||'')));const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(percentageColumn);const metrics=keys.map(key=>{const vals=rows.map(r=>asPercent(r[key])).filter((n):n is number=>n!==null);return {key,value:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null};});return {count:rows.length,metrics};})})),[roster,files]);
+ const summaries=useMemo(()=>roster.map(name=>({name,sections:files.map(f=>{if(!f)return null;const rows=f.rows.filter(r=>matchSchoolName(name,String(r[f.schoolColumn]||'')));const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(percentageColumn);const metrics=keys.map(key=>{const vals=rows.map(r=>asPercent(r[key])).filter((n):n is number=>n!==null);return {key,value:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null};});return {count:rows.length,metrics};})})),[roster,files]);
  const visible=selected?summaries.filter(s=>s.name===selected):summaries;
  return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-10 text-slate-900"><div className="mx-auto max-w-7xl space-y-6">
  <div className="flex flex-wrap justify-between gap-4 items-center"><div><h1 className="text-3xl font-black">مؤشر مدرستي</h1><p className="text-slate-600 mt-2">لوحة مستقلة لنتائج ملفات مدرستي الأربعة، دون استخدام مؤشرات البوابة الحالية.</p></div><Link href="/admin" className="rounded-xl border bg-white px-5 py-3 font-bold">العودة إلى الإدارة</Link></div>
