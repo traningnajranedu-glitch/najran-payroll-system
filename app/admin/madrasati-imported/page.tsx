@@ -23,7 +23,22 @@ function features(v:string){
  const core=n.replace(/ابتدائيه|متوسطه|ثانويه|بنين|بنات|الثانيه|الثاني|شروره/g,' ').replace(/\s+/g,' ').trim();
  return {n,level,second,core,tokens:core.split(' ').filter(x=>x.length>1)};
 }
+// Approved aliases from the schools administrator. Compare names only, never codes.
+const approvedAliases: {portal:string; sources:string[]}[]=[
+ {portal:'ابتدائية الوديعة الثانية بشرورة',sources:['مركز الوديعة الثانية لتعليم الكبيرات']},
+ {portal:'بتدائية – متوسط -ثانوية / الوديعة بشروره',sources:[
+  'مدرسة الوديعة الثانوية الليلية بمدرسة جابر بن عبدالله',
+  'مركز التعليم المستمر بمدرسة الوديعة',
+  'مدرسة الوديعة المتوسطة الليلية بمدرسة الإمام شعبة'
+ ]},
+ {portal:'ابتدائية حمزة بن عبد المطلب (شرورة)',sources:['مركز التعليم المستمر بمدرسة حمزة بن عبدالمطلب']}
+];
+function approvedAliasMatch(portal:string,source:string){
+ const p=normalize(portal),s=normalize(source);
+ return approvedAliases.some(entry=>normalize(entry.portal)===p&&entry.sources.some(alias=>normalize(alias)===s));
+}
 function matchSchoolName(a:string,b:string){
+ if(approvedAliasMatch(a,b))return true;
  const x=features(a),y=features(b);
  if(!x.core||!y.core)return false;
  // Prevent conflating the second Al-Wadiah girls' school with the combined Al-Wadiah school.
