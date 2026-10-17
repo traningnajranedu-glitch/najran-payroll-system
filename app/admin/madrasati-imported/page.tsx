@@ -8,7 +8,7 @@ import {indicatorWeek} from '../../../lib/weekly-indicators';
 type School={id:string;school_name:string};
 type Sheet={file:string;rows:Record<string,unknown>[];column:string};
 type Result={school:School;indicator:number;source:string;metrics:Record<string,number>;count:number};
-const labels=['الدخول والوصول','الجدول المدرسي','الأدوات والأنشطة','إعداد الدروس','المؤشر الخامس'];
+const labels=['قائمة مدارس البوابة','الدخول والوصول','الجدول المدرسي','الأدوات والأنشطة','إعداد الدروس'];
 function norm(value:unknown){
  return String(value??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
  .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ').replace(/\s+/g,' ').trim()
@@ -44,11 +44,12 @@ export default function AdminMadrasati(){
  async function read(i:number,file:File){try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(wb.Sheets[wb.SheetNames[0]],{defval:''});const column=Object.keys(rows[0]||{}).find(k=>/مدرس/.test(k)&&/اسم/.test(k));if(!column)throw Error('لا يوجد عمود اسم المدرسة في '+file.name);setSheets(v=>v.map((x,j)=>i===j?{file:file.name,rows,column}:x));setStatus('تم تحميل '+file.name+' للمراجعة.');}catch(e){setStatus(String(e));}}
  const preview=useMemo(()=>{
  const results:Result[]=[];const unmatched:string[]=[];const ambiguous:string[]=[];
- sheets.forEach((sheet,i)=>{if(!sheet)return;const groups=new Map<string,Record<string,unknown>[]>();
- for(const row of sheet.rows){const name=String(row[sheet.column]||'').trim();if(!name)continue;const candidates=schools.filter(s=>matches(s.school_name,name));
+ sheets.forEach((sheet,i)=>{if(!sheet||i===0)return;const groups=new Map<string,Record<string,unknown>[]>();
+ for(const row of sheet.rows){const name=String(row[sheet.column]||'').trim();if(!name)continue;const roster=sheets[0];const rosterNames=roster?roster.rows.map(r=>String(r[roster.column]||'').trim()).filter(Boolean):[];
+ const candidates=schools.filter(s=>matches(s.school_name,name)&&rosterNames.some(rosterName=>matches(s.school_name,rosterName)));
  if(candidates.length!==1){(candidates.length?ambiguous:unmatched).push(labels[i]+': '+name);continue;}
  const key=candidates[0].id;groups.set(key,[...(groups.get(key)||[]),row]);}
- for(const [id,rows] of groups){const school=schools.find(s=>s.id===id)!;results.push({school,indicator:i+1,source:sheet.file,metrics:getMetrics(rows),count:rows.length});}
+ for(const [id,rows] of groups){const school=schools.find(s=>s.id===id)!;results.push({school,indicator:i,source:sheet.file,metrics:getMetrics(rows),count:rows.length});}
  });return {results,unmatched:[...new Set(unmatched)],ambiguous:[...new Set(ambiguous)]};
  },[sheets,schools]);
  async function publish(){if(busy||published||sheets.some(x=>!x)||preview.unmatched.length||preview.ambiguous.length||!preview.results.length)return;
@@ -69,11 +70,11 @@ export default function AdminMadrasati(){
  }catch(e){setStatus('تعذر النشر: '+String(e instanceof Error?e.message:e));}finally{setBusy(false);}
  }
  return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-10"><div className="mx-auto max-w-6xl space-y-5"><Link href="/admin" className="text-blue-800 font-bold">العودة إلى لوحة الإدارة</Link><h1 className="text-3xl font-black">مؤشر مدرستي — رفع واعتماد ونشر</h1>
- {!allowed?<p>التحقق من صلاحيات مدير النظام…</p>:<><p className="text-slate-600">يرفع المدير خمسة ملفات للأسبوع، ثم يراجع المطابقة قبل اعتماد النتائج. لا يحق للمدارس الإدخال أو التعديل.</p><label className="block rounded-xl border bg-white p-4 font-bold">بداية الأسبوع (الأحد) <input type="date" className="mr-3 rounded border p-2" value={weekStart} onChange={e=>setWeekStart(e.target.value)} /></label>
+ {!allowed?<p>التحقق من صلاحيات مدير النظام…</p>:<><p className="text-slate-600">يرفع المدير قائمة المدارس وأربعة ملفات مؤشرات للأسبوع، ثم يراجع المطابقة قبل اعتماد النتائج. لا يحق للمدارس الإدخال أو التعديل.</p><label className="block rounded-xl border bg-white p-4 font-bold">بداية الأسبوع (الأحد) <input type="date" className="mr-3 rounded border p-2" value={weekStart} onChange={e=>setWeekStart(e.target.value)} /></label>
  {published&&<p className="rounded-xl bg-emerald-50 p-4 font-bold text-emerald-800">تم نشر نتائج هذا الأسبوع مسبقًا؛ لا يمكن اعتمادها مرة ثانية.</p>}
  <div className="grid gap-3 md:grid-cols-5">{labels.map((label,i)=><label key={label} className="rounded-xl border bg-white p-4"><strong className="block mb-2">{i+1}. {label}</strong><input aria-label={label} type="file" accept=".xlsx,.xls" disabled={published} className="w-full text-xs" onChange={e=>{const f=e.target.files?.[0];if(f)void read(i,f);}}/><small className="block mt-2">{sheets[i]?sheets[i]!.rows.length+' سجل':'لم يرفع'}</small></label>)}</div>
  <div className="grid gap-3 md:grid-cols-3">{[['مدارس البوابة',schools.length],['مجموع سجلات المدارس والمؤشرات',preview.results.length],['أسماء تحتاج مراجعة',preview.unmatched.length+preview.ambiguous.length]].map(([label,n])=><div key={String(label)} className="rounded-xl bg-white border p-5"><p>{label}</p><strong className="text-3xl">{n}</strong></div>)}</div>
- <section className="rounded-xl border bg-white p-5"><h2 className="font-black mb-3">معاينة المؤشرات قبل الاعتماد</h2><div className="max-h-96 overflow-auto"><table className="w-full text-sm text-right"><thead><tr><th>المدرسة</th><th>المؤشر</th><th>عدد السجلات</th><th>النسب المستخرجة</th></tr></thead><tbody>{preview.results.map(r=><tr key={r.school.id+'-'+r.indicator} className="border-t"><td className="p-2">{r.school.school_name}</td><td>{labels[r.indicator-1]}</td><td>{r.count}</td><td>{Object.entries(r.metrics).map(([k,v])=>k+': '+v+'%').join(' | ')||'لا توجد أعمدة نسب'}</td></tr>)}</tbody></table></div></section>
+ <section className="rounded-xl border bg-white p-5"><h2 className="font-black mb-3">معاينة المؤشرات قبل الاعتماد</h2><div className="max-h-96 overflow-auto"><table className="w-full text-sm text-right"><thead><tr><th>المدرسة</th><th>المؤشر</th><th>عدد السجلات</th><th>النسب المستخرجة</th></tr></thead><tbody>{preview.results.map(r=><tr key={r.school.id+'-'+r.indicator} className="border-t"><td className="p-2">{r.school.school_name}</td><td>{labels[r.indicator]}</td><td>{r.count}</td><td>{Object.entries(r.metrics).map(([k,v])=>k+': '+v+'%').join(' | ')||'لا توجد أعمدة نسب'}</td></tr>)}</tbody></table></div></section>
  {(preview.unmatched.length>0||preview.ambiguous.length>0)&&<section className="rounded-xl border border-amber-300 bg-amber-50 p-5"><h2 className="font-black">مطابقات تحتاج مراجعة قبل النشر</h2><p>غير متطابقة: {preview.unmatched.length} · ملتبسة: {preview.ambiguous.length}</p><div className="max-h-44 overflow-auto text-sm">{[...preview.unmatched,...preview.ambiguous].map((n,i)=><p key={i}>{n}</p>)}</div></section>}
- <footer className="rounded-xl border bg-white p-5"><p className="mb-3 text-sm text-slate-600">لن يُنشر أي ملف قبل اعتماد جميع الملفات الخمسة وحل المطابقات الملتبسة وغير المتطابقة.</p><button onClick={()=>void publish()} disabled={busy||published||sheets.some(x=>!x)||!!preview.unmatched.length||!!preview.ambiguous.length||!preview.results.length} className="rounded-xl bg-emerald-700 px-8 py-3 font-bold text-white disabled:opacity-40">{busy?'جارٍ الاعتماد…':'اعتماد ونشر'}</button>{status&&<p role="status" className="mt-3">{status}</p>}</footer></>}
+ <footer className="rounded-xl border bg-white p-5"><p className="mb-3 text-sm text-slate-600">لن يُنشر أي ملف قبل رفع قائمة المدارس وملفات المؤشرات الأربعة وحل المطابقات الملتبسة وغير المتطابقة.</p><button onClick={()=>void publish()} disabled={busy||published||sheets.some(x=>!x)||!!preview.unmatched.length||!!preview.ambiguous.length||!preview.results.length} className="rounded-xl bg-emerald-700 px-8 py-3 font-bold text-white disabled:opacity-40">{busy?'جارٍ الاعتماد…':'اعتماد ونشر'}</button>{status&&<p role="status" className="mt-3">{status}</p>}</footer></>}
  </div></main>;
