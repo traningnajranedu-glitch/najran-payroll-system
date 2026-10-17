@@ -1,75 +1,79 @@
 'use client';
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
+import {supabaseBrowser} from '../../../lib/supabase';
+import {indicatorWeek} from '../../../lib/weekly-indicators';
 
-type Row=Record<string,unknown>;
-type Dataset={name:string;rows:Row[];schoolColumn:string;};
-const titles=['الدخول والوصول','الجدول المدرسي','الأدوات والأنشطة','إعداد الدروس'];
-function normalize(v:unknown){
- return String(v??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
- .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ')
- .replace(/\s+/g,' ').trim()
- .replace(/بتدائيه/g,'ابتدائيه').replace(/بشروره/g,'شروره')
- .replace(/الانصاري/g,'الانصاري').replace(/عبد العزيز/g,'عبدالعزيز')
+type School={id:string;school_name:string};
+type Sheet={file:string;rows:Record<string,unknown>[];column:string};
+type Result={school:School;indicator:number;source:string;metrics:Record<string,number>;count:number};
+const labels=['الدخول والوصول','الجدول المدرسي','الأدوات والأنشطة','إعداد الدروس','المؤشر الخامس'];
+function norm(value:unknown){
+ return String(value??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
+ .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ').replace(/\s+/g,' ').trim()
+ .replace(/بتدائيه/g,'ابتدائيه').replace(/بشروره/g,'شروره').replace(/عبد العزيز/g,'عبدالعزيز')
  .replace(/لتعليم الكبار|للتعليم المستمر|تعليم الكبيرات|تعليم الكبار|التعليم المستمر|الليليه|الليلي|مسارات|مدرسه|مركز/g,' ')
  .replace(/\s+/g,' ').trim();
 }
-const levels=['ابتدائيه','متوسطه','ثانويه'];
-function features(v:string){
- const n=normalize(v);
- const level=levels.filter(l=>n.includes(l));
- const second=/الثانيه|الثاني/.test(n);
- const core=n.replace(/ابتدائيه|متوسطه|ثانويه|بنين|بنات|الثانيه|الثاني|شروره/g,' ').replace(/\s+/g,' ').trim();
- return {n,level,second,core,tokens:core.split(' ').filter(x=>x.length>1)};
-}
-// Approved aliases from the schools administrator. Compare names only, never codes.
-const approvedAliases: {portal:string; sources:string[]}[]=[
- {portal:'ابتدائية الوديعة الثانية بشرورة',sources:['مركز الوديعة الثانية لتعليم الكبيرات']},
- {portal:'بتدائية – متوسط -ثانوية / الوديعة بشروره',sources:[
-  'مدرسة الوديعة الثانوية الليلية بمدرسة جابر بن عبدالله',
-  'مركز التعليم المستمر بمدرسة الوديعة',
-  'مدرسة الوديعة المتوسطة الليلية بمدرسة الإمام شعبة'
- ]},
- {portal:'ابتدائية حمزة بن عبد المطلب (شرورة)',sources:['مركز التعليم المستمر بمدرسة حمزة بن عبدالمطلب']}
+const aliases=[
+ ['ابتدائية الوديعة الثانية بشرورة','مركز الوديعة الثانية لتعليم الكبيرات'],
+ ['بتدائية – متوسط -ثانوية / الوديعة بشروره','مدرسة الوديعة الثانوية الليلية بمدرسة جابر بن عبدالله'],
+ ['بتدائية – متوسط -ثانوية / الوديعة بشروره','مركز التعليم المستمر بمدرسة الوديعة'],
+ ['بتدائية – متوسط -ثانوية / الوديعة بشروره','مدرسة الوديعة المتوسطة الليلية بمدرسة الإمام شعبة'],
+ ['ابتدائية حمزة بن عبد المطلب (شرورة)','مركز التعليم المستمر بمدرسة حمزة بن عبدالمطلب']
 ];
-function approvedAliasMatch(portal:string,source:string){
- const p=normalize(portal),s=normalize(source);
- return approvedAliases.some(entry=>normalize(entry.portal)===p&&entry.sources.some(alias=>normalize(alias)===s));
+function core(s:string){return norm(s).replace(/ابتدائيه|متوسطه|ثانويه|بنين|بنات|شروره/g,' ').replace(/\s+/g,' ').trim();}
+function matches(portal:string,source:string){
+ if(aliases.some(([p,s])=>norm(p)===norm(portal)&&norm(s)===norm(source)))return true;
+ const p=norm(portal),s=norm(source),a=core(portal),b=core(source);
+ if(!a||!b)return false;
+ if((p.includes('الوديع')||s.includes('الوديع'))&&(/الثانيه/.test(p)!==/الثانيه/.test(s)))return false;
+ const stages=['ابتدائيه','متوسطه','ثانويه'];
+ if(stages.some(stage=>p.includes(stage))&&stages.some(stage=>s.includes(stage))&&!stages.some(stage=>p.includes(stage)&&s.includes(stage)))return false;
+ return a===b||(a.length>=6&&b.length>=6&&(a.includes(b)||b.includes(a)));
 }
-function matchSchoolName(a:string,b:string){
- if(approvedAliasMatch(a,b))return true;
- const x=features(a),y=features(b);
- if(!x.core||!y.core)return false;
- // Prevent conflating the second Al-Wadiah girls' school with the combined Al-Wadiah school.
- if(x.second!==y.second && (x.core.includes('الوديع')||y.core.includes('الوديع')))return false;
- if(x.level.length&&y.level.length&&!x.level.some(l=>y.level.includes(l)))return false;
- if(x.core===y.core)return true;
- // Match a distinctive school name within a longer title, not a generic stage/location.
- if(x.core.length>=5&&y.core.length>=5&&(x.core.includes(y.core)||y.core.includes(x.core)))return true;
- const common=x.tokens.filter(t=>y.tokens.includes(t));
- return common.length>=2 && common.length/Math.min(x.tokens.length,y.tokens.length)>=0.75;
-}
-function asPercent(v:unknown):number|null{if(typeof v==='number')return v>=0&&v<=1?v*100:v>=0&&v<=100?v:null;const s=String(v??'').trim().replace('%','').replace('٪','').replace(',','.');if(!s)return null;const n=Number(s);return Number.isFinite(n)&&n>=0&&n<=100?n:null;}
-function percentageColumn(k:string){return k.includes('نسب') || k.includes('%') || k.includes('٪') || k.includes('معدل');}
-
-export default function MadrasatiImported(){
- const [files,setFiles]=useState<(Dataset|null)[]>([null,null,null,null]);
- const [roster,setRoster]=useState<string[]>([]);
- const [selected,setSelected]=useState('');
- const [message,setMessage]=useState('');
- async function readSheet(file:File){const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json<Row>(ws,{defval:''});}
- async function loadRoster(file:File){try{const rows=await readSheet(file);const col=Object.keys(rows[0]||{}).find(k=>/اسم.*مدرس|مدرس.*اسم/.test(k));if(!col)throw Error('لم يتم العثور على عمود اسم المدرسة');const names=[...new Set(rows.map(r=>String(r[col]||'').trim()).filter(Boolean))];setRoster(names);setSelected('');setMessage('تم تحميل أسماء '+names.length+' مدرسة للمطابقة بالاسم فقط.');}catch(e){setMessage(String(e));}}
- async function loadFile(i:number,file:File){try{const rows=await readSheet(file);const col=Object.keys(rows[0]||{}).find(k=>/اسم.*مدرس|مدرس.*اسم/.test(k));if(!col)throw Error('لم يتم العثور على عمود اسم المدرسة');setFiles(old=>old.map((v,j)=>i===j?{name:file.name,rows,schoolColumn:col}:v));setMessage('تم تحميل '+file.name+' محليًا للعرض. لم تُحفظ البيانات في قاعدة البوابة.');}catch(e){setMessage(String(e));}}
- const summaries=useMemo(()=>roster.map(name=>({name,sections:files.map(f=>{if(!f)return null;const rows=f.rows.filter(r=>matchSchoolName(name,String(r[f.schoolColumn]||'')));const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(percentageColumn);const metrics=keys.map(key=>{const vals=rows.map(r=>asPercent(r[key])).filter((n):n is number=>n!==null);return {key,value:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null};});return {count:rows.length,metrics};})})),[roster,files]);
- const visible=selected?summaries.filter(s=>s.name===selected):summaries;
- return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-10 text-slate-900"><div className="mx-auto max-w-7xl space-y-6">
- <div className="flex flex-wrap justify-between gap-4 items-center"><div><h1 className="text-3xl font-black">مؤشر مدرستي</h1><p className="text-slate-600 mt-2">لوحة مستقلة لنتائج ملفات مدرستي الأربعة، دون استخدام مؤشرات البوابة الحالية.</p></div><Link href="/admin" className="rounded-xl border bg-white px-5 py-3 font-bold">العودة إلى الإدارة</Link></div>
- <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">هذه نسخة أولية للعرض والمطابقة بالأسماء. ارفع ملف المدارس والملفات الأربعة لعرض النتائج؛ لا يتم حفظها أو نشرها لحسابات المدارس بعد. لا يُستخدم أي رقم مدرسي للمطابقة، وتحتاج الأسماء الملتبسة إلى مراجعة.</div>
- <section className="grid gap-3 md:grid-cols-5"><label className="rounded-2xl border bg-white p-4"><strong className="block mb-3">قائمة مدارس البوابة</strong><input aria-label="قائمة مدارس البوابة" type="file" accept=".xlsx,.xls" className="w-full text-xs" onChange={e=>{const f=e.target.files?.[0];if(f)void loadRoster(f);}}/></label>{titles.map((title,i)=><label key={title} className="rounded-2xl border bg-white p-4"><strong className="block mb-3">{title}</strong><input aria-label={title} type="file" accept=".xlsx,.xls" className="w-full text-xs" onChange={e=>{const f=e.target.files?.[0];if(f)void loadFile(i,f);}}/><small className="block mt-2 text-slate-500">{files[i]?files[i]!.rows.length+' سجل':'لم يُرفع الملف'}</small></label>)}</section>
- {message&&<p role="status" className="rounded-xl bg-blue-50 p-3 text-sm">{message}</p>}
- <div className="rounded-2xl border bg-white p-5 flex flex-wrap items-center gap-4"><label className="font-bold" htmlFor="school">المدرسة</label><select id="school" className="rounded-xl border p-3 min-w-64" value={selected} onChange={e=>setSelected(e.target.value)}><option value="">جميع المدارس</option>{roster.map(n=><option key={n} value={n}>{n}</option>)}</select><span className="text-sm text-slate-600">{summaries.length} مدرسة في القائمة · {summaries.filter(s=>s.sections.some(x=>x&&x.count>0)).length} مدرسة لها سجلات متطابقة بالاسم</span></div>
- {visible.map(s=><section key={s.name} className="rounded-2xl border bg-white p-5 space-y-4"><h2 className="text-xl font-black">{s.name}</h2><div className="grid gap-3 md:grid-cols-4">{s.sections.map((section,i)=><div key={i} className="rounded-xl border bg-slate-50 p-4"><h3 className="font-bold mb-2">{titles[i]}</h3><p className="text-sm text-slate-600 mb-3">{section?section.count+' سجل مطابق':'الملف غير محمل'}</p>{section?.metrics.length?section.metrics.map(m=><div key={m.key} className="border-t py-2 text-sm flex justify-between gap-2"><span>{m.key}</span><b>{m.value===null?'—':m.value.toFixed(1)+'%'}</b></div>):<p className="text-xs text-slate-500">لا توجد نسب قابلة للعرض في السجلات المطابقة</p>}</div>)}</div></section>)}
- {!roster.length&&<p className="rounded-2xl border border-dashed bg-white p-10 text-center text-slate-500">ارفع قائمة المدارس لعرض نسبة كل مدرسة منفصلة.</p>}
+function percent(v:unknown){if(typeof v==='number')return v>=0&&v<=1?v*100:v>=0&&v<=100?v:null;const raw=String(v??'').trim();if(!raw)return null;const n=Number(raw.replace(/[٪%]/g,'').replace(',','.'));return Number.isFinite(n)&&n>=0&&n<=100?n:null;}
+function getMetrics(rows:Record<string,unknown>[]){const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(k=>/نسب|معدل|[%٪]/.test(k));const out:Record<string,number>={};for(const key of keys){const values=rows.map(r=>percent(r[key])).filter((v):v is number=>v!==null);if(values.length)out[key]=Math.round(values.reduce((a,b)=>a+b,0)/values.length*100)/100;}return out;}
+export default function AdminMadrasati(){
+ const sb=useMemo(()=>supabaseBrowser(),[]);
+ const [allowed,setAllowed]=useState(false),[schools,setSchools]=useState<School[]>([]),[sheets,setSheets]=useState<(Sheet|null)[]>([null,null,null,null,null]);
+ const [weekStart,setWeekStart]=useState(()=>indicatorWeek().start),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[published,setPublished]=useState(false);
+ useEffect(()=>{void (async()=>{const {data:{user}}=await sb.auth.getUser();if(!user)return;const a=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();if(!a.data)return;setAllowed(true);const r=await sb.from('schools').select('id,school_name').eq('is_active',true).order('school_name');if(r.error)setStatus(r.error.message);else setSchools(r.data||[]);})();},[sb]);
+ useEffect(()=>{void (async()=>{if(!allowed)return;const r=await sb.from('madrasati_weekly_publications').select('status').eq('week_start',weekStart).maybeSingle();setPublished(r.data?.status==='published');})();},[allowed,sb,weekStart]);
+ async function read(i:number,file:File){try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(wb.Sheets[wb.SheetNames[0]],{defval:''});const column=Object.keys(rows[0]||{}).find(k=>/مدرس/.test(k)&&/اسم/.test(k));if(!column)throw Error('لا يوجد عمود اسم المدرسة في '+file.name);setSheets(v=>v.map((x,j)=>i===j?{file:file.name,rows,column}:x));setStatus('تم تحميل '+file.name+' للمراجعة.');}catch(e){setStatus(String(e));}}
+ const preview=useMemo(()=>{
+ const results:Result[]=[];const unmatched:string[]=[];const ambiguous:string[]=[];
+ sheets.forEach((sheet,i)=>{if(!sheet)return;const groups=new Map<string,Record<string,unknown>[]>();
+ for(const row of sheet.rows){const name=String(row[sheet.column]||'').trim();if(!name)continue;const candidates=schools.filter(s=>matches(s.school_name,name));
+ if(candidates.length!==1){(candidates.length?ambiguous:unmatched).push(labels[i]+': '+name);continue;}
+ const key=candidates[0].id;groups.set(key,[...(groups.get(key)||[]),row]);}
+ for(const [id,rows] of groups){const school=schools.find(s=>s.id===id)!;results.push({school,indicator:i+1,source:sheet.file,metrics:getMetrics(rows),count:rows.length});}
+ });return {results,unmatched:[...new Set(unmatched)],ambiguous:[...new Set(ambiguous)]};
+ },[sheets,schools]);
+ async function publish(){if(busy||published||sheets.some(x=>!x)||preview.unmatched.length||preview.ambiguous.length||!preview.results.length)return;
+ if(!window.confirm('اعتماد ونشر مؤشرات الأسبوع لجميع المدارس المطابقة؟ لا يمكن للمدارس تعديل النتائج.'))return;
+ setBusy(true);setStatus('');
+ try{
+ const {data:{user}}=await sb.auth.getUser();if(!user)throw Error('انتهت جلسة الدخول');
+ const end=new Date(weekStart+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+4);const weekEnd=end.toISOString().slice(0,10);
+ const existing=await sb.from('madrasati_weekly_publications').select('id,status').eq('week_start',weekStart).maybeSingle();
+ if(existing.error)throw Error(existing.error.message);if(existing.data?.status==='published')throw Error('تم نشر هذا الأسبوع مسبقًا ولا يمكن إعادة نشره.');
+ let publicationId=existing.data?.id as string|undefined;
+ if(!publicationId){const created=await sb.from('madrasati_weekly_publications').insert({week_start:weekStart,week_end:weekEnd,status:'draft'}).select('id').single();if(created.error)throw Error(created.error.message);publicationId=created.data.id;}
+ const items=preview.results.map(r=>({publication_id:publicationId,school_id:r.school.id,indicator_key:r.indicator,source_file:r.source,source_school_name:r.school.school_name,metrics:r.metrics,row_count:r.count}));
+ const saved=await sb.from('madrasati_weekly_school_metrics').upsert(items,{onConflict:'publication_id,school_id,indicator_key'});if(saved.error)throw Error(saved.error.message);
+ const done=await sb.from('madrasati_weekly_publications').update({status:'published',published_at:new Date().toISOString(),published_by:user.id}).eq('id',publicationId).eq('status','draft').select('id');
+ if(done.error)throw Error(done.error.message);if(!done.data?.length)throw Error('تعذر اعتماد الأسبوع، ربما نُشر بالفعل.');
+ setPublished(true);setStatus('تم اعتماد ونشر '+preview.results.length+' سجل مؤشرات أسبوعية بنجاح.');
+ }catch(e){setStatus('تعذر النشر: '+String(e instanceof Error?e.message:e));}finally{setBusy(false);}
+ }
+ return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-10"><div className="mx-auto max-w-6xl space-y-5"><Link href="/admin" className="text-blue-800 font-bold">العودة إلى لوحة الإدارة</Link><h1 className="text-3xl font-black">مؤشر مدرستي — رفع واعتماد ونشر</h1>
+ {!allowed?<p>التحقق من صلاحيات مدير النظام…</p>:<><p className="text-slate-600">يرفع المدير خمسة ملفات للأسبوع، ثم يراجع المطابقة قبل اعتماد النتائج. لا يحق للمدارس الإدخال أو التعديل.</p><label className="block rounded-xl border bg-white p-4 font-bold">بداية الأسبوع (الأحد) <input type="date" className="mr-3 rounded border p-2" value={weekStart} onChange={e=>setWeekStart(e.target.value)} /></label>
+ {published&&<p className="rounded-xl bg-emerald-50 p-4 font-bold text-emerald-800">تم نشر نتائج هذا الأسبوع مسبقًا؛ لا يمكن اعتمادها مرة ثانية.</p>}
+ <div className="grid gap-3 md:grid-cols-5">{labels.map((label,i)=><label key={label} className="rounded-xl border bg-white p-4"><strong className="block mb-2">{i+1}. {label}</strong><input aria-label={label} type="file" accept=".xlsx,.xls" disabled={published} className="w-full text-xs" onChange={e=>{const f=e.target.files?.[0];if(f)void read(i,f);}}/><small className="block mt-2">{sheets[i]?sheets[i]!.rows.length+' سجل':'لم يرفع'}</small></label>)}</div>
+ <div className="grid gap-3 md:grid-cols-3">{[['مدارس البوابة',schools.length],['مجموع سجلات المدارس والمؤشرات',preview.results.length],['أسماء تحتاج مراجعة',preview.unmatched.length+preview.ambiguous.length]].map(([label,n])=><div key={String(label)} className="rounded-xl bg-white border p-5"><p>{label}</p><strong className="text-3xl">{n}</strong></div>)}</div>
+ <section className="rounded-xl border bg-white p-5"><h2 className="font-black mb-3">معاينة المؤشرات قبل الاعتماد</h2><div className="max-h-96 overflow-auto"><table className="w-full text-sm text-right"><thead><tr><th>المدرسة</th><th>المؤشر</th><th>عدد السجلات</th><th>النسب المستخرجة</th></tr></thead><tbody>{preview.results.map(r=><tr key={r.school.id+'-'+r.indicator} className="border-t"><td className="p-2">{r.school.school_name}</td><td>{labels[r.indicator-1]}</td><td>{r.count}</td><td>{Object.entries(r.metrics).map(([k,v])=>k+': '+v+'%').join(' | ')||'لا توجد أعمدة نسب'}</td></tr>)}</tbody></table></div></section>
+ {(preview.unmatched.length>0||preview.ambiguous.length>0)&&<section className="rounded-xl border border-amber-300 bg-amber-50 p-5"><h2 className="font-black">مطابقات تحتاج مراجعة قبل النشر</h2><p>غير متطابقة: {preview.unmatched.length} · ملتبسة: {preview.ambiguous.length}</p><div className="max-h-44 overflow-auto text-sm">{[...preview.unmatched,...preview.ambiguous].map((n,i)=><p key={i}>{n}</p>)}</div></section>}
+ <footer className="rounded-xl border bg-white p-5"><p className="mb-3 text-sm text-slate-600">لن يُنشر أي ملف قبل اعتماد جميع الملفات الخمسة وحل المطابقات الملتبسة وغير المتطابقة.</p><button onClick={()=>void publish()} disabled={busy||published||sheets.some(x=>!x)||!!preview.unmatched.length||!!preview.ambiguous.length||!preview.results.length} className="rounded-xl bg-emerald-700 px-8 py-3 font-bold text-white disabled:opacity-40">{busy?'جارٍ الاعتماد…':'اعتماد ونشر'}</button>{status&&<p role="status" className="mt-3">{status}</p>}</footer></>}
  </div></main>;
-}
