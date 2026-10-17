@@ -191,7 +191,6 @@ export default function Dashboard() {
     setMonthlyAwards((awards||[]) as MonthlyAward[]);
     const {data:schoolNotifications}=await sb.from('school_notifications').select('id,title,message,notification_type,action_url,is_read,created_at').eq('school_id',su.school_id).order('created_at',{ascending:false}).limit(30);
     setNotifications((schoolNotifications||[]) as SchoolNotification[]);
-    await refreshMadrasati(su.school_id);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
