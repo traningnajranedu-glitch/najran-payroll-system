@@ -6,8 +6,35 @@ import * as XLSX from 'xlsx';
 type Row=Record<string,unknown>;
 type Dataset={name:string;rows:Row[];schoolColumn:string;};
 const titles=['الدخول والوصول','الجدول المدرسي','الأدوات والأنشطة','إعداد الدروس'];
-function normalize(v:unknown){return String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ').replace(/\s+/g,' ').replace(/(لتعليم الكبار|للتعليم المستمر|تعليم الكبيرات|تعليم الكبار|التعليم المستمر|الليليه|مسارات)/g,'').trim();}
-function schoolKey(v:unknown){return normalize(v).replace(/\b(مدرسه|ابتدائيه|متوسطه|ثانويه|مركز|بنين|بنات)\b/g,'').trim();}
+function normalize(v:unknown){
+ return String(v??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
+ .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ')
+ .replace(/\b/g,'').replace(/\s+/g,' ').trim()
+ .replace(/بتدائيه/g,'ابتدائيه').replace(/بشروره/g,'شروره')
+ .replace(/الانصاري/g,'الانصاري').replace(/عبد العزيز/g,'عبدالعزيز')
+ .replace(/لتعليم الكبار|للتعليم المستمر|تعليم الكبيرات|تعليم الكبار|التعليم المستمر|الليليه|الليلي|مسارات|مدرسه|مركز/g,' ')
+ .replace(/\s+/g,' ').trim();
+}
+const levels=['ابتدائيه','متوسطه','ثانويه'];
+function features(v:string){
+ const n=normalize(v);
+ const level=levels.filter(l=>n.includes(l));
+ const second=/الثانيه|الثاني/.test(n);
+ const core=n.replace(/ابتدائيه|متوسطه|ثانويه|بنين|بنات|الثانيه|الثاني|شروره/g,' ').replace(/\s+/g,' ').trim();
+ return {n,level,second,core,tokens:core.split(' ').filter(x=>x.length>1)};
+}
+function match(a:string,b:string){
+ const x=features(a),y=features(b);
+ if(!x.core||!y.core)return false;
+ // Prevent conflating the second Al-Wadiah girls' school with the combined Al-Wadiah school.
+ if(x.second!==y.second && (x.core.includes('الوديع')||y.core.includes('الوديع')))return false;
+ if(x.level.length&&y.level.length&&!x.level.some(l=>y.level.includes(l)))return false;
+ if(x.core===y.core)return true;
+ // Match a distinctive school name within a longer title, not a generic stage/location.
+ if(x.core.length>=5&&y.core.length>=5&&(x.core.includes(y.core)||y.core.includes(x.core)))return true;
+ const common=x.tokens.filter(t=>y.tokens.includes(t));
+ return common.length>=2 && common.length/Math.min(x.tokens.length,y.tokens.length)>=0.75;
+}
 function asPercent(v:unknown):number|null{if(typeof v==='number')return v>=0&&v<=1?v*100:v>=0&&v<=100?v:null;const s=String(v??'').trim().replace('%','').replace('٪','').replace(',','.');if(!s)return null;const n=Number(s);return Number.isFinite(n)&&n>=0&&n<=100?n:null;}
 function percentageColumn(k:string){return /نسب|نسبة|%|٪|معدل/.test(k);}
 function match(a:string,b:string){const x=schoolKey(a),y=schoolKey(b);if(!x||!y)return false;return x===y||(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)));}
