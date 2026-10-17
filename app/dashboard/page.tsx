@@ -160,34 +160,8 @@ export default function Dashboard() {
   const [monthlyAwards, setMonthlyAwards] = useState<MonthlyAward[]>([]);
   const [notifications,setNotifications]=useState<SchoolNotification[]>([]);
   const [notificationsOpen,setNotificationsOpen]=useState(false);
-  const [madrasatiWeekRecord, setMadrasatiWeekRecord] = useState<MadrasatiDaily | null>(null);
   const [profileCompletion,setProfileCompletion]=useState(0);
-  const [madrasatiWeeklyMissing,setMadrasatiWeeklyMissing]=useState(false);
-  const [madrasatiWeekRange,setMadrasatiWeekRange]=useState(()=>indicatorWeek());
-  const [madrasatiError,setMadrasatiError]=useState('');
   const [payrollReopenAllowed,setPayrollReopenAllowed]=useState(false);
-
-  async function refreshMadrasati(schoolId:string) {
-    const week=indicatorWeek();
-    const {data,error}=await sb.from('school_madrasati_daily_indicators')
-      .select('manager_login_percent,teachers_login_percent,teachers_tools_percent,students_login_percent,students_tools_percent,support_challenges_count,indicator_date,challenge_notes')
-      .eq('school_id',schoolId).eq('indicator_date',week.start).maybeSingle();
-    setMadrasatiWeekRange(week);
-    if(error){setMadrasatiError('تعذر تحميل مؤشر منصة مدرستي: '+error.message);setMadrasatiWeeklyMissing(false);return;}
-    setMadrasatiError('');
-    setMadrasatiWeekRecord((data||null) as MadrasatiDaily|null);
-    setMadrasatiWeeklyMissing(!data);
-  }
-  useEffect(()=>{
-    if(!school?.id)return;
-    const schoolId=school.id;
-    const refresh=()=>void refreshMadrasati(schoolId);
-    const timer=setInterval(refresh,60000);
-    window.addEventListener('focus',refresh);
-    const channel=sb.channel('school-weekly-madrasati-'+schoolId)
-      .on('postgres_changes',{event:'*',schema:'public',table:'school_madrasati_daily_indicators',filter:'school_id=eq.'+schoolId},refresh).subscribe();
-    return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);void sb.removeChannel(channel)};
-  },[school?.id,sb]);
 
   async function load() {
     setLoading(true);
@@ -217,7 +191,6 @@ export default function Dashboard() {
     setMonthlyAwards((awards||[]) as MonthlyAward[]);
     const {data:schoolNotifications}=await sb.from('school_notifications').select('id,title,message,notification_type,action_url,is_read,created_at').eq('school_id',su.school_id).order('created_at',{ascending:false}).limit(30);
     setNotifications((schoolNotifications||[]) as SchoolNotification[]);
-    await refreshMadrasati(su.school_id);
     setManagerName(currentSchool?.manager_name || '');
     if (currentSchool?.stamp_path) {
       setStampUrl(sb.storage.from('school-stamps').getPublicUrl(currentSchool.stamp_path).data.publicUrl);
@@ -479,12 +452,12 @@ export default function Dashboard() {
             <div className="relative">
               <button type="button" onClick={()=>setNotificationsOpen(v=>!v)} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[var(--navy)] shadow-sm transition hover:bg-cyan-50" aria-label="الإشعارات" aria-expanded={notificationsOpen}>
                 <Bell size={21}/>
-                {(notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + (madrasatiWeeklyMissing?1:0))>0&&<span className="absolute -left-1 -top-1 min-w-5 h-5 rounded-full bg-red-600 px-1 text-[10px] font-black text-white flex items-center justify-center">{Math.min(99,notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + (madrasatiWeeklyMissing?1:0))}</span>}
+                {(notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + 0)>0&&<span className="absolute -left-1 -top-1 min-w-5 h-5 rounded-full bg-red-600 px-1 text-[10px] font-black text-white flex items-center justify-center">{Math.min(99,notifications.filter(n=>!n.is_read).length + (monthlyAwards.length>0?1:0) + 0)}</span>}
               </button>
               {notificationsOpen&&<div className="absolute left-0 mt-3 w-[min(92vw,390px)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl z-50">
                 <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3"><div><div className="font-black text-slate-900">الإشعارات</div><div className="text-[11px] text-slate-500">آخر التنبيهات والرسائل الخاصة بالمدرسة</div></div><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="إغلاق الإشعارات" className="rounded-xl p-2 hover:bg-slate-200"><X size={18}/></button></div>
                 <div className="max-h-[420px] overflow-y-auto">
-                  {madrasatiWeeklyMissing&&<a href="/dashboard/indicators/madrasati" className="block border-b bg-cyan-50 px-4 py-4 hover:bg-cyan-100"><div className="font-black text-sm text-cyan-950">مطلوب إدخال مؤشر منصة مدرستي</div><div className="mt-1 text-xs leading-5 text-cyan-800">لم يتم إدخال مؤشر هذا الأسبوع بعد. يرجى استكماله خلال الفترة من الأحد إلى الخميس.</div></a>}
+                  
                   {monthlyAwards[0]&&<a href="/dashboard/awards" className="block border-b bg-amber-50 px-4 py-4 hover:bg-amber-100"><div className="flex gap-3"><div className="mt-0.5 text-amber-700"><Trophy size={20}/></div><div><div className="font-black text-sm text-amber-950">شهادة تميز جديدة</div><div className="mt-1 text-xs leading-5 text-amber-800">المركز {monthlyAwards[0].rank} بنسبة {Number(monthlyAwards[0].total_score).toFixed(1)}% لشهر {monthlyAwards[0].month_key.slice(0,7)}</div></div></div></a>}
                   {notifications.map(n=><button type="button" key={n.id} onClick={async()=>{await markNotificationRead(n.id); if(n.action_url) location.href=n.action_url;}} className={`block w-full border-b px-4 py-4 text-right transition hover:bg-slate-50 ${n.is_read?'bg-white':'bg-cyan-50/70'}`}><div className="flex gap-3"><div className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${n.is_read?'bg-slate-300':'bg-cyan-600'}`}/><div><div className="font-black text-sm text-slate-900">{n.title}</div><div className="mt-1 text-xs leading-5 text-slate-600">{n.message}</div><div className="mt-2 text-[10px] text-slate-400">{new Date(n.created_at).toLocaleString('ar-SA')}</div></div></div></button>)}
                   {!notifications.length&&!monthlyAwards.length&&<div className="px-5 py-10 text-center text-sm text-slate-500">لا توجد إشعارات حاليًا.</div>}
@@ -510,7 +483,7 @@ export default function Dashboard() {
             <a href="#activities" className="service-card group relative overflow-hidden rounded-3xl border border-orange-200 bg-gradient-to-b from-orange-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-orange-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-200 flex items-center justify-center mb-5"><PartyPopper size={31}/></div><div className="font-black text-xl text-orange-700">الأنشطة والاحتفاليات</div><div className="text-sm text-slate-500 mt-2 min-h-10">إدارة الأنشطة والمناسبات ورفع التقارير والمرفقات</div><div className="mt-5 rounded-xl bg-orange-50 px-3 py-2.5 text-sm font-black text-orange-700 group-hover:bg-orange-100 transition">الدخول إلى الخدمة ←</div></div></a>
             <a href="#employees" className="service-card group relative overflow-hidden rounded-3xl border border-blue-200 bg-gradient-to-b from-blue-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-blue-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-400 text-white shadow-lg shadow-blue-200 flex items-center justify-center mb-5"><Users size={31}/></div><div className="font-black text-xl text-blue-700">بيانات الموظفين</div><div className="text-sm text-slate-500 mt-2 min-h-10">استعراض وتحديث بيانات الموظفين حسب الصلاحيات</div><div className="mt-5 rounded-xl bg-blue-50 px-3 py-2.5 text-sm font-black text-blue-700 group-hover:bg-blue-100 transition">الدخول إلى الخدمة ←</div></div></a>
             <a href="#payroll" className="service-card group relative overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-emerald-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-400 text-white shadow-lg shadow-emerald-200 flex items-center justify-center mb-5"><FileText size={31}/></div><div className="font-black text-xl text-emerald-700">مسيرات الرواتب</div><div className="text-sm text-slate-500 mt-2 min-h-10">تعبئة المسير واعتماده وتجهيزه للطباعة</div><div className="mt-5 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm font-black text-emerald-700 group-hover:bg-emerald-100 transition">الدخول إلى الخدمة ←</div></div></a>
-            <a href="/dashboard/indicators" className="service-card group relative overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-b from-violet-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-violet-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-700 to-purple-500 text-white shadow-lg shadow-violet-200 flex items-center justify-center mb-5"><ClipboardList size={31}/></div><div className="font-black text-xl text-violet-700">نماذج إدخال المؤشرات</div><div className="text-sm text-slate-500 mt-2 min-h-10">إدخال مؤشرات منصة مدرستي والانضباط والتحصيل العلمي</div><div className="mt-5 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-black text-violet-700 group-hover:bg-violet-100 transition">الدخول إلى الخدمة ←</div></div></a>
+            <a href="/dashboard/indicators" className="service-card group relative overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-b from-violet-100 via-white to-white p-5 shadow-sm hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-100 transition-all duration-300"><div className="absolute -top-10 -left-8 h-32 w-32 rounded-full bg-violet-200/30 blur-2xl"/><div className="relative"><div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-700 to-purple-500 text-white shadow-lg shadow-violet-200 flex items-center justify-center mb-5"><ClipboardList size={31}/></div><div className="font-black text-xl text-violet-700">التقارير والمؤشرات</div><div className="text-sm text-slate-500 mt-2 min-h-10">عرض مؤشرات مدرستي المنشورة وخدمات الانضباط والتحصيل العلمي</div><div className="mt-5 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-black text-violet-700 group-hover:bg-violet-100 transition">الدخول إلى الخدمة ←</div></div></a>
           </div>
         </section>
 
@@ -518,26 +491,7 @@ export default function Dashboard() {
 
         {school&&<><a href="/dashboard/indicators/achievement" className="inline-block mb-3 rounded-xl bg-emerald-700 px-5 py-3 text-white font-bold">إدخال / تحديث التحصيل العلمي</a><AchievementPanel schools={[school]}/></>}
 
-        <section className="mb-6 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-l from-violet-50 via-white to-blue-50 shadow-sm">
-          <div className="flex flex-col gap-5 p-5 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200"><BarChart3 size={25}/></div><div><h2 className="text-lg font-black text-slate-900">مؤشر منصة مدرستي</h2><p className="mt-1 text-sm text-slate-500"><span className="font-black text-violet-700">فترة الإدخال:</span> {madrasatiWeekRange.start} إلى {madrasatiWeekRange.end} — الأحد إلى الخميس</p></div></div>
-              <a href="/dashboard/indicators/madrasati" className="rounded-xl bg-violet-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-violet-700">{madrasatiWeekRecord?'تحديث مؤشر الأسبوع':'إدخال مؤشر الأسبوع'}</a>
-            </div>
-            {madrasatiError?<p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">{madrasatiError}</p>:madrasatiWeekRecord?(()=>{
-              const avg=madrasatiMean(madrasatiWeekRecord);
-              const tone=avg>=90?'from-emerald-600 to-green-400':avg>=80?'from-green-500 to-lime-400':avg>=70?'from-blue-600 to-sky-400':avg>=60?'from-amber-500 to-yellow-400':'from-orange-600 to-red-500';
-              const metrics=[['دخول المدير',madrasatiWeekRecord.manager_login_percent],['دخول المعلمين',madrasatiWeekRecord.teachers_login_percent],['تفعيل المعلمين',madrasatiWeekRecord.teachers_tools_percent],['دخول الطلاب',madrasatiWeekRecord.students_login_percent],['تفعيل الطلاب',madrasatiWeekRecord.students_tools_percent]];
-              return <div>
-                <div className="mb-5 grid gap-4 lg:grid-cols-[180px_1fr]">
-                  <div className="rounded-2xl bg-slate-900 p-5 text-center text-white"><div className="text-xs text-slate-300">متوسط الإنجاز</div><div className="mt-1 text-4xl font-black">{avg.toFixed(0)}%</div><div className="mt-2 text-xs text-slate-300">التحديات/الدعم: {madrasatiWeekRecord.support_challenges_count}</div></div>
-                  <div className="flex flex-col justify-center"><div className="mb-2 flex justify-between text-xs font-bold text-slate-500"><span>مستوى الإنجاز اليومي</span><span>100%</span></div><div className="h-6 overflow-hidden rounded-full bg-slate-100 shadow-inner" dir="ltr"><div className={`h-full rounded-full bg-gradient-to-r ${tone}`} style={{width:`${avg}%`}} /></div></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">{metrics.map(([label,value])=><div key={String(label)} className="rounded-2xl border border-slate-100 bg-white p-4 text-center shadow-sm"><div className="text-2xl font-black text-violet-700">{value}%</div><div className="mt-1 text-xs font-bold text-slate-600">{label}</div></div>)}</div>
-              </div>
-            })():<div className="rounded-2xl border border-dashed border-violet-300 bg-white/70 p-6 text-center"><div className="font-black text-slate-800">لم يتم إدخال مؤشر منصة مدرستي لهذا الأسبوع بعد</div><div className="mt-1 text-sm text-slate-500">أدخل بيانات الأسبوع خلال فترة الإدخال لتظهر نسبة الإنجاز مباشرة في الصفحة الرئيسية.</div></div>}
-          </div>
-        </section>
+        <section className="mb-6 rounded-3xl border border-violet-200 bg-violet-50 p-6 shadow-sm"><h2 className="text-lg font-black text-violet-900">مؤشر منصة مدرستي</h2><p className="mt-2 text-sm text-slate-600">يرفع مدير النظام المؤشرات ويعتمدها أسبوعيًا. يمكن للمدرسة الاطلاع على نتائجها المنشورة فقط دون إدخال أو تعديل.</p><a href="/dashboard/indicators/madrasati" className="mt-4 inline-block rounded-xl bg-violet-700 px-5 py-3 font-bold text-white">عرض نتائج مدرستي المعتمدة</a></section>
 
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <div className="card p-5"><Users/><div className="text-2xl font-bold mt-3">{teachers.length}</div><div className="text-gray-500 text-sm">عدد الموظفين</div></div>
