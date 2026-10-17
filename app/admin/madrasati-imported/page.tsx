@@ -12,7 +12,7 @@ const labels=['قائمة مدارس البوابة','الدخول والوصو�
 function norm(value:unknown){
  return String(value??'').toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
  .replace(/[ـ\u064b-\u065f]/g,'').replace(/[^\u0621-\u064a\d ]/g,' ').replace(/\s+/g,' ').trim()
- .replace(/بتدائيه/g,'ابتدائيه').replace(/بشروره/g,'شروره').replace(/عبد العزيز/g,'عبدالعزيز')
+ .replace(/(^|\s)بتدائيه(?=\s|$)/g,'$1ابتدائيه').replace(/بشروره/g,'شروره').replace(/عبد العزيز/g,'عبدالعزيز')
  .replace(/لتعليم الكبار|للتعليم المستمر|تعليم الكبيرات|تعليم الكبار|التعليم المستمر|الليليه|الليلي|مسارات|مدرسه|مركز/g,' ')
  .replace(/\s+/g,' ').trim();
 }
@@ -41,7 +41,7 @@ export default function AdminMadrasati(){
  const [weekStart,setWeekStart]=useState(()=>indicatorWeek().start),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[published,setPublished]=useState(false);
  useEffect(()=>{void (async()=>{const {data:{user}}=await sb.auth.getUser();if(!user)return;const a=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();if(!a.data)return;setAllowed(true);const r=await sb.from('schools').select('id,school_name').eq('is_active',true).order('school_name');if(r.error)setStatus(r.error.message);else setSchools(r.data||[]);})();},[sb]);
  useEffect(()=>{void (async()=>{if(!allowed)return;const r=await sb.from('madrasati_weekly_publications').select('status').eq('week_start',weekStart).maybeSingle();setPublished(r.data?.status==='published');})();},[allowed,sb,weekStart]);
- async function read(i:number,file:File){try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(wb.Sheets[wb.SheetNames[0]],{defval:''});const column=Object.keys(rows[0]||{}).find(k=>/مدرس/.test(k)&&/اسم/.test(k));if(!column)throw Error('لا يوجد عمود اسم المدرسة في '+file.name);setSheets(v=>v.map((x,j)=>i===j?{file:file.name,rows,column}:x));setStatus('تم تحميل '+file.name+' للمراجعة.');}catch(e){setStatus(String(e));}}
+ async function read(i:number,file:File){try{const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(wb.Sheets[wb.SheetNames[0]],{defval:''});const column=Object.keys(rows[0]||{}).find(k=>/مدرس/.test(k)&&/اسم/.test(k))||Object.keys(rows[0]||{}).find(k=>/اسم المدرس|المدرسه|اسم المركز/.test(k));if(!column)throw Error('لا يوجد عمود اسم المدرسة في '+file.name);setSheets(v=>v.map((x,j)=>i===j?{file:file.name,rows,column}:x));setStatus('تم تحميل '+file.name+' للمراجعة.');}catch(e){setStatus(String(e));}}
  const preview=useMemo(()=>{
  const results:Result[]=[];const unmatched:string[]=[];const ambiguous:string[]=[];
  sheets.forEach((sheet,i)=>{if(!sheet||i===0)return;const groups=new Map<string,Record<string,unknown>[]>();
