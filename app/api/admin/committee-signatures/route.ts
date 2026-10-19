@@ -8,7 +8,7 @@ function db() {
  return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 }
 async function authorize(request:Request){
- const token=request.headers.get('authorization')?.replace(/^Bearer\\s+/i,'');
+ const token=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
  if(!token) return null;
  const client=db();
  const {data:{user}}=await client.auth.getUser(token);
@@ -32,7 +32,7 @@ export async function POST(request:Request){
   const client=await authorize(request);
   if(!client) return NextResponse.json({error:'غير مصرح'},{status:403});
   const {periodId,slot,name,phone}=await request.json();
-  if(typeof periodId!=='string'||!periodId||![0,1,2].includes(slot)||typeof name!=='string'||!name.trim()||typeof phone!=='string'||!/^9665\\d{8}$/.test(phone))
+  if(typeof periodId!=='string'||!periodId||![0,1,2].includes(slot)||typeof name!=='string'||!name.trim()||typeof phone!=='string'||!/^9665\d{8}$/.test(phone))
    return NextResponse.json({error:'أدخل الاسم ورقم الجوال بصيغة 9665XXXXXXXX وحدد الفترة'},{status:400});
   const {data:period}=await client.from('payroll_periods').select('id').eq('id',periodId).maybeSingle();
   if(!period) return NextResponse.json({error:'فترة غير موجودة'},{status:400});
