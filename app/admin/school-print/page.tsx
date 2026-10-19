@@ -103,13 +103,13 @@ export default function SchoolPayrollPrint() {
     if(response.ok){const result=await response.json();setMemberSignatures(result.items||[]);}
   }
   useEffect(()=>{if(allowed&&periodId)refreshSignatures(periodId);},[allowed,periodId]);
-  async function sendSigningLink(slot:number,name:string){
+  async function sendSigningLink(slot:number,name:string,replaceExisting=false){
     const phone=memberPhones[slot].replace(/[^0-9]/g,'');
     if(!/^9665\d{8}$/.test(phone)){setMessage('أدخل رقم جوال العضو بصيغة 9665XXXXXXXX');return;}
     if(!name.trim()||!periodId){setMessage('احفظ اسم العضو واختر فترة المسير أولًا');return;}
     const {data:{session}}=await sb.auth.getSession();
     if(!session){setMessage('انتهت جلسة الدخول');return;}
-    const response=await fetch('/api/admin/committee-signatures',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({periodId,slot,name,phone})});
+    const response=await fetch('/api/admin/committee-signatures',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({periodId,slot,name,phone,replaceExisting})});
     const result=await response.json();
     if(!response.ok){setMessage(result.error||'تعذر إنشاء رابط التوقيع');return;}
     window.open(result.whatsapp,'_blank','noopener,noreferrer');
@@ -264,7 +264,7 @@ export default function SchoolPayrollPrint() {
       <div className="card p-5 mb-5">
         <div className="mb-4"><b>أسماء لجنة المسيرات — للطباعة الجماعية</b><p className="text-sm text-gray-500 mt-1">أدخل الاسم الرباعي لعضوين من لجنة المسيرات واسم رئيس قسم التعليم المستمر (ثلاثة إجمالًا). تظهر هذه البيانات بدل خانات توقيع وختم المدرسة عند «طباعة جميع المسيرات».</p></div>
         <div className="grid md:grid-cols-3 gap-3">{committeeNames.map((name,i)=><input key={i} value={name} onChange={e=>setCommitteeNames(xs=>xs.map((x,j)=>j===i?e.target.value:x))} className="border rounded-xl px-4 py-3" placeholder={`الاسم الرباعي — العضو ${i+1}`}/>)}<input value={headName} onChange={e=>setHeadName(e.target.value)} className="border rounded-xl px-4 py-3" placeholder="الاسم الرباعي — رئيس قسم التعليم المستمر"/></div>
-        <div className="grid md:grid-cols-3 gap-3 mt-3">{[...committeeNames,headName].map((name,i)=><div key={i} className="border rounded-xl p-3 space-y-2"><div className="font-semibold text-sm">{name||'العضو '+(i+1)}</div><input dir="ltr" className="border rounded-lg px-3 py-2 w-full" placeholder="9665XXXXXXXX" value={memberPhones[i]} onChange={e=>setMemberPhones(p=>p.map((x,j)=>i===j?e.target.value:x))}/><button className="rounded-lg bg-emerald-700 text-white px-3 py-2 text-sm" onClick={()=>sendSigningLink(i,name)}>فتح واتساب برسالة التوقيع</button><div className="text-xs">{memberSignatures.find(s=>s.member_slot===i)?.signed_at?'تم اعتماد التوقيع':'بانتظار التوقيع'}</div></div>)}</div>
+        <div className="grid md:grid-cols-3 gap-3 mt-3">{[...committeeNames,headName].map((name,i)=><div key={i} className="border rounded-xl p-3 space-y-2"><div className="font-semibold text-sm">{name||'العضو '+(i+1)}</div><input dir="ltr" className="border rounded-lg px-3 py-2 w-full" placeholder="9665XXXXXXXX" value={memberPhones[i]} onChange={e=>setMemberPhones(p=>p.map((x,j)=>i===j?e.target.value:x))}/><button className="rounded-lg bg-emerald-700 text-white px-3 py-2 text-sm" onClick={()=>sendSigningLink(i,name)}>فتح واتساب برسالة التوقيع</button><button className="rounded-lg border border-amber-500 text-amber-800 px-3 py-2 text-sm mr-2" onClick={()=>{if(confirm("إلغاء رابط التوقيع السابق وإنشاء رابط جديد؟ لن يعمل الرابط القديم بعد ذلك."))sendSigningLink(i,name,true)}}>تجديد رابط غير صالح</button><div className="text-xs">{memberSignatures.find(s=>s.member_slot===i)?.signed_at?'تم اعتماد التوقيع':'بانتظار التوقيع'}</div></div>)}</div>
         <button className="mt-3 mr-3 border rounded-lg px-3 py-2 text-sm" onClick={()=>refreshSignatures()}>تحديث حالة التوقيعات</button>
         <button disabled={savingCommittee} onClick={saveCommitteeNames} className="mt-3 bg-[var(--navy)] text-white rounded-xl px-5 py-2.5 font-bold disabled:opacity-50">{savingCommittee?'جارٍ الحفظ…':'حفظ أسماء اللجنة'}</button>
       </div>
