@@ -45,6 +45,7 @@ export default function SchoolPayrollPrint() {
   const [headName,setHeadName]=useState('');
   const [savingCommittee,setSavingCommittee]=useState(false);
   const [memberPhones,setMemberPhones]=useState(['','','']);
+  const [whatsappLink,setWhatsappLink]=useState('');
   const [memberSignatures,setMemberSignatures]=useState<Array<{member_slot:number;member_name:string;signed_at:string|null;signature_data:string|null}>>([]);
   const PRINT_TEMPLATE_VERSION = '2026-09-28-v3';
 
@@ -107,13 +108,23 @@ export default function SchoolPayrollPrint() {
     const phone=memberPhones[slot].replace(/[^0-9]/g,'');
     if(!/^9665\d{8}$/.test(phone)){setMessage('أدخل رقم جوال العضو بصيغة 9665XXXXXXXX');return;}
     if(!name.trim()||!periodId){setMessage('احفظ اسم العضو واختر فترة المسير أولًا');return;}
-    const {data:{session}}=await sb.auth.getSession();
-    if(!session){setMessage('انتهت جلسة الدخول');return;}
-    const response=await fetch('/api/admin/committee-signatures',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({periodId,slot,name,phone,replaceExisting})});
-    const result=await response.json();
-    if(!response.ok){setMessage(result.error||'تعذر إنشاء رابط التوقيع');return;}
-    window.open(result.whatsapp,'_blank','noopener,noreferrer');
-    setMessage('تم فتح واتساب برسالة جاهزة. اضغط إرسال داخل واتساب لإرسال الرابط.');
+    // Open immediately during the user gesture; mobile Safari blocks windows opened after await.
+    const whatsappTab=window.open('about:blank','_blank');
+    try {
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session){whatsappTab?.close();setMessage('انتهت جلسة الدخول');return;}
+      const response=await fetch('/api/admin/committee-signatures',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({periodId,slot,name,phone,replaceExisting})});
+      const result=await response.json();
+      if(!response.ok){whatsappTab?.close();setMessage(result.error||'تعذر إنشاء رابط التوقيع');return;}
+      if(typeof result.whatsapp!=='string'||!result.whatsapp.startsWith('https://wa.me/')){whatsappTab?.close();setMessage('تعذر تجهيز رابط واتساب');return;}
+      setWhatsappLink(result.whatsapp);
+      if(whatsappTab){whatsappTab.location.href=result.whatsapp;}
+      else {setMessage('تم تجهيز الرسالة. اضغط رابط فتح واتساب الظاهر أسفل الأعضاء.');return;}
+      setMessage('تم تجهيز واتساب. اضغط إرسال داخل واتساب لإرسال رابط التوقيع.');
+    } catch {
+      whatsappTab?.close();
+      setMessage('تعذر الاتصال بخدمة التوقيع. حاول مرة أخرى.');
+    }
   }
 
   async function loadRows(schoolId?: string) {
@@ -266,6 +277,7 @@ export default function SchoolPayrollPrint() {
         <div className="grid md:grid-cols-3 gap-3">{committeeNames.map((name,i)=><input key={i} value={name} onChange={e=>setCommitteeNames(xs=>xs.map((x,j)=>j===i?e.target.value:x))} className="border rounded-xl px-4 py-3" placeholder={`الاسم الرباعي — العضو ${i+1}`}/>)}<input value={headName} onChange={e=>setHeadName(e.target.value)} className="border rounded-xl px-4 py-3" placeholder="الاسم الرباعي — رئيس قسم التعليم المستمر"/></div>
         <div className="grid md:grid-cols-3 gap-3 mt-3">{[...committeeNames,headName].map((name,i)=><div key={i} className="border rounded-xl p-3 space-y-2"><div className="font-semibold text-sm">{name||'العضو '+(i+1)}</div><input dir="ltr" className="border rounded-lg px-3 py-2 w-full" placeholder="9665XXXXXXXX" value={memberPhones[i]} onChange={e=>setMemberPhones(p=>p.map((x,j)=>i===j?e.target.value:x))}/><button className="rounded-lg bg-emerald-700 text-white px-3 py-2 text-sm" onClick={()=>sendSigningLink(i,name)}>فتح واتساب برسالة التوقيع</button><button className="rounded-lg border border-amber-500 text-amber-800 px-3 py-2 text-sm mr-2" onClick={()=>{if(confirm("إلغاء رابط التوقيع السابق وإنشاء رابط جديد؟ لن يعمل الرابط القديم بعد ذلك."))sendSigningLink(i,name,true)}}>تجديد رابط غير صالح</button><div className="text-xs">{memberSignatures.find(s=>s.member_slot===i)?.signed_at?'تم اعتماد التوقيع':'بانتظار التوقيع'}</div></div>)}</div>
         <button className="mt-3 mr-3 border rounded-lg px-3 py-2 text-sm" onClick={()=>refreshSignatures()}>تحديث حالة التوقيعات</button>
+        {whatsappLink && <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 mr-3 underline text-emerald-800 font-semibold">اضغط هنا لفتح واتساب إذا لم يُفتح تلقائيًا</a>}
         <button disabled={savingCommittee} onClick={saveCommitteeNames} className="mt-3 bg-[var(--navy)] text-white rounded-xl px-5 py-2.5 font-bold disabled:opacity-50">{savingCommittee?'جارٍ الحفظ…':'حفظ أسماء اللجنة'}</button>
       </div>
 
