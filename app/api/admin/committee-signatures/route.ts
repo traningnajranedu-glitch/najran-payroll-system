@@ -31,7 +31,7 @@ export async function POST(request:Request){
  try{
   const client=await authorize(request);
   if(!client) return NextResponse.json({error:'غير مصرح'},{status:403});
-  const {periodId,slot,name,phone}=await request.json();
+  const {periodId,slot,name,phone,replaceExisting=false}=await request.json();
   if(typeof periodId!=='string'||!periodId||![0,1,2].includes(slot)||typeof name!=='string'||!name.trim()||typeof phone!=='string'||!/^9665\d{8}$/.test(phone))
    return NextResponse.json({error:'أدخل الاسم ورقم الجوال بصيغة 9665XXXXXXXX وحدد الفترة'},{status:400});
   const {data:period}=await client.from('payroll_periods').select('id').eq('id',periodId).maybeSingle();
@@ -40,7 +40,7 @@ export async function POST(request:Request){
   const hash=createHash('sha256').update(token).digest('hex');
   const {data:existing}=await client.from('payroll_committee_signatures').select('signed_at,expires_at').eq('period_id',periodId).eq('member_slot',slot).maybeSingle();
   if(existing?.signed_at) return NextResponse.json({error:'تم اعتماد التوقيع مسبقًا؛ لا يمكن إصدار رابط بديل تلقائيًا'},{status:409});
-  if(existing && new Date(existing.expires_at).getTime()>Date.now()) return NextResponse.json({error:'يوجد رابط توقيع نشط لهذا العضو. استخدم آخر رسالة واتساب أُرسلت إليه، ولا تُنشئ رابطًا جديدًا قبل انتهاء صلاحيته.'},{status:409});
+  if(existing && !replaceExisting && new Date(existing.expires_at).getTime()>Date.now()) return NextResponse.json({error:'يوجد رابط توقيع نشط لهذا العضو. استخدم آخر رسالة واتساب أُرسلت إليه، ولا تُنشئ رابطًا جديدًا قبل انتهاء صلاحيته.'},{status:409});
   const {error}=await client.from('payroll_committee_signatures').upsert({period_id:periodId,member_slot:slot,member_name:name.trim(),phone,token_hash:hash,expires_at:new Date(Date.now()+48*3600000).toISOString(),signed_at:null,signature_data:null},{onConflict:'period_id,member_slot'});
   if(error) throw error;
   const origin=new URL(request.url).origin;
