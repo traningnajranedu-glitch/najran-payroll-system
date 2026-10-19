@@ -38,8 +38,9 @@ export async function POST(request:Request){
   if(!period) return NextResponse.json({error:'فترة غير موجودة'},{status:400});
   const token=randomBytes(32).toString('hex');
   const hash=createHash('sha256').update(token).digest('hex');
-  const {data:existing}=await client.from('payroll_committee_signatures').select('signed_at').eq('period_id',periodId).eq('member_slot',slot).maybeSingle();
+  const {data:existing}=await client.from('payroll_committee_signatures').select('signed_at,expires_at').eq('period_id',periodId).eq('member_slot',slot).maybeSingle();
   if(existing?.signed_at) return NextResponse.json({error:'تم اعتماد التوقيع مسبقًا؛ لا يمكن إصدار رابط بديل تلقائيًا'},{status:409});
+  if(existing && new Date(existing.expires_at).getTime()>Date.now()) return NextResponse.json({error:'يوجد رابط توقيع نشط لهذا العضو. استخدم آخر رسالة واتساب أُرسلت إليه، ولا تُنشئ رابطًا جديدًا قبل انتهاء صلاحيته.'},{status:409});
   const {error}=await client.from('payroll_committee_signatures').upsert({period_id:periodId,member_slot:slot,member_name:name.trim(),phone,token_hash:hash,expires_at:new Date(Date.now()+48*3600000).toISOString(),signed_at:null,signature_data:null},{onConflict:'period_id,member_slot'});
   if(error) throw error;
   const origin=new URL(request.url).origin;
