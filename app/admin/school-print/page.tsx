@@ -44,6 +44,8 @@ export default function SchoolPayrollPrint() {
   const [committeeNames,setCommitteeNames]=useState(['','']);
   const [headName,setHeadName]=useState('');
   const [savingCommittee,setSavingCommittee]=useState(false);
+  const [memberPhones,setMemberPhones]=useState(['','','']);
+  const [memberSignatures,setMemberSignatures]=useState<Array<{member_slot:number;member_name:string;signed_at:string|null;signature_data:string|null}>>([]);
   const PRINT_TEMPLATE_VERSION = '2026-09-28-v3';
 
   async function load() {
@@ -93,6 +95,27 @@ export default function SchoolPayrollPrint() {
     setSavingCommittee(false);
   }
 
+  async function refreshSignatures(id=periodId){
+    if(!id)return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const response=await fetch('/api/admin/committee-signatures?periodId='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+session.access_token}});
+    if(response.ok){const result=await response.json();setMemberSignatures(result.items||[]);}
+  }
+  useEffect(()=>{if(allowed&&periodId)refreshSignatures(periodId);},[allowed,periodId]);
+  async function sendSigningLink(slot:number,name:string){
+    const phone=memberPhones[slot].replace(/[^0-9]/g,'');
+    if(!/^9665\d{8}$/.test(phone)){setMessage('أدخل رقم جوال العضو بصيغة 9665XXXXXXXX');return;}
+    if(!name.trim()||!periodId){setMessage('احفظ اسم العضو واختر فترة المسير أولًا');return;}
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){setMessage('انتهت جلسة الدخول');return;}
+    const response=await fetch('/api/admin/committee-signatures',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({periodId,slot,name,phone})});
+    const result=await response.json();
+    if(!response.ok){setMessage(result.error||'تعذر إنشاء رابط التوقيع');return;}
+    window.open(result.whatsapp,'_blank','noopener,noreferrer');
+    setMessage('تم فتح واتساب برسالة جاهزة. اضغط إرسال داخل واتساب لإرسال الرابط.');
+  }
+
   async function loadRows(schoolId?: string) {
     setBusy(true); setMessage('');
     let query = sb.from('payroll_records').select('id,school_id,teacher_id,period_id,status,direct_start_date,absence_days,payroll_days,pre_start_hours,notes,approved_at');
@@ -119,6 +142,7 @@ export default function SchoolPayrollPrint() {
     if (!periodId) return setMessage('اختر فترة المسير أولاً.');
     const rows = await loadRows();
     if (!rows) return;
+    await refreshSignatures(periodId);
     setPrintMode('all');
     setTimeout(() => window.print(), 250);
   }
@@ -240,6 +264,8 @@ export default function SchoolPayrollPrint() {
       <div className="card p-5 mb-5">
         <div className="mb-4"><b>أسماء لجنة المسيرات — للطباعة الجماعية</b><p className="text-sm text-gray-500 mt-1">أدخل الاسم الرباعي لعضوين من لجنة المسيرات واسم رئيس قسم التعليم المستمر (ثلاثة إجمالًا). تظهر هذه البيانات بدل خانات توقيع وختم المدرسة عند «طباعة جميع المسيرات».</p></div>
         <div className="grid md:grid-cols-3 gap-3">{committeeNames.map((name,i)=><input key={i} value={name} onChange={e=>setCommitteeNames(xs=>xs.map((x,j)=>j===i?e.target.value:x))} className="border rounded-xl px-4 py-3" placeholder={`الاسم الرباعي — العضو ${i+1}`}/>)}<input value={headName} onChange={e=>setHeadName(e.target.value)} className="border rounded-xl px-4 py-3" placeholder="الاسم الرباعي — رئيس قسم التعليم المستمر"/></div>
+        <div className="grid md:grid-cols-3 gap-3 mt-3">{[...committeeNames,headName].map((name,i)=><div key={i} className="border rounded-xl p-3 space-y-2"><div className="font-semibold text-sm">{name||'العضو '+(i+1)}</div><input dir="ltr" className="border rounded-lg px-3 py-2 w-full" placeholder="9665XXXXXXXX" value={memberPhones[i]} onChange={e=>setMemberPhones(p=>p.map((x,j)=>i===j?e.target.value:x))}/><button className="rounded-lg bg-emerald-700 text-white px-3 py-2 text-sm" onClick={()=>sendSigningLink(i,name)}>فتح واتساب برسالة التوقيع</button><div className="text-xs">{memberSignatures.find(s=>s.member_slot===i)?.signed_at?'تم اعتماد التوقيع':'بانتظار التوقيع'}</div></div>)}</div>
+        <button className="mt-3 mr-3 border rounded-lg px-3 py-2 text-sm" onClick={()=>refreshSignatures()}>تحديث حالة التوقيعات</button>
         <button disabled={savingCommittee} onClick={saveCommitteeNames} className="mt-3 bg-[var(--navy)] text-white rounded-xl px-5 py-2.5 font-bold disabled:opacity-50">{savingCommittee?'جارٍ الحفظ…':'حفظ أسماء اللجنة'}</button>
       </div>
 
@@ -274,7 +300,7 @@ export default function SchoolPayrollPrint() {
           <div className="print-signature-box"><b>مدير المدرسة</b><div className="approval-name">{selectedSchool?.manager_name || '................................'}</div><div className="print-school-signature">{profileSignatureUrl ? <img src={profileSignatureUrl} alt="توقيع مدير المدرسة المعتمد في الملف الشخصي" className="print-signature-image"/> : <span>التوقيع: ................................</span>}</div></div>
           <div className="print-stamp-box"><b>ختم المدرسة</b><div className="print-stamp-area">{profileStampUrl ? <img src={profileStampUrl} alt="ختم المدرسة المعتمد في الملف الشخصي" className="print-stamp-image"/> : <span>موضع الختم</span>}</div></div>
           <div className="print-signature-box"><b>يعتمد</b><div className="approval-role">رئيس التعليم المستمر</div><div className="approval-line">التوقيع: ................................</div></div>
-        </div> : <div className="print-committee"><div className="print-committee-title">لجنة المسيرات</div><div className="print-committee-grid">{committeeNames.map((name,i)=><div key={i} className="print-committee-member"><b>عضو اللجنة {i+1}</b><div>{name||'................................................'}</div><small>التوقيع: ................................</small></div>)}<div className="print-committee-member"><b>رئيس قسم التعليم المستمر</b><div>{headName||'................................................'}</div><small>التوقيع: ................................</small></div></div></div>}
+        </div> : <div className="print-committee"><div className="print-committee-title">لجنة المسيرات</div><div className="print-committee-grid">{committeeNames.map((name,i)=><div key={i} className="print-committee-member"><b>عضو اللجنة {i+1}</b><div>{name||'................................................'}</div><small>{memberSignatures.find(s=>s.member_slot===i&&s.member_name===name)?.signature_data?<img className="committee-signature-image" src={memberSignatures.find(s=>s.member_slot===i&&s.member_name===name)!.signature_data!} alt="توقيع العضو المعتمد"/>:'التوقيع: ................................'}</small></div>)}<div className="print-committee-member"><b>رئيس قسم التعليم المستمر</b><div>{headName||'................................................'}</div><small>{memberSignatures.find(s=>s.member_slot===2&&s.member_name===headName)?.signature_data?<img className="committee-signature-image" src={memberSignatures.find(s=>s.member_slot===2&&s.member_name===headName)!.signature_data!} alt="توقيع رئيس القسم المعتمد"/>:'التوقيع: ................................'}</small></div></div></div>}
         {printMode==='school' && <div className="print-footer-note">هذا النموذج صادر من البوابة الإلكترونية لمدارس التعليم المستمر — الإدارة العامة للتعليم بمنطقة نجران</div>}
       </>}
     </section>
@@ -285,7 +311,7 @@ export default function SchoolPayrollPrint() {
     .print-template-version{text-align:center;font-size:8px;color:#6b8b8b;margin:-5px 0 7px}.print-main-title{width:310px;margin:0 auto 4px;padding:8px 22px;border-radius:16px;background:linear-gradient(135deg,#006b78,#078b82)!important;color:#fff!important;text-align:center;font-size:24px;font-weight:900}.print-portal-title{text-align:center;font-size:17px;font-weight:900;margin-bottom:10px}
     .print-meta{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-bottom:10px;font-size:11px}.print-meta>div{border:1px solid #b7d9dc;border-radius:6px;padding:6px 10px;background:#fbfefe!important}.print-reward-title{text-align:center;font-size:14px;font-weight:900;color:#064f50;margin:5px 0 9px;line-height:1.8}.print-certification-text{margin:10px 3px 6px;padding:8px 12px;border:1px solid #b7d9dc;border-radius:7px;background:#fbfefe!important;font-size:11px;font-weight:600;line-height:2;text-align:right;color:#203f40}.print-certification-closing{margin-top:3px;font-weight:800}
     .print-payroll-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:10px;color:#173f41;border:1px solid #0b7e7b;border-radius:7px;overflow:hidden}.print-payroll-table th{background:#087f78!important;color:#fff!important;padding:8px 5px;font-weight:900;border-left:1px solid rgba(255,255,255,.45)}.print-payroll-table td{height:25px;padding:5px;text-align:center;border-left:1px solid #77b5b8;border-top:1px solid #9ac9cb}.print-payroll-table tbody tr:nth-child(even) td{background:#f6fbfb!important}.employee-name{text-align:right!important;font-weight:700}.print-payroll-table.admin-fields{font-size:8px}.print-payroll-table.admin-fields th{padding:7px 3px}.print-payroll-table.admin-fields td{padding:4px 3px;overflow-wrap:anywhere}.print-payroll-table.admin-fields th:nth-child(1){width:3%}.print-payroll-table.admin-fields th:nth-child(2){width:7%}.print-payroll-table.admin-fields th:nth-child(3){width:10%}.print-payroll-table.admin-fields th:nth-child(4){width:15%}.print-payroll-table.admin-fields th:nth-child(5){width:10%}.print-payroll-table.admin-fields th:nth-child(6){width:8%}.print-payroll-table.admin-fields th:nth-child(7){width:9%}.print-payroll-table.admin-fields th:nth-child(8){width:10%}.print-payroll-table.admin-fields th:nth-child(9){width:7%}.print-payroll-table.admin-fields th:nth-child(10){width:7%}.print-payroll-table.admin-fields th:nth-child(11){width:7%}.print-payroll-table.admin-fields th:nth-child(12){width:7%}.print-payroll-table.admin-fields th:nth-child(13){width:7%}
-    .print-approval-grid{display:grid;grid-template-columns:1fr .8fr 1fr;gap:22px;align-items:center;margin:12px auto 0;width:82%;page-break-inside:avoid}.print-signature-box,.print-stamp-box{min-height:72px;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px 12px}.approval-name,.approval-role{margin-top:8px;font-size:11px;font-weight:700}.approval-line{margin-top:10px;font-size:10px}.print-stamp-area{height:52px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8aa}.print-stamp-image{max-width:72px;max-height:58px;object-fit:contain}.print-school-signature{height:42px;display:flex;align-items:center;justify-content:center;margin-top:3px}.print-signature-image{max-width:110px;max-height:42px;object-fit:contain}.print-committee{margin:0 auto;width:96%;break-inside:avoid;page-break-inside:avoid;display:flow-root}.print-committee-title{text-align:center;font-weight:900;font-size:12px;margin-bottom:2px}.print-committee-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:stretch;direction:rtl}.print-committee-member{box-sizing:border-box;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px;min-height:43px;height:43px;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;min-width:0}.print-committee-member div{font-weight:800;margin:1px 0 0}.print-committee-member small{font-size:8px;line-height:1.1;margin-top:0}.print-footer-note{position:static;clear:both;margin-top:1mm;left:auto;right:auto;text-align:center;border-top:1px solid #d7e8e8;padding-top:2px;font-size:8px;color:#628080;break-before:avoid;page-break-before:avoid;break-inside:avoid}tr{page-break-inside:avoid}thead{display:table-header-group}
+    .print-approval-grid{display:grid;grid-template-columns:1fr .8fr 1fr;gap:22px;align-items:center;margin:12px auto 0;width:82%;page-break-inside:avoid}.print-signature-box,.print-stamp-box{min-height:72px;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px 12px}.approval-name,.approval-role{margin-top:8px;font-size:11px;font-weight:700}.approval-line{margin-top:10px;font-size:10px}.print-stamp-area{height:52px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#8aa}.print-stamp-image{max-width:72px;max-height:58px;object-fit:contain}.print-school-signature{height:42px;display:flex;align-items:center;justify-content:center;margin-top:3px}.print-signature-image{max-width:110px;max-height:42px;object-fit:contain}.print-committee{margin:0 auto;width:96%;break-inside:avoid;page-break-inside:avoid;display:flow-root}.print-committee-title{text-align:center;font-weight:900;font-size:12px;margin-bottom:2px}.print-committee-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:stretch;direction:rtl}.print-committee-member{box-sizing:border-box;border:1px solid #9ccbd0;border-radius:7px;text-align:center;padding:7px;min-height:43px;height:43px;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;min-width:0}.print-committee-member div{font-weight:800;margin:1px 0 0}.print-committee-member small{font-size:8px;line-height:1.1;margin-top:0}.committee-signature-image{height:18px;max-width:105px;object-fit:contain;margin:auto}.print-footer-note{position:static;clear:both;margin-top:1mm;left:auto;right:auto;text-align:center;border-top:1px solid #d7e8e8;padding-top:2px;font-size:8px;color:#628080;break-before:avoid;page-break-before:avoid;break-inside:avoid}tr{page-break-inside:avoid}thead{display:table-header-group}
   }`}</style>
   </div>;
 }
