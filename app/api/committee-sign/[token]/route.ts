@@ -24,7 +24,7 @@ export async function POST(request:Request,{params}:{params:Promise<{token:strin
   const token=(await params).token,row=await lookup(token);
   if(!row||row.signed_at||new Date(row.expires_at).getTime()<Date.now()) return NextResponse.json({error:'الرابط مستخدم أو منتهي'},{status:403});
   const {signature}=await request.json();
-  if(typeof signature!=='string'||signature.length>180000||!/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(signature)) return NextResponse.json({error:'التوقيع غير صالح'},{status:400});
+  if(typeof signature!=='string'||signature.length>180000||!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(signature)) return NextResponse.json({error:'التوقيع غير صالح'},{status:400});
   const {data,error}=await client().from('payroll_committee_signatures').update({signature_data:signature,signed_at:new Date().toISOString()}).eq('id',row.id).is('signed_at',null).select('id');
   if(error) throw error;
   if(!data?.length) return NextResponse.json({error:'تم اعتماد التوقيع مسبقًا'},{status:409});
