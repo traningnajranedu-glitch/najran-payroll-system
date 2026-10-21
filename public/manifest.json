@@ -12,6 +12,6 @@
   "background_color": "#ffffff",
   "categories": ["education", "business"],
   "icons": [
-    {"src": "/portal-brand.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+    {"src": "/portal-brand.svg?v=rifad-20261021", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
   ]
 }
