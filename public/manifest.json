@@ -1,17 +1,17 @@
 {
-  "name": "البوابة الإلكترونية لمدارس التعليم المستمر",
+  "name": "بوابة رفاد لمدارس رفاد",
   "short_name": "التعليم المستمر",
-  "description": "البوابة الإلكترونية لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران",
+  "description": "بوابة رفاد لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران",
   "lang": "ar-SA",
   "dir": "rtl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0b6b50",
+  "theme_color": "#073b7c",
   "background_color": "#ffffff",
   "categories": ["education", "business"],
   "icons": [
-    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+    {"src": "/portal-brand.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
   ]
 }
