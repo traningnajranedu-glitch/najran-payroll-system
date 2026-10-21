@@ -27,7 +27,7 @@ export default function Home(){
   return <main id="main-content" className="min-h-screen relative overflow-hidden bg-[#062b60] flex items-center justify-center p-4 md:p-8" dir="rtl">
     <div className="absolute inset-0 opacity-30 pointer-events-none" style={{background:'radial-gradient(circle at 25% 18%,#168ee5,transparent 42%),radial-gradient(circle at 80% 90%,#ffbf12,transparent 45%)'}}/>
     <div className="relative z-10 w-full max-w-md">
-      <div className="flex justify-center mb-5"><img src="/portal-brand.svg?v=rifad-20261021" alt="شعار بوابة رفاد لمدارس التعليم المستمر" className="w-48 h-48 md:w-56 md:h-56 rounded-[32px] shadow-2xl"/></div>
+      <div className="flex justify-center mb-5"><img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار بوابة رفاد لمدارس التعليم المستمر" className="w-48 h-48 md:w-56 md:h-56 rounded-[32px] shadow-2xl"/></div>
       <section className="bg-white/95 backdrop-blur rounded-[28px] shadow-2xl p-6 md:p-9 border border-[#f5ce62]">
         <h1 className="text-center text-2xl font-black text-[#073b7c] mb-2">تسجيل الدخول</h1>
         <p className="text-center text-slate-500 text-sm mb-6">مرحبًا بكم في بوابة رفاد لمدارس التعليم المستمر</p>
