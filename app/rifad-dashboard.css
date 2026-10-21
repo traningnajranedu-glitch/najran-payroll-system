@@ -31,3 +31,11 @@ header img[src="/portal-brand.svg"],aside img[src="/portal-brand.svg"]{backgroun
 header:has(img[src="/portal-brand.svg"]){border-bottom:5px solid #ffbf12!important}
 header .text-emerald-100,aside .text-emerald-100{color:#dcecff!important}
 }
+
+/* Approved RIFAD banner: blue gradient, gold trim and flowing ribbon */
+@media screen {
+header:has(img[src="/portal-brand.svg"]){position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(110deg,#05285b 0%,#073d7a 56%,#1879bf 100%)!important;border-top:7px solid #ffcb35!important;border-bottom:3px solid #f6b913!important}
+header:has(img[src="/portal-brand.svg"])::before{content:"";position:absolute;z-index:-1;inset:auto -4% -35px -4%;height:70px;background:linear-gradient(90deg,#ffbb08,#ffdf53 40%,#ffb700);clip-path:polygon(0 35%,15% 6%,36% 72%,56% 77%,77% 24%,100% 65%,100% 100%,0 100%);opacity:.95;pointer-events:none}
+header:has(img[src="/portal-brand.svg"])::after{content:"";position:absolute;z-index:-1;inset:auto -4% -23px -4%;height:55px;background:linear-gradient(90deg,#168ee5,#0759aa 60%,#2e98e9);clip-path:polygon(0 45%,22% 12%,42% 78%,63% 58%,83% 18%,100% 45%,100% 100%,0 100%);pointer-events:none}
+header:has(img[src="/portal-brand.svg"]) img[src="/portal-brand.svg"]{background:white!important;border:0!important;border-radius:18px!important;padding:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+}
