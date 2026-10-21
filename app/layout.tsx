@@ -7,7 +7,7 @@ export const metadata = {
   description: 'بوابة رفاد لمدارس التعليم المستمر بالإدارة العامة للتعليم بمنطقة نجران',
   manifest: '/manifest.json',
   themeColor: '#073b7c',
-  icons: { icon: '/portal-brand.svg?v=rifad-20261021', apple: '/portal-brand.svg?v=rifad-20261021' },
+  icons: { icon: '/portal-brand.png.png?v=rifad-official-20261021', apple: '/portal-brand.png.png?v=rifad-official-20261021' },
   appleWebApp: { capable: true, title: 'بوابة رفاد', statusBarStyle: 'default' },
 };
 
