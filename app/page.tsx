@@ -24,23 +24,27 @@ export default function Home(){
     await sb.auth.signOut();setError('بيانات الدخول غير صحيحة أو حساب المدرسة غير مفعّل.');setLoading(false);
   }
 
-  return <main id="main-content" className="min-h-screen relative overflow-hidden bg-[#062b60] flex items-center justify-center p-4 md:p-8" dir="rtl">
-    <div className="absolute inset-0 opacity-30 pointer-events-none" style={{background:'radial-gradient(circle at 25% 18%,#168ee5,transparent 42%),radial-gradient(circle at 80% 90%,#ffbf12,transparent 45%)'}}/>
-    <div className="relative z-10 w-full max-w-md">
-      <div className="flex justify-center mb-5"><img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار بوابة رفاد لمدارس التعليم المستمر" className="w-48 h-48 md:w-56 md:h-56 rounded-[32px] shadow-2xl"/></div>
-      <section className="bg-white/95 backdrop-blur rounded-[28px] shadow-2xl p-6 md:p-9 border border-[#f5ce62]">
-        <h1 className="text-center text-2xl font-black text-[#073b7c] mb-2">تسجيل الدخول</h1>
-        <p className="text-center text-slate-500 text-sm mb-6">مرحبًا بكم في بوابة رفاد لمدارس التعليم المستمر</p>
-        <p className="text-center text-[#0759aa] font-semibold text-sm mb-7">إدارة التعليم بمنطقة نجران</p>
-        <form onSubmit={login} className="space-y-4">
-          <label className="block"><span className="text-sm font-semibold text-slate-700">اسم المستخدم</span><input value={username} onChange={e=>setUsername(e.target.value)} required className="mt-2 w-full border rounded-xl px-4 py-3.5" placeholder="اسم المستخدم" autoComplete="username"/></label>
-          <label className="block"><span className="text-sm font-semibold text-slate-700">كلمة المرور</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="mt-2 w-full border rounded-xl px-4 py-3.5" placeholder="كلمة المرور" autoComplete="current-password"/></label>
-          {error&&<div className="bg-red-50 text-red-700 border border-red-100 rounded-xl p-3 text-sm">{error}</div>}
-          <button disabled={loading} className="w-full bg-[#0759aa] hover:bg-[#073b7c] text-white rounded-xl py-3.5 font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition">{loading?'جارٍ الدخول…':<><LogIn size={19}/> تسجيل الدخول</>}</button>
-        </form>
-        <div className="mt-7 pt-5 border-t border-slate-100 text-center"><p className="text-sm font-bold text-[#0759aa]">وزارة التعليم</p><p className="text-xs text-slate-500">الإدارة العامة للتعليم بمنطقة نجران — التعليم المستمر</p></div>
+  return <main id="main-content" className="rifad-login min-h-screen bg-[#edf5fd] flex items-center justify-center p-4 md:p-8" dir="rtl">
+    <div className="rifad-login-shell w-full max-w-6xl grid lg:grid-cols-2 overflow-hidden rounded-[28px] shadow-2xl bg-white">
+      <section className="rifad-login-intro relative min-h-[260px] lg:min-h-[680px] flex flex-col justify-center items-center text-center px-7 py-12">
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[#fbbf24]/20 blur-3xl pointer-events-none"/>
+        <img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار رفاد الأصلي" className="relative w-48 md:w-64 h-auto rounded-2xl object-contain"/>
+        <h1 className="relative text-3xl font-black text-[#0b3d91] mt-5">مرحباً بك في بوابة رفاد</h1>
+        <p className="relative text-[#43658c] mt-3 max-w-md leading-8">إدارة مكافآت العاملين في مدارس التعليم المستمر بإدارة التعليم بمنطقة نجران</p>
+        <div className="relative mt-8 flex flex-wrap justify-center gap-3 text-sm"><span className="rounded-full bg-white/80 px-4 py-2 text-[#0b3d91] shadow-sm"><ShieldCheck className="inline ml-2" size={17}/>بيئة آمنة</span><span className="rounded-full bg-white/80 px-4 py-2 text-[#0b3d91] shadow-sm"><School className="inline ml-2" size={17}/>خدمات المدارس</span></div>
+        <div className="rifad-login-wave" aria-hidden="true"/>
       </section>
-      <p className="text-center text-xs text-[#fbe29c] mt-5">بوابة رفاد لمدارس التعليم المستمر</p>
+      <section className="rifad-login-form flex flex-col justify-center px-6 py-10 sm:px-12 lg:px-16">
+        <div className="flex items-center gap-3 mb-10"><span className="h-10 w-2 rounded-full bg-[#fbbf24]"/><div><p className="font-black text-[#0b3d91] text-xl">بوابة رفاد</p><p className="text-sm text-slate-500">وزارة التعليم · تعليم نجران</p></div></div>
+        <div className="mb-8"><h2 className="text-3xl font-black text-[#0b3d91]">تسجيل الدخول</h2><p className="text-slate-500 mt-3">أدخل بيانات حسابك للوصول إلى خدمات البوابة</p></div>
+        <form onSubmit={login} className="space-y-5">
+          <label className="block"><span className="block text-sm font-bold text-[#153b70] mb-2">اسم المستخدم</span><input value={username} onChange={e=>setUsername(e.target.value)} required className="w-full border border-[#d8e5f4] bg-[#f8fbff] rounded-xl px-4 py-4 focus:border-[#1479df]" placeholder="اسم المستخدم" autoComplete="username"/></label>
+          <label className="block"><span className="block text-sm font-bold text-[#153b70] mb-2">كلمة المرور</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full border border-[#d8e5f4] bg-[#f8fbff] rounded-xl px-4 py-4 focus:border-[#1479df]" placeholder="كلمة المرور" autoComplete="current-password"/></label>
+          {error&&<div role="alert" className="bg-red-50 text-red-700 border border-red-100 rounded-xl p-3 text-sm">{error}</div>}
+          <button disabled={loading} className="w-full bg-[#0865c5] hover:bg-[#0b3d91] text-white rounded-xl py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-60 transition">{loading?'جارٍ الدخول…':<><LogIn size={19}/> تسجيل الدخول</>}</button>
+        </form>
+        <div className="mt-10 pt-6 border-t border-[#e4edf8] text-center"><p className="text-sm font-semibold text-[#0b3d91]">معاً لتميز التعليم المستمر</p><p className="text-xs text-slate-500 mt-2">الإدارة العامة للتعليم بمنطقة نجران</p></div>
+      </section>
     </div>
   </main>;
 }
