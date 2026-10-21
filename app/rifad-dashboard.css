@@ -1,0 +1,25 @@
+/* RIFAD visual system — admin and school dashboards. Print layouts remain unchanged. */
+@media screen {
+body:has(a[href="/admin"]),body:has(a[href="/dashboard"]){background:#f3f7fd;color:#102e56}
+body:has(a[href="/admin"]) .card,body:has(a[href="/dashboard"]) .card{background:#fff;border:1px solid #dce8f8;border-radius:20px;box-shadow:0 6px 22px rgba(7,52,110,.065);transition:box-shadow .2s,transform .2s}
+.card:hover{box-shadow:0 10px 30px rgba(7,52,110,.09)}
+header{background:linear-gradient(110deg,#052a60,#0759aa 75%,#168ee5)!important;color:#fff;border-top:3px solid #ffbf12!important}
+header h1{font-weight:900;letter-spacing:-.03em}
+header img[src="/portal-brand.svg"]{background:white;border-radius:16px;padding:4px;object-fit:contain}
+nav a,aside a{transition:background-color .2s,color .2s,transform .2s;border-radius:12px}
+nav a:hover,aside a:hover{background:#e8f3ff;color:#0759aa;transform:translateY(-1px)}
+button{transition:background-color .18s,box-shadow .18s,transform .18s}
+button:not(:disabled):hover{filter:brightness(1.04)}
+button:not(:disabled):active{transform:scale(.985)}
+.service-card{border:1px solid #dce8f8!important;border-radius:20px!important;background:#fff!important;box-shadow:0 6px 22px rgba(7,52,110,.06)!important}
+.service-card:hover{border-color:#168ee5!important;transform:translateY(-3px)}
+.service-card .w-16{background:#e6f3ff!important;color:#0759aa!important}
+.school-navigation{background:#fff;border-bottom:1px solid #dce8f8}
+.school-navigation a[aria-current],.school-navigation a:hover{background:#e8f3ff;color:#0759aa}
+table{border-collapse:separate;border-spacing:0}
+thead{background:#edf5ff;color:#073b7c}
+tbody tr:hover{background:#f6faff}
+input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shadow:0 0 0 3px rgba(22,142,229,.12)}
+}
+@media(max-width:767px){.card{border-radius:16px!important}header h1{font-size:1rem!important}}
+@media(prefers-reduced-motion:reduce){.card,.service-card,button,nav a,aside a{transition:none!important}}
