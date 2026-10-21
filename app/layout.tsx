@@ -1,4 +1,5 @@
 import './globals.css';
+import './rifad-dashboard.css';
 import MobileRegister from './mobile-register';
 
 export const metadata = {
