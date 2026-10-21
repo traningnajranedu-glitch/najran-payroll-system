@@ -128,3 +128,29 @@ body:has(a[href="/admin"]) h1,body:has(a[href="/dashboard"]) h1{letter-spacing:-
 .rifad-login-poster input:focus{border-color:#1479df;box-shadow:0 0 0 3px rgba(20,121,223,.12);outline:none}
 }
 @media screen and (max-width:480px){.rifad-login-poster{min-height:625px;padding-inline:24px}.rifad-poster-waves{height:115px}}
+
+
+/* RIFAD approved dashboard UI — blue/gold identity, admin + school */
+@media screen{
+:root{--navy:#0b3d91;--primary:#0876dd;--rifad-gold:#ffbd25}
+body{background:#f0f6fd}
+header[class*="bg-white"]{color:#0b3d91}
+header[class*="bg-white"] h1,header[class*="bg-white"] p{color:#0b3d91!important}
+header[class*="bg-white"] .text-white{color:#0b3d91!important}
+header[class*="bg-white"] button{border-radius:12px}
+aside[class*="from-"]{background:linear-gradient(180deg,#082f6d,#0c428e)!important}
+aside[class*="from-"] nav a,aside[class*="from-"] nav button{border-radius:12px;transition:background-color .18s,transform .18s}
+aside[class*="from-"] nav a:hover,aside[class*="from-"] nav button:hover{background:#0878df!important;color:#fff!important;transform:translateX(-2px)}
+main .grid>button[class*="bg-white"],main .grid>div[class*="bg-white"]{border:1px solid #e0eafa;box-shadow:0 6px 20px rgba(11,61,145,.055);border-radius:18px}
+main .grid>button[class*="bg-white"]:hover{box-shadow:0 12px 25px rgba(11,61,145,.12);transform:translateY(-2px)}
+main .grid>button{transition:transform .18s,box-shadow .18s}
+main h2,main h3{color:#0b3d91}
+main thead{background:#eaf3ff;color:#0b3d91}
+main tbody tr:hover{background:#f4f9ff}
+main button[class*="bg-emerald"],main button[class*="bg-green"]{background:#0876dd!important}
+main [class*="text-emerald-700"]:not(.status),main [class*="text-green-700"]:not(.status){color:#0b5aaa}
+main [class*="bg-violet-50"]{background:#edf4ff}
+main [class*="text-violet-700"]{color:#0869c5}
+main input:focus,main select:focus{border-color:#0876dd;outline-color:#87c2ff}
+}
+@media screen and (max-width:767px){main .grid{gap:12px}main .grid>button[class*="bg-white"]{padding:15px}}
