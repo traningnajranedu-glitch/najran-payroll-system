@@ -39,3 +39,27 @@ header:has(img[src="/portal-brand.svg"])::before{content:"";position:absolute;z-
 header:has(img[src="/portal-brand.svg"])::after{content:"";position:absolute;z-index:-1;inset:auto -4% -23px -4%;height:55px;background:linear-gradient(90deg,#168ee5,#0759aa 60%,#2e98e9);clip-path:polygon(0 45%,22% 12%,42% 78%,63% 58%,83% 18%,100% 45%,100% 100%,0 100%);pointer-events:none}
 header:has(img[src="/portal-brand.svg"]) img[src="/portal-brand.svg"]{background:white!important;border:0!important;border-radius:18px!important;padding:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.15)}
 }
+
+/* RIFAD dashboard reference — visual components, RTL, responsiveness */
+@media screen{
+:root{--rifad-navy:#052a60;--rifad-blue:#0877dc;--rifad-sky:#eaf5ff;--rifad-gold:#ffc329;--rifad-border:#dce9f8}
+body{background:linear-gradient(120deg,#f5f9ff,#eaf4fd)!important;color:#092b61}
+main{min-width:0}
+aside{background:linear-gradient(165deg,#073e7e,#05285b 60%,#041f49)!important;color:#fff}
+aside a,aside button{border-radius:12px!important}
+aside a:hover,aside button:hover{background:#0877dc!important;color:#fff!important}
+header{box-shadow:0 8px 22px rgba(5,42,96,.10)}
+.card,.service-card{border:1px solid var(--rifad-border)!important;border-radius:18px!important;box-shadow:0 5px 16px rgba(5,42,96,.055)!important}
+.card h1,.card h2,.card h3{color:#082d67}
+.card button,.service-card button{border-radius:11px}
+.card button[class*="bg-"],.service-card button[class*="bg-"]{box-shadow:0 3px 9px rgba(7,74,150,.12)}
+.card button[class*="bg-[var(--navy)]"]{background:linear-gradient(110deg,#0762c0,#0789ed)!important}
+.card table thead{background:#e9f3ff!important;color:#052e66!important}
+.card table tbody tr{transition:background .16s}
+.card table tbody tr:hover{background:#f1f8ff}
+.service-card{transition:transform .2s,box-shadow .2s!important}
+.service-card:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(5,42,96,.13)!important}
+.service-card svg{color:#0877dc}
+button:focus-visible,a:focus-visible{outline:3px solid #ffc329;outline-offset:3px}
+}
+@media(max-width:767px){main{padding-inline:10px!important}.card{padding:14px!important}table{font-size:12px}}
