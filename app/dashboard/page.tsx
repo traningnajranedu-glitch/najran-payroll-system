@@ -447,7 +447,7 @@ export default function Dashboard() {
     <div className="lg:mr-[230px]">
 <header className="bg-[#003e34] text-white border-b-4 border-[#d7af62] print:hidden sticky top-0 z-30">
         <div className="w-full px-4 sm:px-5 lg:px-8 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3"><img src="/portal-brand.svg?v=rifad-20261021" alt="شعار البوابة" className="w-12 h-12 rounded-2xl border border-[#ffcb35]"/><div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-emerald-100 mt-1">مرحباً بك في حساب المدرسة</div></div></div>
+          <div className="flex items-center gap-3"><img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار البوابة" className="w-12 h-12 rounded-2xl border border-[#ffcb35]"/><div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-emerald-100 mt-1">مرحباً بك في حساب المدرسة</div></div></div>
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative">
               <button type="button" onClick={()=>setNotificationsOpen(v=>!v)} className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[var(--navy)] shadow-sm transition hover:bg-cyan-50" aria-label="الإشعارات" aria-expanded={notificationsOpen}>
