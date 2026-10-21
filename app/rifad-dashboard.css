@@ -5,7 +5,7 @@ body:has(a[href="/admin"]) .card,body:has(a[href="/dashboard"]) .card{background
 .card:hover{box-shadow:0 10px 30px rgba(7,52,110,.09)}
 header{background:linear-gradient(110deg,#052a60,#0759aa 75%,#168ee5)!important;color:#fff;border-top:3px solid #ffbf12!important}
 header h1{font-weight:900;letter-spacing:-.03em}
-header img[src="/portal-brand.svg"]{background:white;border-radius:16px;padding:4px;object-fit:contain}
+header img[src="/portal-brand.png.png?v=rifad-official-20261021"]{background:white;border-radius:16px;padding:4px;object-fit:contain}
 nav a,aside a{transition:background-color .2s,color .2s,transform .2s;border-radius:12px}
 nav a:hover,aside a:hover{background:#e8f3ff;color:#0759aa;transform:translateY(-1px)}
 button{transition:background-color .18s,box-shadow .18s,transform .18s}
@@ -27,17 +27,17 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 /* Replace old emerald header and circular badges with RIFAD visual treatment */
 @media screen {
 header,aside[class*="bg-[#043f34]"]{background:linear-gradient(110deg,#052b65,#0759aa 70%,#168ee5)!important;border-color:#ffbf12!important}
-header img[src="/portal-brand.svg"],aside img[src="/portal-brand.svg"]{background:#fff!important;border:2px solid #ffbf12!important;border-radius:18px!important;padding:3px!important;object-fit:contain!important;box-shadow:0 4px 18px rgba(0,0,0,.13)}
-header:has(img[src="/portal-brand.svg"]){border-bottom:5px solid #ffbf12!important}
+header img[src="/portal-brand.png.png?v=rifad-official-20261021"],aside img[src="/portal-brand.png.png?v=rifad-official-20261021"]{background:#fff!important;border:2px solid #ffbf12!important;border-radius:18px!important;padding:3px!important;object-fit:contain!important;box-shadow:0 4px 18px rgba(0,0,0,.13)}
+header:has(img[src="/portal-brand.png.png?v=rifad-official-20261021"]){border-bottom:5px solid #ffbf12!important}
 header .text-emerald-100,aside .text-emerald-100{color:#dcecff!important}
 }
 
 /* Approved RIFAD banner: blue gradient, gold trim and flowing ribbon */
 @media screen {
-header:has(img[src="/portal-brand.svg"]){position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(110deg,#05285b 0%,#073d7a 56%,#1879bf 100%)!important;border-top:7px solid #ffcb35!important;border-bottom:3px solid #f6b913!important}
-header:has(img[src="/portal-brand.svg"])::before{content:"";position:absolute;z-index:-1;inset:auto -4% -35px -4%;height:70px;background:linear-gradient(90deg,#ffbb08,#ffdf53 40%,#ffb700);clip-path:polygon(0 35%,15% 6%,36% 72%,56% 77%,77% 24%,100% 65%,100% 100%,0 100%);opacity:.95;pointer-events:none}
-header:has(img[src="/portal-brand.svg"])::after{content:"";position:absolute;z-index:-1;inset:auto -4% -23px -4%;height:55px;background:linear-gradient(90deg,#168ee5,#0759aa 60%,#2e98e9);clip-path:polygon(0 45%,22% 12%,42% 78%,63% 58%,83% 18%,100% 45%,100% 100%,0 100%);pointer-events:none}
-header:has(img[src="/portal-brand.svg"]) img[src="/portal-brand.svg"]{background:white!important;border:0!important;border-radius:18px!important;padding:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+header:has(img[src="/portal-brand.png.png?v=rifad-official-20261021"]){position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(110deg,#05285b 0%,#073d7a 56%,#1879bf 100%)!important;border-top:7px solid #ffcb35!important;border-bottom:3px solid #f6b913!important}
+header:has(img[src="/portal-brand.png.png?v=rifad-official-20261021"])::before{content:"";position:absolute;z-index:-1;inset:auto -4% -35px -4%;height:70px;background:linear-gradient(90deg,#ffbb08,#ffdf53 40%,#ffb700);clip-path:polygon(0 35%,15% 6%,36% 72%,56% 77%,77% 24%,100% 65%,100% 100%,0 100%);opacity:.95;pointer-events:none}
+header:has(img[src="/portal-brand.png.png?v=rifad-official-20261021"])::after{content:"";position:absolute;z-index:-1;inset:auto -4% -23px -4%;height:55px;background:linear-gradient(90deg,#168ee5,#0759aa 60%,#2e98e9);clip-path:polygon(0 45%,22% 12%,42% 78%,63% 58%,83% 18%,100% 45%,100% 100%,0 100%);pointer-events:none}
+header:has(img[src="/portal-brand.png.png?v=rifad-official-20261021"]) img[src="/portal-brand.png.png?v=rifad-official-20261021"]{background:white!important;border:0!important;border-radius:18px!important;padding:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.15)}
 }
 
 /* RIFAD dashboard reference — visual components, RTL, responsiveness */
