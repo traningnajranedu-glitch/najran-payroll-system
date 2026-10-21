@@ -432,20 +432,20 @@ export default function Dashboard() {
 
 
   return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
-    <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#003d4d] to-[#062f40] text-white flex-col p-4">
-      <div className="py-5 px-2 border-b border-white/10"><div className="font-black text-lg">وزارة التعليم</div><div className="text-xs text-cyan-100 mt-2">التعليم المستمر · نجران</div></div>
+    <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#062c65] to-[#0b3d91] text-white flex-col p-4">
+      <div className="py-5 px-2 border-b border-white/10"><div className="font-black text-lg">وزارة التعليم</div><div className="text-xs text-blue-100 mt-2">التعليم المستمر · نجران</div></div>
       <nav className="py-5 space-y-2 text-sm font-bold">
         <a href="/dashboard" className="flex items-center gap-3 rounded-xl px-3 py-3 bg-white/10"><ClipboardList size={19}/> الصفحة الرئيسية</a>
         <a href="#activities" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><PartyPopper size={19}/> الأنشطة والاحتفالات</a>
         <a href="#employees" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><Users size={19}/> بيانات الموظفين</a>
         <a href="#payroll" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><FileText size={19}/> مسيرات الرواتب</a>
         <a href="/dashboard/indicators" className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-white/10"><BarChart3 size={19}/> مؤشرات الأداء</a>
-        <a href="/dashboard/profile" className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 bg-cyan-500/15 text-cyan-100"><span className="flex items-center gap-3"><UserRound size={19}/> الملف الشخصي</span><span className="text-[11px]">{profileCompletion}%</span></a>
+        <a href="/dashboard/profile" className="flex items-center justify-between gap-2 rounded-xl px-3 py-3 bg-cyan-500/15 text-blue-100"><span className="flex items-center gap-3"><UserRound size={19}/> الملف الشخصي</span><span className="text-[11px]">{profileCompletion}%</span></a>
       </nav>
       <button type="button" onClick={logout} aria-label="تسجيل الخروج" className="mt-auto flex gap-2 items-center justify-center border border-white/20 rounded-xl px-3 py-3"><LogOut size={18}/> تسجيل الخروج</button>
     </aside>
     <div className="lg:mr-[230px]">
-<header className="bg-[#003e34] text-white border-b-4 border-[#d7af62] print:hidden sticky top-0 z-30">
+<header className="bg-[#0b3d91] text-white border-b-4 border-[#fbbf24] print:hidden sticky top-0 z-30">
         <div className="w-full px-4 sm:px-5 lg:px-8 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3"><img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار البوابة" className="w-12 h-12 rounded-2xl border border-[#ffcb35]"/><div><div className="portal-title font-black text-base sm:text-lg">{school.school_name}</div><div className="text-sm text-emerald-100 mt-1">مرحباً بك في حساب المدرسة</div></div></div>
           <div className="flex items-center gap-2 sm:gap-3">
