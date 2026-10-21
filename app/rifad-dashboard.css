@@ -101,3 +101,17 @@ main{max-width:100%;overflow-x:clip}
 header{min-width:0}
 table{font-size:12px}
 }
+
+/* Design 2 login artwork and admin/school surfaces */
+@media screen {
+.rifad-login{background:radial-gradient(circle at 8% 10%,#d7eaff,transparent 40%),#edf5fd}
+.rifad-login-shell{border:1px solid #d9e8f8}
+.rifad-login-intro{background:linear-gradient(145deg,#fff 15%,#f4faff 55%,#d8ecff)}
+.rifad-login-wave{position:absolute;bottom:0;inset-inline:0;height:110px;background:linear-gradient(165deg,transparent 30%,#fbbf24 31%,#fbbf24 38%,#0b66bf 39%,#0b3d91 95%);clip-path:polygon(0 60%,35% 90%,70% 45%,100% 15%,100% 100%,0 100%)}
+.rifad-login-form{background:#fff}
+body:has(a[href="/admin"]) main,body:has(a[href="/dashboard"]) main{background:#f2f7fd}
+body:has(a[href="/admin"]) aside,body:has(a[href="/dashboard"]) aside{box-shadow:-4px 0 20px rgba(7,52,110,.07)}
+body:has(a[href="/admin"]) .card,body:has(a[href="/dashboard"]) .card{background:#fff;border:1px solid #dce7f5;border-radius:18px}
+body:has(a[href="/admin"]) h1,body:has(a[href="/dashboard"]) h1{letter-spacing:-.025em}
+}
+@media(max-width:1023px){.rifad-login-intro{min-height:260px}.rifad-login-wave{height:65px}}
