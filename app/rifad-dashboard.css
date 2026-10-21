@@ -63,3 +63,41 @@ header{box-shadow:0 8px 22px rgba(5,42,96,.10)}
 button:focus-visible,a:focus-visible{outline:3px solid #ffc329;outline-offset:3px}
 }
 @media(max-width:767px){main{padding-inline:10px!important}.card{padding:14px!important}table{font-size:12px}}
+
+
+/* RIFAD design 2 — consistent responsive RTL visual language */
+@media screen {
+:root{--rifad-navy:#0b3d91;--rifad-deep:#062d68;--rifad-blue:#1479df;--rifad-sky:#60a5fa;--rifad-gold:#fbbf24;--rifad-green:#10b981;--rifad-border:#dce7f5}
+html{scroll-behavior:smooth}
+body{background:#f2f7fc;color:#103566}
+main{min-width:0}
+header,nav,aside{font-family:inherit}
+header{border-top:3px solid var(--rifad-gold)!important}
+aside{border-inline-start:1px solid rgba(255,255,255,.12)}
+aside[class*="bg-"],nav[class*="bg-"]{background:linear-gradient(180deg,#062d68,#0b3d91)!important;color:white}
+aside a,aside button{transition:background .2s,color .2s,transform .2s;border-radius:12px}
+aside a:hover,aside button:hover{background:#1479df!important;color:white!important}
+aside svg,nav svg{flex-shrink:0}
+.card,.service-card,section[class*="rounded"],div[class*="rounded-xl"][class*="shadow"]{border-radius:18px;box-shadow:0 6px 24px rgba(6,45,104,.065)}
+.card,.service-card{border-color:var(--rifad-border)!important}
+.card:hover,.service-card:hover{box-shadow:0 10px 28px rgba(6,45,104,.10)}
+button[class*="bg-blue"],a[class*="bg-blue"],button[class*="bg-\[var(--navy)\]"]{background:linear-gradient(110deg,#0b60bd,#1688ed)!important;color:white!important}
+button[class*="bg-blue"]:hover,a[class*="bg-blue"]:hover{box-shadow:0 7px 18px rgba(20,121,223,.25)}
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{border-radius:11px;border-color:#d5e2f2;transition:border-color .2s,box-shadow .2s}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #60a5fa;outline-offset:1px}
+table{border-collapse:separate;border-spacing:0}
+thead{background:#e9f3ff;color:#0b3d91}
+tbody tr{transition:background-color .15s}
+tbody tr:hover{background:#f1f8ff}
+[class*="bg-green-50"],[class*="bg-emerald-50"]{background-color:#e9f9f2}
+[class*="bg-yellow-50"],[class*="bg-amber-50"]{background-color:#fff8e6}
+[class*="bg-red-50"]{background-color:#fff0f0}
+a:focus-visible,button:focus-visible{outline:3px solid #fbbf24;outline-offset:3px}
+img[src*="portal-brand.png.png"]{object-fit:contain}
+}
+@media screen and (max-width:768px){
+.card,.service-card{border-radius:14px!important}
+main{max-width:100%;overflow-x:clip}
+header{min-width:0}
+table{font-size:12px}
+}
