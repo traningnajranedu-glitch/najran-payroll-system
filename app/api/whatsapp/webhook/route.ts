@@ -1,3 +1,5 @@
+import {after} from 'next/server';
+import {itqanStatusPayload,forwardItqanStatuses} from '../../../../lib/itqan-whatsapp-status';
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -23,6 +25,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   }
   const body = JSON.parse(raw);
+  const itqan = itqanStatusPayload(body, process.env.WHATSAPP_PHONE_NUMBER_ID || '');
+  if (itqan) after(() => forwardItqanStatuses(itqan, secret));
   const client = createClient(url, key);
   for (const entry of body.entry || []) {
     for (const change of entry.changes || []) {

@@ -1,0 +1,7 @@
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {itqanStatusPayload,forwardItqanStatuses} from '../lib/itqan-whatsapp-status.ts';
+const own='11111111111',uuid='11111111-1111-4111-8111-111111111111',status={id:'wamid.local',status:'delivered',recipient_id:'966500000000',timestamp:'1234',biz_opaque_callback_data:uuid,errors:[{code:1,message:'omit this'}]};
+const body={entry:[{id:'account',changes:[{field:'messages',value:{metadata:{phone_number_id:own},messages:[{text:{body:'private inbound'}}],contacts:[{name:'private contact'}],statuses:[status,{id:'rifad-no-callback',status:'read'}]}},{field:'messages',value:{metadata:{phone_number_id:'other'},statuses:[status]}}]}]};
+const out=itqanStatusPayload(body,own);assert.equal(out.entry[0].changes[0].value.statuses.length,1);assert.equal(out.entry[0].changes.length,1);assert.equal(JSON.stringify(out).includes('private'),false);assert.equal(JSON.stringify(out).includes('omit this'),false);assert.equal(itqanStatusPayload({entry:[]},own),null);
+let calls=0;global.fetch=async(url,options)=>{calls++;assert.equal(url,'https://injaz-management.vercel.app/api/whatsapp/webhook');assert.equal(options.headers['x-hub-signature-256'],'sha256='+createHmac('sha256','fake-secret').update(options.body).digest('hex'));return {ok:calls===2}};await forwardItqanStatuses(out,'fake-secret');assert.equal(calls,2);console.log('PASS: 8 relay checks: original inbound/contact data excluded, unrelated statuses excluded, matching sender, payload signature, bounded retry. No real calls.');
