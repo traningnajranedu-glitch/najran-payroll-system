@@ -152,9 +152,9 @@ export default function AdminPage() {
       sb.from('school_activities').select('*').order('created_at',{ascending:false}),
       sb.from('school_activity_reports').select('*').order('created_at',{ascending:false}),
       sb.from('payroll_records').select('*'),
-      sb.from('school_madrasati_daily_indicators').select('id,school_id,indicator_date,updated_at').order('updated_at',{ascending:false}).limit(50)
+      sb.from('school_madrasati_daily_indicators').select('id,school_id,indicator_date,updated_at').order('updated_at',{ascending:false}).limit(1000)
     ]);
-    if(s.error||t.error||p.error)setError(s.error?.message||t.error?.message||p.error?.message||'تعذر تحميل البيانات');
+    if(s.error||t.error||p.error||acts.error||reps.error||allPayroll.error||mad.error)setError(s.error?.message||t.error?.message||p.error?.message||acts.error?.message||reps.error?.message||allPayroll.error?.message||mad.error?.message||'تعذر تحميل البيانات');
     const officialSchools = (s.data || []).filter(school => !school.is_test);
     const officialIds = new Set(officialSchools.map(school => school.id));
     setSchools(officialSchools);setTeachers((t.data||[]).filter(row=>officialIds.has(row.school_id)));setPeriods(p.data||[]);setActivities(acts.data||[]);setActivityReports((reps.data||[]).filter(row=>officialIds.has(row.school_id)));setAllRecords((allPayroll.data||[]).filter(row=>officialIds.has(row.school_id)));setMadrasatiDaily(((mad.data||[]) as MadrasatiDaily[]).filter(row=>officialIds.has(row.school_id)));
@@ -165,7 +165,14 @@ export default function AdminPage() {
   }
 
   async function loadRecords(){if(!periodId)return;let q=sb.from('payroll_records').select('*').eq('period_id',periodId);if(schoolId)q=q.eq('school_id',schoolId);const {data,error}=await q;if(error)setError(error.message);else setRecords((data||[]).filter(row=>schools.some(s=>s.id===row.school_id)))}
-  useEffect(()=>{load()},[]); useEffect(()=>{if(allowed)loadRecords()},[allowed,schoolId,periodId]);
+  useEffect(()=>{
+    load();
+    const refresh=()=>{if(document.visibilityState==='visible')load();};
+    const interval=window.setInterval(refresh,60000);
+    document.addEventListener('visibilitychange',refresh);
+    return ()=>{window.clearInterval(interval);document.removeEventListener('visibilitychange',refresh);};
+  },[]);
+  useEffect(()=>{if(allowed)loadRecords()},[allowed,schoolId,periodId]);
   async function logout(){await sb.auth.signOut();location.href='/'}
 
   async function saveAdminSignature(){
