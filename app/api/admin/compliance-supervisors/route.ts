@@ -2,6 +2,10 @@ import {NextRequest,NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
 import {randomBytes} from 'node:crypto';
 export const runtime='nodejs';
+const arabicLetters:Record<string,string>={ا:'a',أ:'a',إ:'i',آ:'a',ب:'b',ت:'t',ث:'th',ج:'j',ح:'h',خ:'kh',د:'d',ذ:'dh',ر:'r',ز:'z',س:'s',ش:'sh',ص:'s',ض:'d',ط:'t',ظ:'z',ع:'a',غ:'gh',ف:'f',ق:'q',ك:'k',ل:'l',م:'m',ن:'n',ه:'h',ة:'h',و:'w',ؤ:'w',ي:'y',ى:'a',ئ:'y',ء:'',پ:'p',ڤ:'v',چ:'ch',گ:'g'};
+function transliterate(part:string){return [...part.normalize('NFKD').replace(/[\u064b-\u065f\u0670\u0640]/g,'')].map(ch=>arabicLetters[ch]??ch).join('').toLowerCase().replace(/[^a-z]/g,'');}
+function supervisorUsername(name:string){const parts=name.trim().split(/\s+/);const first=transliterate(parts[0]);const last=parts.length>1?transliterate(parts[parts.length-1]):'';return first&&last?first+'.'+last:'';}
+
 export async function POST(request:NextRequest){
  try{
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,7 +27,11 @@ export async function POST(request:NextRequest){
  const normalized=phone.startsWith('966')?phone:phone.startsWith('0')?'966'+phone.slice(1):'966'+phone;
  const {data:exists}=await service.from('compliance_supervisors').select('id').eq('phone',normalized).limit(1);
  if(exists?.length)return NextResponse.json({error:'هذا الجوال مسجل لمشرف سابق'},{status:409});
- const username='sup'+randomBytes(5).toString('hex');
+ const username=supervisorUsername(name);
+ if(!username)return NextResponse.json({error:'أدخل الاسم الأول واسم العائلة لتوليد اسم المستخدم بالإنجليزية'},{status:400});
+ const {data:existingUsers,error:listError}=await service.auth.admin.listUsers({page:1,perPage:1000});
+ if(listError)return NextResponse.json({error:'تعذر التحقق من تكرار اسم المستخدم'},{status:500});
+ if(existingUsers.users.some(u=>u.email?.toLowerCase()===username+'@schools.ceedu.local'))return NextResponse.json({error:'اسم المستخدم موجود مسبقًا، يرجى مراجعة اسم المشرف'},{status:409});
  const password=randomBytes(18).toString('base64url')+'A7!';
  const email=username+'@schools.ceedu.local';
  const {data:created,error:createError}=await service.auth.admin.createUser({email,password,email_confirm:true,app_metadata:{rifad_role:'compliance_supervisor'},user_metadata:{full_name:name}});
