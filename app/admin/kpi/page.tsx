@@ -13,7 +13,7 @@ import {currentAcademicYear} from '../../../lib/achievement';
 import {indicatorWeek, madrasatiMean, absenceSummary, validAbsence, type WeeklyAbsence} from '../../../lib/weekly-indicators';
 import { supabaseBrowser } from '../../../lib/supabase';
 
-type School={id:string;school_code:string;school_name:string;is_active:boolean};
+type School={id:string;school_code:string;school_name:string;is_active:boolean;is_test:boolean};
 type Teacher={id:string;school_id:string;is_active:boolean};
 type Activity={id:string;name:string;is_active:boolean};
 type Report={id:string;activity_id:string;school_id:string;rating:number|null;status:string};
@@ -78,7 +78,7 @@ export default function KpiDashboard(){
     const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
     if(!admin){setError('غير مصرح بالدخول إلى مؤشرات الأداء.');setLoading(false);return;}
     const [s,t,a,r,e,m,c,p,pr,sp,d]=await Promise.all([
-      sb.from('schools').select('id,school_code,school_name,is_active').order('school_name'),
+      sb.from('schools').select('id,school_code,school_name,is_active,is_test').eq('is_active',true).eq('is_test',false).order('school_name'),
       sb.from('teachers').select('id,school_id,is_active'),
       sb.from('school_activities').select('id,name,is_active'),
       sb.from('school_activity_reports').select('id,activity_id,school_id,rating,status'),
@@ -93,11 +93,13 @@ export default function KpiDashboard(){
     if(sequence!==loadSequence.current)return;
     const first=s.error||t.error||a.error||r.error||e.error||m.error||c.error||p.error||pr.error||sp.error||d.error;
     if(first){setError(first.message);setLoading(false);return;}
-    setSchools(s.data||[]);setDiscipline((d.data||[]) as WeeklyAbsence[]);setCurrentDate(new Date());
+    const officialSchools=(s.data||[]).filter(school=>school.is_active&&!school.is_test&&school.school_name.trim()!=='اختبار');
+    const officialIds=new Set(officialSchools.map(school=>school.id));
+    setSchools(officialSchools);setDiscipline(((d.data||[]) as WeeklyAbsence[]).filter(x=>officialIds.has(x.school_id)));setCurrentDate(new Date());
     const monthStart=new Date().toISOString().slice(0,7)+'-01';
     const {data:competitionData}=await sb.rpc('school_competition_scores',{p_month:monthStart});
     if(sequence!==loadSequence.current)return;
-    setCompetition((competitionData||[]) as CompetitionScore[]);setMadrasati((m.data||[]) as MadrasatiDaily[]);setTeachers(t.data||[]);setActivities(a.data||[]);setReports(r.data||[]);setPeriods((p.data||[]) as Period[]);setPayroll((pr.data||[]) as PayrollRecord[]);setProfiles((sp.data||[]) as SchoolProfile[]);setAchievements((e.data||[]).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
+    setCompetition(((competitionData||[]) as CompetitionScore[]).filter(x=>officialIds.has(x.school_id)));setMadrasati(((m.data||[]) as MadrasatiDaily[]).filter(x=>officialIds.has(x.school_id)));setTeachers((t.data||[]).filter(x=>officialIds.has(x.school_id)));setActivities(a.data||[]);setReports((r.data||[]).filter(x=>officialIds.has(x.school_id)));setPeriods((p.data||[]) as Period[]);setPayroll(((pr.data||[]) as PayrollRecord[]).filter(x=>officialIds.has(x.school_id)));setProfiles(((sp.data||[]) as SchoolProfile[]).filter(x=>officialIds.has(x.school_id)));setAchievements((e.data||[]).filter(x=>officialIds.has(x.school_id)).map(x=>({...x,id:x.school_id,target_percent:Number(c.data?.target_percent??85),notes:null})));
     setLoading(false);
   }
   useEffect(()=>{load()},[]);
@@ -135,7 +137,7 @@ export default function KpiDashboard(){
   const recentActivities=activeActivities.slice(0,3);
   const latestPeriod=periods[0]||null;
   const latestPayroll=latestPeriod?payroll.filter(x=>x.period_id===latestPeriod.id):[];
-  const approvedSchoolIds=new Set(latestPayroll.filter(x=>x.status==='تم الاعتماد'||x.approved_at).map(x=>x.school_id));
+  const approvedSchoolIds=new Set(latestPayroll.filter(x=>(x.status==='تم الاعتماد'||x.approved_at)&&activeSchools.some(s=>s.id===x.school_id)).map(x=>x.school_id));
   const approvedSchools=approvedSchoolIds.size;
   const pendingSchools=Math.max(0,activeSchools.length-approvedSchools);
   const indicatorSchools=selectedSchool==='all'?activeSchools:activeSchools.filter(s=>s.id===selectedSchool);
