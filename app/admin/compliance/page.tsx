@@ -1,0 +1,62 @@
+'use client';
+import {useEffect,useMemo,useState} from 'react';
+import Link from 'next/link';
+import {supabaseBrowser} from '../../../lib/supabase';
+import {ShieldCheck,School,CalendarDays,ClipboardCheck,CheckCircle2,ArrowLeft,ArrowRight,Activity,LockKeyhole,Volume2,VolumeX} from 'lucide-react';
+
+type SchoolRow={id:string;school_name:string;manager_name?:string|null;is_active:boolean;is_test?:boolean};
+type Profile={school_id:string;stage?:string|null;gender?:string|null;manager_phone?:string|null;principal_phone?:string|null};
+const initialTitles=['التخطيط والتنفيذ','الانضباط المدرسي','توثيق الأعمال والشواهد','تفعيل المنصات التعليمية','البيئة التعليمية','سلامة الإجراءات','متابعة الأداء','التواصل والشراكة','التحسين المستمر'];
+const steps=['بيانات المدرسة','بيانات الزيارة','تقييم المؤشرات','المراجعة والتأكيد'];
+export default function CompliancePage(){
+ const [schools,setSchools]=useState<SchoolRow[]>([]);
+ const [profiles,setProfiles]=useState<Profile[]>([]);
+ const [selected,setSelected]=useState('');
+ const [step,setStep]=useState(0);
+ const [type,setType]=useState<'حضوري'|'عن بعد'>('حضوري');
+ const [date,setDate]=useState(new Date().toISOString().slice(0,10));
+ const [notes,setNotes]=useState('');
+ const [titles,setTitles]=useState(initialTitles);
+ const [scores,setScores]=useState<(number|null)[]>(Array(9).fill(null));
+ const [busy,setBusy]=useState(true);
+ const [error,setError]=useState('');
+ const [sound,setSound]=useState(false);
+ const [isAdmin,setIsAdmin]=useState(false);
+ const [editing,setEditing]=useState(false);
+ const school=schools.find(s=>s.id===selected);
+ const profile=profiles.find(p=>p.school_id===selected);
+ const completed=scores.filter(v=>v!==null).length;
+ const average=completed===9?scores.reduce<number>((a,b)=>a+(b??0),0)/9:null;
+ useEffect(()=>{let active=true;(async()=>{try{
+  const sb=supabaseBrowser();const {data:{user}}=await sb.auth.getUser();if(!user){location.href='/';return;}
+  const {data:admin}=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
+  if(!admin){setError('هذه نسخة إعداد مدير النظام. حسابات المشرفين وإسناد المدارس ستُفعّل بعد تجهيز صلاحيات قاعدة البيانات.');return;}
+  if(!active)return;setIsAdmin(true);
+  const [a,b]=await Promise.all([sb.from('schools').select('id,school_name,manager_name,is_active,is_test').eq('is_active',true).eq('is_test',false).order('school_name'),sb.from('school_profiles').select('*')]);
+  if(a.error)throw a.error;
+  if(active){setSchools(a.data||[]);setProfiles((b.data||[]) as Profile[]);if(b.error)setError('تعذر قراءة بعض بيانات ملفات المدارس: '+b.error.message);}
+ }catch(e){if(active)setError(String(e));}finally{if(active)setBusy(false);}})();return()=>{active=false;};},[]);
+ const play=()=>{if(!sound||typeof window==='undefined')return;try{const AC=window.AudioContext;if(!AC)return;const ctx=new AC();const osc=ctx.createOscillator(),gain=ctx.createGain();osc.type='sine';osc.frequency.value=740;gain.gain.setValueAtTime(.035,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.12);osc.connect(gain).connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.12);osc.onended=()=>void ctx.close();}catch{}};
+ const next=()=>{play();setStep(s=>Math.min(3,s+1));};
+ const prev=()=>{play();setStep(s=>Math.max(0,s-1));};
+ const valid=step===0?!!selected:step===1?!!date:step===2?completed===9:true;
+ return <main dir="rtl" className="min-h-screen bg-gradient-to-br from-[#eaf4ff] via-white to-[#f4f9ff] p-4 md:p-8 text-[#123557]">
+ <style>{`@keyframes complianceGlow{0%,100%{box-shadow:0 0 12px #2b86e322}50%{box-shadow:0 0 28px #1678df66}}@keyframes complianceFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}@media(prefers-reduced-motion:reduce){.compliance-motion{animation:none!important;transition:none!important}}`}</style>
+ <div className="mx-auto max-w-6xl space-y-6">
+ <header className="relative overflow-hidden rounded-[30px] bg-gradient-to-l from-[#063a82] via-[#0a65bc] to-[#087fbd] p-6 md:p-9 text-white shadow-2xl">
+ <div className="absolute -left-16 -top-20 h-64 w-64 rounded-full bg-[#ffc226]/20 blur-3xl"/>
+ <div className="relative flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-blue-100">بوابة رفاد | مدارس التعليم المستمر</p><h1 className="mt-2 flex items-center gap-3 text-2xl md:text-4xl font-black"><ShieldCheck className="text-[#ffc226]" size={38}/> مؤشر الالتزام والامتثال</h1><p className="mt-3 text-blue-100">زيارات إشرافية • تقييم تسعة مؤشرات • مسار اعتماد موثق</p></div><div className="flex gap-2"><button type="button" onClick={()=>setSound(v=>!v)} className="rounded-xl border border-white/40 bg-white/10 p-3" aria-label="تبديل صوت التفاعل">{sound?<Volume2/>:<VolumeX/>}</button><Link href="/admin" className="rounded-xl bg-white px-4 py-3 font-bold text-[#0b4b92]">لوحة المدير</Link></div></div>
+ </header>
+ {error&&<div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">{error}</div>}
+ <div className="rounded-2xl border border-blue-200 bg-white p-4 text-sm text-[#315579]"><LockKeyhole className="inline ml-2" size={17}/>واجهة إعداد وتجربة مرتبطة ببيانات المدارس الحقيقية. إرسال الزيارات، حسابات المشرفين، الإسناد والاعتماد النهائي غير مفعّلة حتى تجهيز قاعدة البيانات وسياسات الصلاحيات.</div>
+ <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{steps.map((label,i)=><div key={label} className={`rounded-2xl border p-3 text-center transition-all duration-500 ${i===step?'border-[#ffc226] bg-[#0b59a9] text-white shadow-lg':'border-blue-100 bg-white text-[#23558a]'}`}><span className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#ffc226] font-black text-[#123557]">{i+1}</span><b className="text-sm">{label}</b></div>)}</div>
+ {busy?<div className="rounded-3xl bg-white p-12 text-center">جارٍ تحميل المدارس...</div>:isAdmin?<section className="rounded-[28px] border border-blue-100 bg-white p-5 md:p-8 shadow-[0_16px_40px_#09549a18] compliance-motion" style={{animation:'complianceGlow 4s ease-in-out infinite'}}>
+ {step===0&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><School/> بيانات المدرسة</h2><p className="text-slate-500">الحقول مستوردة من بيانات المدرسة ومقفلة ضد التعديل.</p><label className="block font-bold">اختر المدرسة<select className="mt-2 w-full rounded-xl border border-blue-200 bg-[#f4f9ff] p-4" value={selected} onChange={e=>{setSelected(e.target.value);setScores(Array(9).fill(null));}}><option value="">اختر مدرسة...</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></label><div className="grid gap-3 md:grid-cols-2">{[['اسم المدرسة',school?.school_name],['المرحلة',profile?.stage],['الجنس',profile?.gender],['مدير المدرسة',school?.manager_name],['جوال المدير',profile?.manager_phone||profile?.principal_phone]].map(([label,value])=><div key={label} className="rounded-xl border border-blue-100 bg-slate-50 p-4"><div className="text-xs text-slate-500">{label} 🔒</div><div className="mt-2 font-bold">{value||'غير متوفر في بيانات المدرسة'}</div></div>)}</div></div>}
+ {step===1&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><CalendarDays/> بيانات الزيارة</h2><div className="grid gap-3 md:grid-cols-2">{(['حضوري','عن بعد'] as const).map(v=><button key={v} type="button" onClick={()=>{setType(v);play();}} className={`rounded-2xl border-2 p-6 text-xl font-bold transition-all ${type===v?'border-[#ffc226] bg-blue-700 text-white shadow-lg':'border-blue-100 bg-blue-50'}`}>{v==='حضوري'?'🏫':'💻'} {v}</button>)}</div><label className="block font-bold">تاريخ الزيارة<input type="date" value={date} onChange={e=>setDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-blue-200 p-4"/></label><label className="block font-bold">ملاحظات الزيارة<textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} className="mt-2 block w-full rounded-xl border border-blue-200 p-4" placeholder="ملاحظات المشرف والشواهد"/></label></div>}
+ {step===2&&<div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><ClipboardCheck/> تقييم المؤشرات التسعة</h2><button onClick={()=>setEditing(v=>!v)} className="rounded-xl border border-blue-200 px-4 py-2 text-sm font-bold">{editing?'إغلاق تحرير المسميات':'تحرير المسميات (معاينة فقط)'}</button></div><p className="text-sm text-slate-500">المسميات الحالية مقترحة لحين اعتماد المؤشرات التسعة من مدير النظام. الدرجات من 0 إلى 100؛ عدم الإدخال لا يُحسب صفرًا.</p><div className="grid gap-4 md:grid-cols-2">{titles.map((title,i)=><div key={i} className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-[#f1f8ff] p-4 transition-all hover:shadow-lg"><div className="flex items-center justify-between gap-2"><span className="font-black text-[#0b448d]">{i+1}. {title}</span><b className="rounded-lg bg-[#e0f2ff] px-3 py-2 text-xl text-[#084b94]">{scores[i]===null?'—':scores[i]+'%'}</b></div>{editing&&<input value={title} onChange={e=>setTitles(old=>old.map((x,j)=>j===i?e.target.value:x))} className="mt-3 w-full rounded-lg border p-2" aria-label={'اسم المؤشر '+(i+1)}/>}<input aria-label={'درجة '+title} type="range" min="0" max="100" value={scores[i]??0} onChange={e=>setScores(old=>old.map((v,j)=>j===i?Number(e.target.value):v))} className="mt-5 w-full accent-[#0875d5]"/><div className="flex items-center gap-2"><input aria-label={'إدخال الدرجة الرقمية '+title} type="number" min="0" max="100" value={scores[i]??''} placeholder="الدرجة" onChange={e=>{const n=e.target.value;setScores(old=>old.map((v,j)=>j===i?(n===''?null:Math.max(0,Math.min(100,Number(n)))):v));}} className="w-24 rounded-lg border border-blue-200 p-2"/><span className="text-xs text-slate-500">من 100</span></div></div>)}</div><div className="rounded-xl bg-blue-50 p-4 font-bold">تم تقييم {completed} من 9 مؤشرات {average!==null&&'— المتوسط: '+average.toFixed(1)+'%'}</div></div>}
+ {step===3&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><CheckCircle2/> مراجعة مراحل التقييم</h2><div className="grid gap-3 md:grid-cols-2">{[['المدرسة',school?.school_name],['المرحلة والجنس',[profile?.stage,profile?.gender].filter(Boolean).join(' — ')],['نوع الزيارة',type],['التاريخ',date],['عدد المؤشرات',completed+'/9'],['المتوسط',average===null?'غير مكتمل':average.toFixed(1)+'%']].map(([label,value])=><div key={label} className="rounded-xl border bg-[#f6faff] p-4"><span className="text-sm text-slate-500">{label}</span><p className="mt-1 font-black">{value||'غير متوفر'}</p></div>)}</div><div className="grid gap-2">{titles.map((t,i)=><div key={i} className="flex justify-between rounded-xl bg-blue-50 p-3"><span>{t}</span><b>{scores[i]===null?'—':scores[i]+'%'}</b></div>)}</div><div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">النتيجة قيد المعاينة فقط. إرسالها إلى مدير النظام للاعتماد يتطلب تفعيل حسابات المشرفين وجداول الزيارات ومسار الموافقة.</div><button type="button" disabled className="w-full cursor-not-allowed rounded-xl bg-slate-300 p-4 font-bold text-slate-600">إرسال التقييم للاعتماد — بانتظار تفعيل الخدمة</button></div>}
+ <div className="mt-8 flex items-center justify-between border-t pt-5"><button type="button" onClick={prev} disabled={step===0} className="flex items-center gap-2 rounded-xl border px-5 py-3 disabled:opacity-40"><ArrowRight/> السابق</button>{step<3&&<button type="button" disabled={!valid} onClick={next} className="flex items-center gap-2 rounded-xl bg-[#075eb7] px-6 py-3 font-black text-white shadow-lg transition-all hover:bg-[#08488c] disabled:opacity-40">التالي <ArrowLeft/></button>}</div>
+ </section>:null}
+ <footer className="text-center text-xs text-slate-500">رفاد • مؤشر الالتزام والامتثال • واجهة أولية، غير معتمدة للإرسال</footer>
+ </div></main>;
+}
