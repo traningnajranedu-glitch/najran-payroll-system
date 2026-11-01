@@ -160,11 +160,14 @@ export default function MadrasatiImported(){
  {chartError&&<p className="rounded-xl bg-rose-50 text-rose-700 p-3">تعذر تحميل التحليل: {chartError}</p>}
  {!analytics.series.length?<div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">لا توجد نتائج منشورة لهذا الاختيار. تظهر الرسوم بعد اعتماد بيانات الأسابيع.</div>:<>
  <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr_1fr] items-stretch">
- <article className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50 to-white p-5 shadow-sm">
- <h3 className="font-black text-[#083e75] text-lg mb-4">🏆 المدارس الأعلى تفاعلًا</h3>
- {analytics.scores.slice(0,5).map((school,i)=><button type="button" key={school.id} onClick={()=>setChartSchool(school.id)} className="w-full text-right py-3 border-b border-emerald-100 last:border-0 group hover:bg-emerald-50 rounded-lg transition-colors">
- <div className="flex items-center gap-2 justify-between text-sm"><span className="font-bold truncate">{i+1}. {school.name}</span><b className="text-emerald-700">{school.value.toFixed(1)}%</b></div>
- <div className="mt-2 h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-l from-emerald-600 to-teal-400 rounded-full transition-all duration-1000 group-hover:brightness-110" style={{width:school.value+'%'}}/></div></button>)}
+ <article className="relative overflow-hidden rounded-[30px] border border-sky-200 bg-gradient-to-b from-[#f8fcff] via-[#eaf6ff] to-[#f3f9ff] p-4 sm:p-5 shadow-[0_12px_30px_rgba(12,91,171,.14)]">
+ <div className="absolute -top-16 -left-12 h-40 w-40 rounded-full bg-cyan-200/30 blur-3xl pointer-events-none"/>
+ <h3 className="relative font-black text-[#093b85] text-lg mb-2 text-center">🏆 المدارس الأعلى تفاعلًا</h3>
+ <div className="mx-auto mb-4 h-1 w-32 rounded-full bg-gradient-to-l from-[#ffc226] via-[#77b9f2] to-transparent"/>
+ <div className="relative space-y-3">{analytics.scores.slice(0,5).map((school,i)=><button type="button" key={school.id} onClick={()=>setChartSchool(school.id)} className="group w-full rounded-2xl border border-white bg-gradient-to-l from-white via-[#f3f9ff] to-[#e5f3ff] p-3 text-right shadow-[0_4px_13px_rgba(12,105,184,.12)] ring-1 ring-sky-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_9px_24px_rgba(0,127,196,.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+ <div className="flex items-center gap-2 justify-between text-xs sm:text-sm"><span className="flex min-w-0 items-center gap-2"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-black ${i===0?'border-amber-400 bg-gradient-to-br from-amber-100 to-amber-400 text-amber-950':i===1?'border-sky-300 bg-gradient-to-br from-white to-slate-300 text-slate-700':i===2?'border-orange-300 bg-gradient-to-br from-orange-100 to-orange-300 text-orange-900':'border-sky-200 bg-sky-50 text-sky-800'}`}>{i+1}</span><span className="truncate font-extrabold text-[#102f56]" title={school.name}>{school.name}</span></span><b className="shrink-0 rounded-full bg-gradient-to-r from-[#07649e] to-[#008b92] px-2.5 py-1.5 text-white shadow-sm tabular-nums">{school.value.toFixed(1)}%</b></div>
+ <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#d7eafa]"><div className="h-full rounded-full bg-gradient-to-l from-[#0ba766] via-[#00caa0] to-[#30e3b4] shadow-[0_0_9px_rgba(0,199,157,.5)] transition-all duration-1000 group-hover:brightness-110" style={{width:Math.max(0,Math.min(100,school.value))+'%'}}/></div>
+ </button>)}</div>
  </article>
  <article className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-b from-[#eef7ff] via-white to-[#f5f8ff] p-5 text-center shadow-[0_12px_35px_rgba(20,100,200,.12)]">
  <h3 className="text-lg font-black text-[#0b3d91]">مؤشر التفاعل العام</h3>
