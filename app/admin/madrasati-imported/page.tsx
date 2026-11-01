@@ -66,7 +66,7 @@ export default function MadrasatiImported(){
  const [weekStart,setWeekStart]=useState(()=>indicatorWeek().start);
  const [published,setPublished]=useState(false);
  const [busy,setBusy]=useState(false);
- useEffect(()=>{void(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user)return;const a=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();if(!a.data)return;setAllowed(true);const r=await sb.from('schools').select('id,school_name').eq('is_active',true);if(r.error)setMessage(r.error.message);else setSchools(r.data||[]);})();},[sb]);
+ useEffect(()=>{void(async()=>{const {data:{user}}=await sb.auth.getUser();if(!user)return;const a=await sb.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();if(!a.data)return;setAllowed(true);const r=await sb.from('schools').select('id,school_name').eq('is_active',true).eq('is_test',false);if(r.error)setMessage(r.error.message);else setSchools(r.data||[]);})();},[sb]);
  useEffect(()=>{void(async()=>{if(!allowed)return;const r=await sb.from('madrasati_weekly_publications').select('status').eq('week_start',weekStart).maybeSingle();if(r.error)setMessage(r.error.message);setPublished(r.data?.status==='published');})();},[sb,allowed,weekStart]);
  const [history,setHistory]=useState<{week:string;schoolId:string;indicator:number;value:number}[]>([]);
  const [chartSchool,setChartSchool]=useState('');
@@ -151,6 +151,30 @@ export default function MadrasatiImported(){
  <div className="flex flex-wrap items-center justify-between gap-4"><div><div className="text-xs font-black tracking-wider text-blue-600 mb-1">RIFAD ANALYTICS</div><h2 className="text-2xl font-black text-[#0b3d91]">لوحة التحليل والمقارنة بين المدارس</h2><p className="text-sm text-slate-500 mt-2">خمسة رسوم تفاعلية لقياس الأداء والتطور الأسبوعي والتميز المدرسي من البيانات المعتمدة</p></div><div className="flex flex-wrap gap-2"><select aria-label="فلتر المدرسة للرسوم" className="rounded-xl border border-blue-200 bg-white p-3 text-sm shadow-sm" value={chartSchool} onChange={e=>setChartSchool(e.target.value)}><option value="">جميع المدارس</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select><select aria-label="فلتر المؤشر للرسوم" className="rounded-xl border border-blue-200 bg-white p-3 text-sm shadow-sm" value={chartIndicator} onChange={e=>setChartIndicator(e.target.value)}><option value="all">جميع المؤشرات</option>{titles.map((t,i)=><option key={t} value={String(i+1)}>{t}</option>)}</select></div></div>
  {chartError&&<p className="rounded-xl bg-rose-50 text-rose-700 p-3">تعذر تحميل التحليل: {chartError}</p>}
  {!analytics.series.length?<div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">لا توجد نتائج منشورة لهذا الاختيار. تظهر الرسوم بعد اعتماد بيانات الأسابيع.</div>:<>
+ <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr_1fr] items-stretch">
+ <article className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50 to-white p-5 shadow-sm">
+ <h3 className="font-black text-[#083e75] text-lg mb-4">🏆 المدارس الأعلى تفاعلًا</h3>
+ {analytics.scores.slice(0,5).map((school,i)=><button type="button" key={school.id} onClick={()=>setChartSchool(school.id)} className="w-full text-right py-3 border-b border-emerald-100 last:border-0 group hover:bg-emerald-50 rounded-lg transition-colors">
+ <div className="flex items-center gap-2 justify-between text-sm"><span className="font-bold truncate">{i+1}. {school.name}</span><b className="text-emerald-700">{school.value.toFixed(1)}%</b></div>
+ <div className="mt-2 h-2 bg-emerald-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-l from-emerald-600 to-teal-400 rounded-full transition-all duration-1000 group-hover:brightness-110" style={{width:school.value+'%'}}/></div></button>)}
+ </article>
+ <article className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-b from-[#eef7ff] via-white to-[#f5f8ff] p-5 text-center shadow-[0_12px_35px_rgba(20,100,200,.12)]">
+ <h3 className="text-lg font-black text-[#0b3d91]">مؤشر التفاعل العام</h3>
+ <p className="text-xs text-slate-500 mt-1">آخر أسبوع منشور: {analytics.last}</p>
+ <div className="relative mx-auto my-5 w-56 h-56 max-w-full aspect-square rounded-full p-4 shadow-[0_0_35px_rgba(23,105,215,.18)]" style={{background:'conic-gradient(#ffc226 0%,#0c6dd1 '+(analytics.scores.reduce((a,b)=>a+b.value,0)/Math.max(analytics.scores.length,1))+'%,#e4ebf7 0%)'}}>
+ <div className="w-full h-full rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
+ <span className="text-xs font-bold text-slate-500">متوسط المدارس المقاسة</span>
+ <strong className="text-5xl font-black text-[#0b3d91] tabular-nums">{(analytics.scores.reduce((a,b)=>a+b.value,0)/Math.max(analytics.scores.length,1)).toFixed(1)}%</strong>
+ <span className="text-xs text-slate-500 mt-2">{analytics.scores.length} مدرسة</span>
+ </div></div>
+ <div className="flex justify-center gap-3 text-xs font-bold text-[#0b3d91]"><span className="rounded-full bg-blue-100 px-3 py-2">مباشر من الأسابيع المنشورة</span><span className="rounded-full bg-amber-100 px-3 py-2">هوية رفاد</span></div>
+ </article>
+ <article className="rounded-3xl border border-rose-100 bg-gradient-to-b from-rose-50 to-white p-5 shadow-sm">
+ <h3 className="font-black text-[#083e75] text-lg mb-4">📉 المدارس الأقل تفاعلًا</h3>
+ {[...analytics.scores].reverse().slice(0,5).map((school,i)=><button type="button" key={school.id} onClick={()=>setChartSchool(school.id)} className="w-full text-right py-3 border-b border-rose-100 last:border-0 group hover:bg-rose-50 rounded-lg transition-colors">
+ <div className="flex items-center gap-2 justify-between text-sm"><span className="font-bold truncate">{i+1}. {school.name}</span><b className="text-rose-700">{school.value.toFixed(1)}%</b></div>
+ <div className="mt-2 h-2 bg-rose-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-l from-rose-500 to-orange-300 rounded-full transition-all duration-1000 group-hover:brightness-110" style={{width:school.value+'%'}}/></div></button>)}
+ </article></div>
  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[
  {label:'المدارس المقاسة',value:String(analytics.scores.length),unit:'مدرسة',color:'text-blue-700'},
  {label:'متوسط الأداء الحالي',value:(analytics.scores.reduce((a,b)=>a+b.value,0)/Math.max(analytics.scores.length,1)).toFixed(1),unit:'%',color:'text-[#0b3d91]'},
