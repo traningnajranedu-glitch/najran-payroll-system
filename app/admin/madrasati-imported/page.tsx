@@ -82,6 +82,14 @@ export default function MadrasatiImported(){
   const values=(result.data||[]).flatMap(r=>{const nums=Object.values((r.metrics||{}) as Record<string,unknown>).map(v=>Number(v)).filter(v=>Number.isFinite(v)&&v>=0&&v<=100);return nums.length?[{week:byId.get(r.publication_id)||'',schoolId:r.school_id,indicator:Number(r.indicator_key),value:nums.reduce((a,b)=>a+b,0)/nums.length}]:[];});
   if(active){setHistory(values);setChartError('');}
  })();return()=>{active=false};},[allowed,sb,published]);
+ const indicatorBreakdown=useMemo(()=>{
+  const latest=[...new Set(history.map(r=>r.week))].sort().at(-1);
+  return titles.map((title,i)=>{
+   const relevant=history.filter(r=>r.week===latest&&r.indicator===i+1);
+   const entries=schools.map(s=>{const values=relevant.filter(r=>r.schoolId===s.id).map(r=>r.value);return {id:s.id,name:s.school_name,value:values.length?values.reduce((a,b)=>a+b,0)/values.length:null};}).filter((v):v is {id:string;name:string;value:number}=>v.value!==null).sort((a,b)=>b.value-a.value);
+   return {title,index:i+1,entries,average:entries.length?entries.reduce((a,b)=>a+b.value,0)/entries.length:null};
+  });
+ },[history,schools]);
  const analytics=useMemo(()=>{
   const rows=history.filter(r=>(!chartSchool||r.schoolId===chartSchool)&&(chartIndicator==='all'||r.indicator===Number(chartIndicator)));
   const weeks=[...new Set(rows.map(r=>r.week))].sort();
@@ -182,7 +190,7 @@ export default function MadrasatiImported(){
  {label:'متوسط الأداء الحالي',value:Number((analytics.scores.reduce((a,b)=>a+b.value,0)/Math.max(analytics.scores.length,1)).toFixed(1)),unit:'%',percent:analytics.scores.reduce((a,b)=>a+b.value,0)/Math.max(analytics.scores.length,1),color:'#0757b8',icon:'✦'},
  {label:'المدارس عالية الأداء',value:analytics.bands[0].count,unit:'مدرسة',percent:analytics.scores.length?analytics.bands[0].count/analytics.scores.length*100:0,color:'#11a77b',icon:'★'},
  {label:'المدارس المتحسنة',value:analytics.changes.filter(s=>(s.change??0)>0).length,unit:'مدرسة',percent:analytics.changes.length?analytics.changes.filter(s=>(s.change??0)>0).length/analytics.changes.length*100:0,color:'#f4a900',icon:'↗'}
- ].map((k,i)=><div key={k.label} className="rifad-orbit relative overflow-hidden rounded-[28px] border border-blue-100 bg-gradient-to-b from-white via-[#f5faff] to-[#eaf4ff] p-4 text-center shadow-[0_10px_28px_rgba(8,58,130,.10)] hover:shadow-[0_12px_38px_rgba(8,88,190,.22)] transition-all duration-500 hover:-translate-y-1" style={{animation:'rifadFloat 5s ease-in-out infinite',animationDelay:(i*.45)+'s'}}>
+ ].map((k,i)=><div key={k.label} tabIndex={0} className="rifad-orbit group relative overflow-hidden rounded-[28px] border border-blue-100 bg-gradient-to-b from-white via-[#f5faff] to-[#eaf4ff] p-4 text-center shadow-[0_10px_28px_rgba(8,58,130,.10)] hover:shadow-[0_12px_38px_rgba(8,88,190,.22)] transition-all duration-500 hover:-translate-y-1" style={{animation:'rifadFloat 5s ease-in-out infinite',animationDelay:(i*.45)+'s'}}>
  <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-blue-200/20 blur-2xl pointer-events-none"/>
  <div className="font-bold text-xs md:text-sm text-[#0b3d91] min-h-9">{k.label}</div>
  <div className="relative mx-auto my-2 w-32 h-32 sm:w-40 sm:h-40">
@@ -194,7 +202,24 @@ export default function MadrasatiImported(){
  <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-lg" style={{color:k.color}}>{k.icon}</span><strong className="text-3xl sm:text-4xl font-black tabular-nums text-[#093b85]">{k.value}</strong><span className="text-xs font-bold text-slate-500">{k.unit}</span></div>
  </div>
  <div className="text-[11px] text-slate-500">نسبة المؤشر {k.percent.toFixed(1)}%</div>
+ {(i===2||i===3)&&<div className="absolute z-30 inset-x-2 top-10 rounded-2xl border border-blue-200 bg-white/95 backdrop-blur-lg p-3 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-300 text-right max-h-64 overflow-y-auto">
+ <div className="text-sm font-black text-[#093b85] mb-2">{i===2?'المدارس عالية الأداء (80% فأكثر)':'المدارس المتحسنة عن الأسبوع السابق'}</div>
+ {(i===2?analytics.scores.filter(v=>v.value>=80):analytics.changes.filter(v=>(v.change??0)>0)).length?
+ (i===2?analytics.scores.filter(v=>v.value>=80):analytics.changes.filter(v=>(v.change??0)>0)).map(v=><button type="button" key={v.id} onClick={()=>setChartSchool(v.id)} className="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-2 hover:bg-blue-50 focus:bg-blue-50 text-xs border-b border-blue-50"><span className="truncate">{v.name}</span><b className={i===2?'text-emerald-700':'text-amber-700'}>{i===2?v.value.toFixed(1)+'%':'+'+(v.change??0).toFixed(1)+' نقطة'}</b></button>):
+ <p className="text-xs text-slate-500">{i===3?'لا توجد مقارنة موجبة بين أسبوعين منشورين.':'لا توجد مدارس تحقق الحد المحدد.'}</p>}
+ </div>}
  </div>)}</div>
+ <section className="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm space-y-4">
+ <h3 className="text-xl font-black text-[#093b85]">مؤشرات Excel الأربعة حسب المدرسة</h3>
+ <p className="text-sm text-slate-500">نتائج الأسابيع المنشورة والمطابقة مع المدارس الفعلية. اضغط على المدرسة لعرض تحليلها.</p>
+ <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{indicatorBreakdown.map(ind=><div key={ind.index} className="rounded-2xl border border-blue-100 bg-gradient-to-b from-[#f1f7ff] to-white p-4">
+ <div className="text-sm font-black text-[#0b3d91]">{ind.index.toString().padStart(2,'0')} · {ind.title}</div>
+ <div className="mt-3 flex items-baseline gap-2"><strong className="text-3xl text-blue-700">{ind.average===null?'—':ind.average.toFixed(1)+'%'}</strong><span className="text-xs text-slate-500">متوسط {ind.entries.length} مدرسة</span></div>
+ <div className="mt-3 max-h-64 overflow-y-auto space-y-2">{ind.entries.length?ind.entries.map((v,i)=><button type="button" key={v.id} onClick={()=>{setChartSchool(v.id);setChartIndicator(String(ind.index));}} className="block w-full text-right rounded-xl p-2 hover:bg-blue-100 focus:bg-blue-100 transition-colors">
+ <div className="flex justify-between gap-2 text-xs"><span className="truncate">{i+1}. {v.name}</span><b className="text-[#0b3d91]">{v.value.toFixed(1)}%</b></div>
+ <div className="h-1.5 bg-blue-100 rounded-full mt-2 overflow-hidden"><div className="h-full bg-gradient-to-l from-[#0b3d91] via-[#1674dc] to-[#f9bd22] rounded-full transition-all duration-1000" style={{width:v.value+'%'}}/></div>
+ </button>):<p className="text-xs text-slate-500 py-4">لا توجد بيانات منشورة لهذا المؤشر.</p>}</div>
+ </div>)}</div></section>
  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex justify-between gap-3"><h3 className="font-black text-[#0b3d91]">01 · منحنى تطور الأداء الأسبوعي</h3><span className="text-xs text-blue-600">النسبة المئوية</span></div><p className="text-xs text-slate-500 mt-1 mb-4">المتوسط العام حسب المدرسة والمؤشر المحددين</p><svg viewBox="0 0 560 240" role="img" aria-label="منحنى اتجاه المؤشرات عبر الأسابيع" className="w-full" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="rifadArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2788e8" stopOpacity=".25"/><stop offset="100%" stopColor="#2788e8" stopOpacity="0"/></linearGradient></defs>{[0,25,50,75,100].map(n=><g key={n}><line x1="48" x2="544" y1={198-n*1.65} y2={198-n*1.65} stroke="#e4edf8" strokeDasharray="4 4"/><text x="8" y={202-n*1.65} fontSize="12" fill="#64748b">{n}%</text></g>)}<polygon points={`48,198 ${analytics.series.map((v,i)=>`${48+i*496/Math.max(analytics.series.length-1,1)},${198-v.value*1.65}`).join(' ')} 544,198`} fill="url(#rifadArea)"/><polyline fill="none" stroke="#1169cb" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" points={analytics.series.map((v,i)=>`${48+i*496/Math.max(analytics.series.length-1,1)},${198-v.value*1.65}`).join(' ')}/>{analytics.series.map((v,i)=><g key={v.week}><circle cx={48+i*496/Math.max(analytics.series.length-1,1)} cy={198-v.value*1.65} r="5" fill="#fff" stroke="#1169cb" strokeWidth="3"/><title>{v.week} — {v.value.toFixed(1)}%</title></g>)}</svg><div className="flex justify-between text-xs text-slate-500"><span>{analytics.series[0]?.week}</span><span>{analytics.series.at(-1)?.week}</span></div><div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-900">الأسبوع الأخير: <b>{analytics.series.at(-1)?.value.toFixed(1)}%</b></div></article>
  <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="font-black text-[#0b3d91]">02 · مقارنة نسب المدارس</h3><p className="text-xs text-slate-500 mt-1 mb-4">أعلى عشر مدارس · {analytics.last}</p><div className="space-y-3">{analytics.scores.slice(0,10).map((v,i)=><div key={v.id}><div className="flex justify-between gap-2 text-xs mb-1.5"><span className="truncate"><b className="text-blue-500 ml-2">{i+1}.</b>{v.name}</span><b className="tabular-nums">{v.value.toFixed(1)}%</b></div><div className="h-3 rounded-full bg-[#eaf1fc] overflow-hidden"><div className="h-full rounded-full bg-gradient-to-l from-[#0b3d91] to-[#2999ec]" style={{width:v.value+'%'}}/></div></div>)}</div></article>
