@@ -157,3 +157,10 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 @keyframes rifad-letter-cycle{0%,4%{opacity:0;transform:translateY(5px)}9%,76%{opacity:1;transform:translateY(0)}90%,100%{opacity:0;transform:translateY(0)}}
 @keyframes rifad-tile-cycle{0%,5%{opacity:.25;transform:translateY(-8px) scale(.7)}14%,75%{opacity:1;transform:translateY(0) scale(1)}90%,100%{opacity:.25;transform:translateY(-8px) scale(.7)}}
 @media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-animated-word span,.rifad-login-page .rifad-logo-tiles i{animation:none!important;opacity:1!important;transform:none!important;}}
+
+.rifad-login-page .rifad-logo-stage{width:208px;height:150px;max-width:100%;flex:none;animation:none!important;transform:none!important;}
+.rifad-login-page .rifad-logo-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;animation:none!important;transform:none!important;}
+.rifad-login-page .rifad-animated-word{bottom:8%;height:19%;width:76%;gap:4px;}
+.rifad-login-page .rifad-animated-word span{font-size:18px;line-height:1;letter-spacing:.06em;}
+.rifad-login-page .rifad-logo-tiles{top:13%;right:25%;scale:.82;}
+@media(max-width:420px){.rifad-login-page .rifad-logo-stage{width:188px;height:140px;}.rifad-login-page .rifad-animated-word span{font-size:17px;}}
