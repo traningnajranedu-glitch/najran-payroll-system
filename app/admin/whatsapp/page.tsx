@@ -224,11 +224,6 @@ export default function WhatsAppSchoolsPage() {
         </div>
 
         <div className="card p-5 lg:col-span-2">
-          <div className="mb-5 rounded-xl border border-sky-200 bg-sky-50 p-4">
-            <h3 className="font-bold text-sky-950 mb-2">اختبار تنبيه منصة مدرستي</h3>
-            <p className="text-sm text-sky-900 mb-3">يرسل القالب العربي المعتمد إلى رقم التواصل المحفوظ في الملف الشخصي لمدرسة «اختبار» فقط، إذا لم تُدخل مؤشر الأسبوع الحالي. لا يشمل بقية المدارس.</p>
-            <button type="button" disabled={busy} onClick={sendTestReminder} className="bg-sky-800 text-white rounded-xl px-5 py-3 font-bold disabled:opacity-50 flex items-center gap-2"><Send size={17}/>{busy ? 'جارٍ تنفيذ الطلب…' : 'إرسال رسالة واتساب تجريبية'}</button>
-          </div>
           <h2 className="font-bold mb-4">محتوى الرسالة</h2>
           <label htmlFor="whatsapp-send-mode" className="block text-sm font-bold mb-2">طريقة الإرسال</label>
           <select id="whatsapp-send-mode" value={sendMode} onChange={e=>setSendMode(e.target.value as 'direct' | 'template')} className="w-full border rounded-xl px-4 py-3 mb-3">
