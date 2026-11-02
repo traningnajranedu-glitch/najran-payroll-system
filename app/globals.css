@@ -109,3 +109,13 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 .rifad-modern-admin .rifad-stat-grid>button:hover{transform:translateY(-3px);box-shadow:0 15px 28px #082d602b;}
 .rifad-modern-admin .rifad-overview>div[class*="grid"]:not(.rifad-quick-services):not(.rifad-stat-grid)>div{border-radius:20px;}
 @media(prefers-reduced-motion:reduce){.rifad-modern-admin .rifad-quick-tile:hover,.rifad-modern-admin .rifad-stat-grid>button:hover{transform:none;}}
+
+/* Rifad glowing charts and live performance overview */
+.rifad-modern-admin .rifad-performance-panel{background:linear-gradient(145deg,#082b60,#063e7c 55%,#062653);border:1px solid #428bc3;box-shadow:inset 0 1px #ffffff2c,0 10px 28px #0a33602e;}
+.rifad-modern-admin .rifad-glow-ring{width:clamp(115px,13vw,170px);height:clamp(115px,13vw,170px);padding:10px;display:flex;align-items:center;justify-content:center;border-radius:50%;box-shadow:0 0 24px #5faaf36b,inset 0 0 10px #ffffff5c;flex-shrink:0;}
+.rifad-modern-admin .rifad-glow-ring>div{background:linear-gradient(145deg,#0b3e7d,#061e47);width:100%;height:100%;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;}
+.rifad-modern-admin .rifad-glow-ring strong{font-size:clamp(22px,3vw,35px);font-weight:900;line-height:1.2;color:white;}
+.rifad-modern-admin .rifad-glow-ring span{font-size:11px;color:#e1ecff;}
+.rifad-modern-admin .rifad-progress{transition:width .45s ease;}
+@media(max-width:480px){.rifad-modern-admin .rifad-performance-panel .grid{gap:10px}.rifad-modern-admin .rifad-glow-ring{width:106px;height:106px;padding:7px;}}
+@media(prefers-reduced-motion:reduce){.rifad-modern-admin .rifad-progress{transition:none;}}
