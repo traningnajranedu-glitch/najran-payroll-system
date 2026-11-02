@@ -187,18 +187,18 @@ export default function WhatsAppSchoolsPage() {
 
       <section className="card p-5 mb-5 border border-[#d7af62] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="font-bold text-[#00523d]">التذكيرات الأسبوعية — إرسال ومعاينة</h2><p className="text-sm text-gray-600 mt-1">الأربعاء 9:00 صباحًا بتوقيت السعودية. فحص مؤشر منصة مدرستي والانضباط المدرسي، باستخدام قالب معتمد للمدارس غير المنجزة فقط، مع منع التكرار الأسبوعي.</p></div>
+          <div><h2 className="font-bold text-[#00523d]">التذكيرات الأسبوعية — إرسال ومعاينة</h2><p className="text-sm text-gray-600 mt-1">الأربعاء 9:00 صباحًا بتوقيت السعودية. تذكير المدارس التي لم تُدخل مؤشر الانضباط المدرسي فقط، باستخدام قالب معتمد، مع منع التكرار الأسبوعي.</p></div>
           <div className="flex flex-wrap gap-2"><button type="button" disabled={previewBusy} onClick={previewWeeklyReminders} className="rounded-xl bg-[#00523d] text-white px-4 py-3 font-semibold disabled:opacity-50">{previewBusy ? 'جارٍ الفحص…' : 'معاينة المدارس غير المنجزة'}</button><button type="button" disabled={previewBusy || !reminderPreview} onClick={sendWeeklyRemindersNow} className="rounded-xl bg-amber-600 text-white px-4 py-3 font-semibold disabled:opacity-50">إرسال التذكيرات الآن</button></div>
         </div>
         {reminderPreview && <div className="mt-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-center">
             <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_schools}</div><div className="text-xs">مدارس غير منجزة</div></div>
-            <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_madrasati}</div><div className="text-xs">منصة مدرستي</div></div>
+            
             <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.pending_discipline}</div><div className="text-xs">الانضباط المدرسي</div></div>
             <div className="bg-slate-50 rounded-xl p-3"><div className="text-2xl font-black">{reminderPreview.valid_recipients}</div><div className="text-xs">أرقام صالحة</div></div>
           </div>
           <p className="text-xs text-amber-700 mt-3 font-bold">مدرسة اختبار مستثناة. إرسال رسالة واحدة لكل مدرسة غير منجزة أسبوعيًا، وقد يُعاد عرض مدارس أُرسلت لها تذكيرات في قائمة المعاينة.</p>
-          <div className="max-h-72 overflow-y-auto mt-3 divide-y">{reminderPreview.schools.map((item:any)=><div key={item.school_id} className="py-2 flex flex-wrap justify-between gap-2 text-sm"><span>{item.school_name}</span><span>{item.tasks.map((t:string)=>t==='madrasati'?'منصة مدرستي':'الانضباط').join('، ')} — {item.has_valid_mobile?'رقم صالح':'رقم غير متاح'}</span></div>)}</div>
+          <div className="max-h-72 overflow-y-auto mt-3 divide-y">{reminderPreview.schools.map((item:any)=><div key={item.school_id} className="py-2 flex flex-wrap justify-between gap-2 text-sm"><span>{item.school_name}</span><span>{'الانضباط المدرسي'} — {item.has_valid_mobile?'رقم صالح':'رقم غير متاح'}</span></div>)}</div>
         </div>}
       </section>
 
