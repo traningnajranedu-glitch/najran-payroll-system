@@ -23,6 +23,7 @@ export default function WhatsAppSchoolsPage() {
   const [windowError, setWindowError] = useState('');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [mode, setMode] = useState<TargetMode>('all');
+  const [section, setSection] = useState<'send'|'reminders'|'status'|'settings'>('send');
   const [schoolId, setSchoolId] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -168,13 +169,14 @@ export default function WhatsAppSchoolsPage() {
         <div className="flex gap-2"><button onClick={load} className="border bg-white rounded-xl p-3"><RefreshCw size={18}/></button><button onClick={() => location.href='/admin'} className="border bg-white rounded-xl px-4 py-3 flex items-center gap-2"><ArrowRight size={17}/> لوحة المدير</button></div>
       </div>
 
-      <div className="card p-5 mb-5 border border-emerald-100 bg-emerald-50/40">
+      <nav aria-label="أقسام التواصل" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">{([["send","إرسال الرسائل"],["reminders","تذكير الانضباط"],["status","حالة التواصل"],["settings","إعدادات واتساب"]] as const).map(([key,label])=><button key={key} type="button" onClick={()=>setSection(key)} className={`rounded-2xl border px-4 py-4 font-bold transition ${section===key?"bg-[#07377c] text-white shadow-lg border-[#07377c]":"bg-white text-[#15395c] hover:bg-blue-50"}`}>{label}</button>)}</nav>
+      {section === "settings" && <div className="card p-5 mb-5 border border-emerald-100 bg-emerald-50/40">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div><h2 className="font-bold">ربط WhatsApp Business الحالي</h2><p className="text-sm text-gray-600 mt-1">التسجيل المضمّن عبر Meta مع الحفاظ على الرقم الحالي وعدم استخدام الترحيل أو إلغاء الربط.</p></div>
           <button onClick={startEmbeddedSignup} className="bg-emerald-700 text-white rounded-xl px-5 py-3 font-bold flex items-center gap-2"><Link2 size={18}/> ربط WhatsApp Business</button>
         </div>
         {metaNotice && <div className="mt-3 bg-white border rounded-xl px-4 py-3 text-sm">{metaNotice}</div>}
-      </div>
+      </div>}
 
       {notice && <div className="bg-blue-50 text-blue-800 border border-blue-100 rounded-xl px-4 py-3 mb-5">{notice}</div>}
 
@@ -185,7 +187,7 @@ export default function WhatsAppSchoolsPage() {
         </div>
       </div>}
 
-      <section className="card p-5 mb-5 border border-[#d7af62] bg-white">
+      {section === "reminders" && <section className="card p-5 mb-5 border border-[#d7af62] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><h2 className="font-bold text-[#00523d]">التذكيرات الأسبوعية — إرسال ومعاينة</h2><p className="text-sm text-gray-600 mt-1">الأربعاء 9:00 صباحًا بتوقيت السعودية. تذكير المدارس التي لم تُدخل مؤشر الانضباط المدرسي فقط، باستخدام قالب معتمد، مع منع التكرار الأسبوعي.</p></div>
           <div className="flex flex-wrap gap-2"><button type="button" disabled={previewBusy} onClick={previewWeeklyReminders} className="rounded-xl bg-[#00523d] text-white px-4 py-3 font-semibold disabled:opacity-50">{previewBusy ? 'جارٍ الفحص…' : 'معاينة المدارس غير المنجزة'}</button><button type="button" disabled={previewBusy || !reminderPreview} onClick={sendWeeklyRemindersNow} className="rounded-xl bg-amber-600 text-white px-4 py-3 font-semibold disabled:opacity-50">إرسال التذكيرات الآن</button></div>
@@ -200,15 +202,15 @@ export default function WhatsAppSchoolsPage() {
           <p className="text-xs text-amber-700 mt-3 font-bold">مدرسة اختبار مستثناة. إرسال رسالة واحدة لكل مدرسة غير منجزة أسبوعيًا، وقد يُعاد عرض مدارس أُرسلت لها تذكيرات في قائمة المعاينة.</p>
           <div className="max-h-72 overflow-y-auto mt-3 divide-y">{reminderPreview.schools.map((item:any)=><div key={item.school_id} className="py-2 flex flex-wrap justify-between gap-2 text-sm"><span>{item.school_name}</span><span>{'الانضباط المدرسي'} — {item.has_valid_mobile?'رقم صالح':'رقم غير متاح'}</span></div>)}</div>
         </div>}
-      </section>
+      </section>}
 
-      <div className="card p-5 mb-5 border border-slate-200 bg-white">
+      {section === "status" && <div className="card p-5 mb-5 border border-slate-200 bg-white">
         <h2 className="font-bold mb-2">حالة التواصل المباشر مع المدارس</h2>
         <p className="text-sm text-gray-600 mb-3">مدارس ضمن نافذة 24 ساعة: {activeWindows} من {allRecipients.length}. تعتمد الحالة على آخر رسالة واردة مسجلة من رقم المدرسة، وليس على قبول طلب الإرسال.</p>
         {windowError && <p className="text-sm text-red-700 mb-3">{windowError}</p>}
         <div className="max-h-72 overflow-auto space-y-2">{schools.filter(s => s.is_active).map(s => <div key={s.id} className="flex flex-wrap justify-between gap-2 border rounded-lg px-3 py-2 text-sm"><span>{s.school_name}</span><span className={schoolStatus(s) === 'متاح الرد المباشر' ? 'text-emerald-700 font-semibold' : 'text-amber-700'}>{validMobile(s.contact_mobile) ? schoolStatus(s) : 'رقم غير صالح'}</span></div>)}</div>
-      </div>
-      <div className="grid lg:grid-cols-3 gap-5">
+      </div>}
+      {section === "send" && <div className="grid lg:grid-cols-3 gap-5">
         <div className="card p-5 lg:col-span-1">
           <h2 className="font-bold mb-4">جهة الإرسال</h2>
           <div className="grid gap-3">
@@ -240,7 +242,7 @@ export default function WhatsAppSchoolsPage() {
           <p className="text-xs text-gray-500 mt-2">يُضاف رابط الملف إلى نص الرسالة ليتمكن المستلم من فتحه.</p>
           <div className="mt-5 flex justify-end"><button disabled={busy} onClick={send} className="bg-[var(--navy)] text-white rounded-xl px-7 py-3 font-bold flex items-center gap-2 disabled:opacity-50"><Send size={18}/>{busy?'جاري الإرسال…':'إرسال عبر واتساب'}</button></div>
         </div>
-      </div>
+      </div>}
     </div>
   </main>;
 }
