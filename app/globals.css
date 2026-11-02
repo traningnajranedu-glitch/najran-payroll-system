@@ -119,3 +119,6 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 .rifad-modern-admin .rifad-progress{transition:width .45s ease;}
 @media(max-width:480px){.rifad-modern-admin .rifad-performance-panel .grid{gap:10px}.rifad-modern-admin .rifad-glow-ring{width:106px;height:106px;padding:7px;}}
 @media(prefers-reduced-motion:reduce){.rifad-modern-admin .rifad-progress{transition:none;}}
+
+.rifad-modern-admin .rifad-news-strip{background:linear-gradient(100deg,#e7f1ff,#fff);border:1px solid #bed4ee;color:#0a376e;box-shadow:0 4px 12px #0b3d9110;}
+.rifad-modern-admin .rifad-news-label{background:linear-gradient(110deg,#f5d47c,#d7af62);color:#062e64;}
