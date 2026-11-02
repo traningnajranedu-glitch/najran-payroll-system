@@ -97,3 +97,15 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 @keyframes rifad-panel-in{from{opacity:.75;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:640px){.rifad-unified-ui .card{border-radius:15px;}.rifad-unified-ui :is(button,input,select){min-height:36px;}}
 @media(prefers-reduced-motion:reduce){.rifad-unified-ui *,.rifad-unified-ui *::before,.rifad-unified-ui *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
+
+/* Rifad modern dashboard: real data retained, visual styling only */
+.rifad-modern-admin .rifad-service-intro{background:radial-gradient(circle at 15% 20%,#1686e4 0,transparent 40%),linear-gradient(110deg,#062451,#0b3d91 60%,#0764b4);border-bottom:4px solid #d7af62;box-shadow:0 14px 32px #07356d32;}
+.rifad-modern-admin .rifad-service-intro:after{content:"";position:absolute;inset:auto -15% -80px -15%;height:100px;border-top:3px solid #e8bd66;border-radius:50%;transform:rotate(-2deg);box-shadow:0 -7px 25px #e8bd6640;pointer-events:none;}
+.rifad-modern-admin .rifad-quick-tile{background:linear-gradient(150deg,#07559b,#052c64);border:1px solid #56a6f7;box-shadow:inset 0 1px 0 #ffffff36,0 9px 20px #092b5d24,0 3px 0 #d7af62;min-height:142px;transition:transform .2s,box-shadow .2s,filter .2s;}
+.rifad-modern-admin .rifad-quick-tile:nth-child(3n + 2){background:linear-gradient(150deg,#117b89,#073e65);border-color:#43c9cd;}
+.rifad-modern-admin .rifad-quick-tile:nth-child(3n){background:linear-gradient(150deg,#7755b8,#162d72);border-color:#b5a3f7;}
+.rifad-modern-admin .rifad-quick-tile:hover{transform:translateY(-5px);filter:brightness(1.09);box-shadow:0 16px 28px #092b5d36,0 4px 0 #e9bf67;}
+.rifad-modern-admin .rifad-stat-grid>button,.rifad-modern-admin .rifad-stat-grid>div{background:linear-gradient(145deg,#fff,#edf5ff);border:1px solid #bcd5f5;box-shadow:0 7px 23px #082d601c;border-bottom:3px solid #d7af62;transition:transform .2s,box-shadow .2s;}
+.rifad-modern-admin .rifad-stat-grid>button:hover{transform:translateY(-3px);box-shadow:0 15px 28px #082d602b;}
+.rifad-modern-admin .rifad-overview>div[class*="grid"]:not(.rifad-quick-services):not(.rifad-stat-grid)>div{border-radius:20px;}
+@media(prefers-reduced-motion:reduce){.rifad-modern-admin .rifad-quick-tile:hover,.rifad-modern-admin .rifad-stat-grid>button:hover{transform:none;}}
