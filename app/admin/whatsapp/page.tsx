@@ -225,10 +225,10 @@ export default function WhatsAppSchoolsPage() {
             <option value="template">إرسال دون رسالة مسبقة من المدرسة (قالب معتمد)</option>
           </select>
           <div className="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">{sendMode === 'direct' ? 'الرسائل الحرة متاحة فقط خلال 24 ساعة من آخر رسالة واردة من المدرسة، وفق سياسة Meta.' : 'يستخدم قالب school_task_notification المعتمد لإرسال رسالة إلى مدرسة واحدة أو جميع المدارس دون الحاجة إلى رسالة مسبقة منها.'}</div>
-          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب الإجراء أو المهمة المطلوبة من المدرسة…" className="w-full border rounded-xl px-4 py-3 resize-y" />
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب نص الرسالة أو التعميم المطلوب من المدرسة…" className="w-full border rounded-xl px-4 py-3 resize-y" />
           {sendMode === 'template' && <div className="mt-3"><label className="block text-sm font-bold mb-2">الموعد المطلوب للتنفيذ</label><input value={dueDate} onChange={e=>setDueDate(e.target.value)} placeholder="مثال: الخميس 15 أكتوبر 2026" className="w-full border rounded-xl px-4 py-3"/></div>}
-          <div className="mt-3 flex items-center gap-2 border rounded-xl px-4 py-3"><FileText size={18}/><input value={documentUrl} onChange={e=>setDocumentUrl(e.target.value)} placeholder="رابط ملف PDF أو مستند اختياري (رابط عام)" className="outline-none flex-1"/></div>
-          <p className="text-xs text-gray-500 mt-2">يُضاف رابط الملف إلى نص الرسالة ليتمكن المستلم من فتحه.</p>
+          <div className="mt-3 flex items-center gap-2 border rounded-xl px-4 py-3"><FileText size={18}/><input value={documentUrl} onChange={e=>setDocumentUrl(e.target.value)} placeholder="رابط المرفق: PDF أو صورة أو مستند (HTTPS عام)" className="outline-none flex-1"/></div>
+          <p className="text-xs text-gray-500 mt-2">يمكن إرفاق رابط ملف عام مع الرسالة. لإرسال ملف واتساب أصلي خارج نافذة 24 ساعة يلزم اعتماد قالب Meta بوسائط (Document أو Image).</p>
           <div className="mt-5 flex justify-end"><button disabled={busy} onClick={send} className="bg-[var(--navy)] text-white rounded-xl px-7 py-3 font-bold flex items-center gap-2 disabled:opacity-50"><Send size={18}/>{busy?'جاري الإرسال…':'إرسال عبر واتساب'}</button></div>
         </div>
       </div>}
