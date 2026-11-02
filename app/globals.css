@@ -142,3 +142,18 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 @keyframes rifad-halo-breathe{0%,100%{opacity:.5;transform:scale(.94)}50%{opacity:1;transform:scale(1.12)}}
 @keyframes rifad-spark{0%,100%{opacity:.2;transform:scale(.65) translateY(0)}50%{opacity:1;transform:scale(1.35) translateY(-6px)}}
 @media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-logo-stage,.rifad-login-page .rifad-logo-image,.rifad-login-page .rifad-logo-halo,.rifad-login-page .rifad-logo-spark{animation:none!important;translate:none!important;transform:none!important;}.rifad-login-page .rifad-login-submit:not(:disabled):hover{transform:none;}}
+
+/* Keep the official Rifad artwork still; animate only its Latin word and small tiles. */
+.rifad-login-page .rifad-logo-image{animation:none!important;translate:none!important;transform:none!important;}
+.rifad-login-page .rifad-logo-stage:hover .rifad-logo-image{transform:none!important;}
+.rifad-login-page .rifad-animated-word{position:absolute;z-index:12;left:50%;bottom:12%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;width:78%;height:19%;background:#fff;direction:ltr;pointer-events:none;}
+.rifad-login-page .rifad-animated-word span{font-family:Arial,sans-serif;font-size:clamp(15px,4vw,22px);font-weight:700;letter-spacing:.08em;color:#0b3165;opacity:0;animation:rifad-letter-cycle 4.2s linear infinite;}
+.rifad-login-page .rifad-logo-tiles{position:absolute;z-index:13;top:16%;right:28%;width:45px;height:45px;pointer-events:none;}
+.rifad-login-page .rifad-logo-tiles i{position:absolute;width:9px;height:9px;border-radius:2px;background:#0872c9;box-shadow:0 0 6px #0c74cf50;animation:rifad-tile-cycle 4.2s ease-in-out infinite;}
+.rifad-login-page .rifad-logo-tiles i:nth-child(1){top:0;right:12px;background:#f9bd05;animation-delay:0s;}
+.rifad-login-page .rifad-logo-tiles i:nth-child(2){top:12px;right:27px;background:#0872c9;animation-delay:.42s;}
+.rifad-login-page .rifad-logo-tiles i:nth-child(3){top:18px;right:5px;background:#064c99;animation-delay:.84s;}
+.rifad-login-page .rifad-logo-tiles i:nth-child(4){top:31px;right:22px;background:#f9bd05;animation-delay:1.26s;}
+@keyframes rifad-letter-cycle{0%,4%{opacity:0;transform:translateY(5px)}9%,76%{opacity:1;transform:translateY(0)}90%,100%{opacity:0;transform:translateY(0)}}
+@keyframes rifad-tile-cycle{0%,5%{opacity:.25;transform:translateY(-8px) scale(.7)}14%,75%{opacity:1;transform:translateY(0) scale(1)}90%,100%{opacity:.25;transform:translateY(-8px) scale(.7)}}
+@media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-animated-word span,.rifad-login-page .rifad-logo-tiles i{animation:none!important;opacity:1!important;transform:none!important;}}
