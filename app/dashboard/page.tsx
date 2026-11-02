@@ -431,7 +431,7 @@ export default function Dashboard() {
   if (!school) return <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center p-5"><div className="card p-8 text-center text-red-700">{message || 'تعذر تحميل بيانات المدرسة.'}</div></main>;
 
 
-  return <div className="min-h-screen bg-slate-50 print:bg-white" dir="rtl">
+  return <div className="rifad-unified-ui min-h-screen bg-slate-50 print:bg-white" dir="rtl">
     <aside className="hidden lg:flex print:hidden fixed right-0 top-0 bottom-0 z-40 w-[230px] bg-gradient-to-b from-[#062c65] to-[#0b3d91] text-white flex-col p-4">
       <div className="py-5 px-2 border-b border-white/10"><div className="font-black text-lg">وزارة التعليم</div><div className="text-xs text-blue-100 mt-2">التعليم المستمر · نجران</div></div>
       <nav className="py-5 space-y-2 text-sm font-bold">
