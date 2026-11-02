@@ -31,15 +31,13 @@ async function handler(request: NextRequest) {
   const riyadh = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Riyadh', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now);
   const weekday = riyadh.find(p => p.type === 'weekday')?.value;
   const hour = Number(riyadh.find(p => p.type === 'hour')?.value);
-  const [{ data: schools, error: schoolError }, { data: madrasati, error: madrasatiError }, { data: discipline, error: disciplineError }, { data: profiles, error: profileError }] = await Promise.all([
+  const [{ data: schools, error: schoolError }, { data: discipline, error: disciplineError }, { data: profiles, error: profileError }] = await Promise.all([
     db.from('schools').select('id,school_name,is_active,is_test').eq('is_active', true),
-    db.from('school_madrasati_daily_indicators').select('school_id').gte('indicator_date', week.start).lte('indicator_date', week.end),
     db.from('school_discipline_daily').select('school_id').gte('attendance_date', week.start).lte('attendance_date', week.end),
     db.from('school_profiles').select('school_id,contact_mobile')
   ]);
-  if (schoolError || madrasatiError || disciplineError || profileError)
+  if (schoolError || disciplineError || profileError)
     return NextResponse.json({ error: 'Indicator or school data lookup failed' }, { status: 503 });
-  const submittedMadrasati = new Set((madrasati || []).map(r => r.school_id));
   const submittedDiscipline = new Set((discipline || []).map(r => r.school_id));
   const phones = new Map((profiles || []).map(p => [p.school_id, p.contact_mobile]));
   const normalize = (value: string) => {
@@ -49,7 +47,6 @@ async function handler(request: NextRequest) {
   const eligible = (schools || []).filter(s => !s.is_test && s.school_name.trim() !== 'اختبار');
   const pending = eligible.map(s => {
     const tasks = [
-      ...(!submittedMadrasati.has(s.id) ? ['madrasati'] : []),
       ...(!submittedDiscipline.has(s.id) ? ['discipline'] : [])
     ];
     return { school_id: s.id, school_name: s.school_name, tasks, has_valid_mobile: /^9665\d{8}$/.test(normalize(String(phones.get(s.id) || ''))) };
@@ -69,7 +66,7 @@ async function handler(request: NextRequest) {
         return NextResponse.json({error:'Reminder log reservation failed',accepted,failed,skipped}, {status:503});
       }
       const to = normalize(String(phones.get(school.school_id) || ''));
-      const taskText = school.tasks.map(t => t === 'madrasati' ? 'إدخال مؤشر منصة مدرستي الأسبوعي' : 'إدخال مؤشر الانضباط المدرسي الأسبوعي').join('، و');
+      const taskText = 'إدخال مؤشر الانضباط المدرسي الأسبوعي';
       const payload = {messaging_product:'whatsapp',to,type:'template',template:{name:'school_task_notification',language:{code:'ar'},components:[{type:'body',parameters:[{type:'text',parameter_name:'school_name',text:school.school_name.slice(0,120)},{type:'text',parameter_name:'task_name',text:taskText},{type:'text',parameter_name:'deadline',text:'الخميس من الأسبوع الحالي'}]}]}};
       try {
         const res = await fetch(`https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || 'v23.0'}/${phoneId}/messages`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -92,7 +89,7 @@ async function handler(request: NextRequest) {
     mode: 'dry-run', sent: 0, live_sending_enabled: true,
     schedule: { weekday: 'Wednesday', time: '09:00', timezone: 'Asia/Riyadh', on_schedule: weekday === 'Wed' && hour === 9 },
     week, active_schools: eligible.length,
-    pending_madrasati: pending.filter(s => s.tasks.includes('madrasati')).length,
+    pending_madrasati: 0,
     pending_discipline: pending.filter(s => s.tasks.includes('discipline')).length,
     pending_schools: pending.length,
     valid_recipients: pending.filter(s => s.has_valid_mobile).length,
