@@ -21,10 +21,6 @@ export async function POST(request:NextRequest){
  const service=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:admin,error:adminError}=await service.from('admin_users').select('id').eq('user_id',user.id).eq('is_active',true).maybeSingle();
  if(adminError||!admin)return NextResponse.json({error:'غير مصرح'},{status:403});
- const waToken=process.env.WHATSAPP_ACCESS_TOKEN;
- const waPhoneId=process.env.WHATSAPP_PHONE_NUMBER_ID;
- const waTemplate=process.env.WHATSAPP_SUPERVISOR_CREDENTIALS_TEMPLATE;
- if(!waToken||!waPhoneId||!waTemplate)return NextResponse.json({error:'يلزم إعداد قالب Meta معتمد لبيانات دخول المشرف وربط إعدادات واتساب قبل إنشاء الحساب'},{status:503});
  const body=await request.json();
  const name=String(body.name||'').trim().replace(/\s+/g,' ');
  const phone=String(body.phone||'').replace(/[^\d]/g,'');
@@ -43,9 +39,8 @@ export async function POST(request:NextRequest){
  if(createError||!created.user)return NextResponse.json({error:createError?.message||'تعذر إنشاء الحساب'},{status:500});
  const {error:insertError}=await service.from('compliance_supervisors').insert({auth_user_id:created.user.id,full_name:name,phone:normalized,is_active:true});
  if(insertError){await service.auth.admin.deleteUser(created.user.id);return NextResponse.json({error:'تعذر ربط صلاحية المشرف: '+insertError.message},{status:500});}
- const waResponse=await fetch('https://graph.facebook.com/v22.0/'+encodeURIComponent(waPhoneId)+'/messages',{method:'POST',headers:{Authorization:'Bearer '+waToken,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:normalized,type:'template',template:{name:waTemplate,language:{code:'ar'},components:[{type:'body',parameters:[{type:'text',text:name},{type:'text',text:username},{type:'text',text:password}]}]}}),cache:'no-store'});
- if(!waResponse.ok)return NextResponse.json({created:true,sent:false,error:'تم إنشاء الحساب، لكن Meta رفضت طلب إرسال بيانات الدخول. راجع القالب المعتمد ثم أعد تعيين كلمة المرور وإرسالها بطريقة آمنة.'},{status:502,headers:{'Cache-Control':'no-store'}});
- return NextResponse.json({created:true,sent:true,name,phone:normalized,username},{headers:{'Cache-Control':'no-store'}});
+ return NextResponse.json({created:true,delivery:'manual',name,phone:normalized,username,password},{headers:{'Cache-Control':'no-store','Pragma':'no-cache'}});
+
 
  }catch{return NextResponse.json({error:'تعذر إتمام العملية'},{status:500});}
 }
