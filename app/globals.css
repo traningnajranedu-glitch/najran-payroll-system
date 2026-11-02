@@ -122,3 +122,23 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 
 .rifad-modern-admin .rifad-news-strip{background:linear-gradient(100deg,#e7f1ff,#fff);border:1px solid #bed4ee;color:#0a376e;box-shadow:0 4px 12px #0b3d9110;}
 .rifad-modern-admin .rifad-news-label{background:linear-gradient(110deg,#f5d47c,#d7af62);color:#062e64;}
+
+/* Rifad official logo motion: no changes to original artwork or brand colors */
+.rifad-login-page .rifad-logo-stage{isolation:isolate;display:grid;place-items:center;cursor:default;animation:rifad-logo-entrance .8s cubic-bezier(.2,.8,.2,1) both;}
+.rifad-login-page .rifad-logo-image{filter:drop-shadow(0 6px 8px #0b3d9120);animation:rifad-logo-float 5s ease-in-out infinite;transition:filter .3s ease,transform .3s ease;}
+.rifad-login-page .rifad-logo-stage:hover .rifad-logo-image{filter:drop-shadow(0 0 14px #d7af6290) drop-shadow(0 7px 12px #086acb55);transform:scale(1.045);}
+.rifad-login-page .rifad-logo-halo{position:absolute;width:85%;height:75%;border-radius:50%;z-index:-1;background:radial-gradient(ellipse,#d7af6230 0,#2585df1b 40%,transparent 72%);filter:blur(8px);animation:rifad-halo-breathe 4s ease-in-out infinite;pointer-events:none;}
+.rifad-login-page .rifad-logo-spark{position:absolute;z-index:2;width:5px;height:5px;border-radius:50%;background:#e9b93f;box-shadow:0 0 9px 3px #e9b93f77;pointer-events:none;animation:rifad-spark 3.5s ease-in-out infinite;}
+.rifad-login-page .rifad-logo-spark-one{top:24%;left:15%;}
+.rifad-login-page .rifad-logo-spark-two{top:8%;right:26%;width:4px;height:4px;background:#2383df;box-shadow:0 0 9px 3px #2383df77;animation-delay:1s;}
+.rifad-login-page .rifad-logo-spark-three{bottom:20%;right:12%;width:3px;height:3px;animation-delay:2s;}
+.rifad-login-page .rifad-login-form input{transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease;}
+.rifad-login-page .rifad-login-form input:focus{border-color:#247bd0;box-shadow:0 0 0 4px #2681db1c;background:#f9fcff;outline:none;}
+.rifad-login-page .rifad-login-submit{position:relative;overflow:hidden;box-shadow:0 5px 16px #0769cb36;}
+.rifad-login-page .rifad-login-submit:not(:disabled):hover{box-shadow:0 8px 24px #0769cb60;transform:translateY(-2px);}
+.rifad-login-page .rifad-login-submit:disabled{cursor:wait;}
+@keyframes rifad-logo-entrance{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes rifad-logo-float{0%,100%{translate:0 0}50%{translate:0 -6px}}
+@keyframes rifad-halo-breathe{0%,100%{opacity:.5;transform:scale(.94)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes rifad-spark{0%,100%{opacity:.2;transform:scale(.65) translateY(0)}50%{opacity:1;transform:scale(1.35) translateY(-6px)}}
+@media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-logo-stage,.rifad-login-page .rifad-logo-image,.rifad-login-page .rifad-logo-halo,.rifad-login-page .rifad-logo-spark{animation:none!important;translate:none!important;transform:none!important;}.rifad-login-page .rifad-login-submit:not(:disabled):hover{transform:none;}}
