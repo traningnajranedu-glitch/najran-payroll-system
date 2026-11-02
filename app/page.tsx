@@ -26,7 +26,7 @@ export default function Home(){
     await sb.auth.signOut();setError('بيانات الدخول غير صحيحة أو حساب المدرسة غير مفعّل.');setLoading(false);
   }
 
-  return <main id="main-content" className="rifad-login-page min-h-screen flex items-center justify-center px-4 py-6 md:py-10" dir="rtl">
+  return <main id="main-content" className="rifad-login-page rifad-unified-ui min-h-screen flex items-center justify-center px-4 py-6 md:py-10" dir="rtl">
     <section className="rifad-login-poster relative isolate w-full max-w-[420px] min-h-[660px] overflow-hidden rounded-[22px] border border-[#d8e8fa] shadow-[0_16px_45px_rgba(6,45,104,.14)] bg-white flex flex-col items-center px-7 sm:px-10 pt-8 pb-24 text-center">
       <div className="rifad-login-corner" aria-hidden="true"/>
       <div className="relative z-10 self-start text-right text-[#008c83] font-extrabold text-xs leading-5"><span className="block tracking-[.18em] text-base">وزارة التعليم</span><span className="block text-[9px] font-medium text-slate-500">Ministry of Education</span></div>
