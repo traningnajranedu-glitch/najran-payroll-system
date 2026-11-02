@@ -519,9 +519,7 @@ export default function AdminPage() {
   async function updateTeacher(id:string){
     setMessage(''); setError('');
     if(!teacherEditForm.school_id||!teacherEditForm.full_name.trim()||!/^\d{10}$/.test(teacherEditForm.national_id.trim())){setError('اختر المدرسة وأدخل اسم الموظف ورقم هوية/سجل مدني من 10 أرقام.');return;}
-    const navGroups=[{title:'الرئيسية',keys:['overview']},{title:'البيانات الأساسية',keys:['schools','teachers']},{title:'المسيرات والرواتب',keys:['periods','payroll','print']},{title:'الأداء والمتابعة',keys:['activities','kpi','madrasati-imported','compliance','daily-report']},{title:'التواصل والإعدادات',keys:['whatsapp','accounts','change-password']}];
-  const toggleNavGroup=(title:string)=>setNavExpanded(previous=>previous.includes(title)?previous.filter(item=>item!==title):[...previous,title]);
-  const school=schools.find(s=>s.id===teacherEditForm.school_id);
+    const school=schools.find(s=>s.id===teacherEditForm.school_id);
     if(!school){setError('المدرسة المحددة غير موجودة.');return;}
     if(!school.is_active){setError('لا يمكن إسناد الموظف إلى مدرسة موقوفة.');return;}
     const duplicate=teachers.find(t=>t.id!==id && t.national_id===teacherEditForm.national_id.trim());
@@ -672,6 +670,8 @@ async function deletePeriod(p:Period){
   if(!allowed)return <main id="main-content" tabIndex={-1} className="min-h-screen flex items-center justify-center"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">هذا القسم مخصص لمدير النظام.</p></div></main>;
 
   const nav=[['overview','الرئيسية',Home],['schools','المدارس',Building2],['teachers','الموظفون',Users],['periods','فترات المسيرات',CalendarDays],['payroll','إدارة المسيرات',ClipboardList],['activities','الأنشطة والاحتفالات',Star],['kpi','التقارير والمؤشرات',BarChart3],['madrasati-imported','مؤشر مدرستي',BarChart3],['compliance','الالتزام والامتثال',ShieldCheck],['accounts','الإعدادات والحسابات',Settings],['change-password','تغيير كلمة المرور',KeyRound],['print','طباعة المسيرات',Printer],['whatsapp','التواصل مع المدارس',MessageCircle],['daily-report','التقرير الأسبوعي',FileSpreadsheet]] as const;
+  const navGroups=[{title:'الرئيسية',keys:['overview']},{title:'البيانات الأساسية',keys:['schools','teachers']},{title:'المسيرات والرواتب',keys:['periods','payroll','print']},{title:'الأداء والمتابعة',keys:['activities','kpi','madrasati-imported','compliance','daily-report']},{title:'التواصل والإعدادات',keys:['whatsapp','accounts','change-password']}];
+  const toggleNavGroup=(title:string)=>setNavExpanded(previous=>previous.includes(title)?previous.filter(item=>item!==title):[...previous,title]);
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
 
   function go(key:string){setTab(key);if(key==='change-password')location.href='/admin/change-password';if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report';if(key==='kpi')location.href='/admin/kpi';if(key==='madrasati-imported')location.href='/admin/madrasati-imported';if(key==='compliance')location.href='/admin/compliance'}
