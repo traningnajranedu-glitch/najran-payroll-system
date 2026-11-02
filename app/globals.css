@@ -67,3 +67,18 @@ button:disabled { cursor:not-allowed; opacity:.6; }
 body{color:#122c50;background:var(--bg)}
 @media screen{header{border-top-color:#ffbf12}.card,.service-card{border-color:#dbe8f8;border-radius:20px;box-shadow:0 5px 22px rgba(7,59,124,.06)}.service-card:hover{border-color:#168ee5!important;box-shadow:0 12px 28px rgba(7,59,124,.13)!important}.service-card .w-16{background:#e7f3ff!important;color:#0759aa}.service-card .text-xl{color:#073b7c}.service-card .mt-5{background:#e7f3ff!important;color:#0759aa}.school-navigation a:hover,.school-navigation a[aria-current]{background:#e7f3ff;color:#0759aa}thead{background:#eaf3ff;color:#073b7c}}
 input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shadow:0 0 0 3px rgba(22,142,229,.13)}
+
+/* Rifad modern interactive admin theme — scoped, retains original logo and brand */
+.rifad-modern-admin { --rifad-navy:#062c65; --rifad-blue:#0b3d91; --rifad-gold:#d7af62; }
+.rifad-modern-admin header {background:linear-gradient(110deg,#062c65,#0b3d91 75%,#0759a7)!important;border-bottom:3px solid var(--rifad-gold);}
+.rifad-modern-admin header h1 {color:#fff!important;text-shadow:0 2px 12px #001c3d55;}
+.rifad-modern-admin header p {color:#e2eeff!important;}
+.rifad-modern-admin aside {border-left:1px solid #d7af6244;}
+.rifad-modern-admin aside nav button {transition:background .2s ease,transform .2s ease,box-shadow .2s ease;}
+.rifad-modern-admin aside nav button:hover {transform:translateX(-3px);}
+.rifad-modern-admin .card {border-radius:18px;box-shadow:0 8px 26px #092c5d12;border-color:#dce7f5;transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;}
+.rifad-modern-admin .card:hover {box-shadow:0 14px 34px #092c5d1c;border-color:#a6c9f2;}
+.rifad-modern-admin main > div > section {animation:rifad-enter .24s ease-out both;}
+.rifad-modern-admin button:focus-visible,.rifad-modern-admin a:focus-visible {outline:3px solid #d7af62;outline-offset:3px;}
+@keyframes rifad-enter {from {opacity:.65;transform:translateY(7px)}to {opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.rifad-modern-admin *, .rifad-modern-admin *::before,.rifad-modern-admin *::after {animation:none!important;transition:none!important;}}
