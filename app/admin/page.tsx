@@ -721,6 +721,7 @@ async function deletePeriod(p:Period){
         </div>
       </header>
 
+      <div className="rifad-news-strip mx-3 md:mx-6 mt-3 rounded-2xl flex items-center gap-3 px-4 py-2.5 text-sm" role="status"><span className="rifad-news-label rounded-full px-3 py-1 font-black shrink-0">أخبار رفاد</span><span className="flex-1 min-w-0 truncate">مرحبًا بك في بوابة رفاد — تابع تحديثات المدارس والمسيرات والأنشطة من لوحة الإدارة.</span><button type="button" onClick={()=>go('daily-report')} className="text-xs font-bold shrink-0 underline underline-offset-4">التقرير الأسبوعي</button></div>
       <div className="mx-3 md:mx-6 mt-4 rounded-2xl overflow-hidden bg-gradient-to-l from-[#092f68] via-[#0756aa] to-[#087de0] text-white shadow-sm border-b-4 border-[#d7af62]">
         <div className="px-6 py-5 md:py-7 flex items-center justify-between gap-4"><div><div className="text-2xl md:text-3xl font-black">إدارة المدارس والخدمات</div><div className="text-blue-100 mt-1">تابع أعمال المدارس والمؤشرات والتقارير من مكان واحد</div></div><div className="hidden sm:flex items-center gap-3"><div className="text-left"><div className="text-xs text-blue-100">بوابة رفاد</div><div className="font-black">التعليم المستمر</div></div><img src="/portal-brand.png.png?v=rifad-official-20261021" alt="" className="w-20 h-20 rounded-2xl border border-[#ffcb35]"/></div></div>
       </div>
