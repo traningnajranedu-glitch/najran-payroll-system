@@ -23,11 +23,11 @@ export default function WhatsAppSchoolsPage() {
   const [windowError, setWindowError] = useState('');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [mode, setMode] = useState<TargetMode>('all');
-  const [section, setSection] = useState<'send'|'reminders'|'status'|'settings'>('send');
+  const [section, setSection] = useState<'send'|'reminders'|'settings'>('send');
   const [schoolId, setSchoolId] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
-  const [sendMode, setSendMode] = useState<'direct' | 'template'>('direct');
+  const [sendMode, setSendMode] = useState<'direct' | 'template'>('template');
   const [documentUrl, setDocumentUrl] = useState('');
   const [dueDate,setDueDate]=useState('في أقرب وقت');
   const [busy, setBusy] = useState(false);
@@ -169,7 +169,7 @@ export default function WhatsAppSchoolsPage() {
         <div className="flex gap-2"><button onClick={load} className="border bg-white rounded-xl p-3"><RefreshCw size={18}/></button><button onClick={() => location.href='/admin'} className="border bg-white rounded-xl px-4 py-3 flex items-center gap-2"><ArrowRight size={17}/> لوحة المدير</button></div>
       </div>
 
-      <nav aria-label="أقسام التواصل" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">{([["send","إرسال الرسائل"],["reminders","تذكير الانضباط"],["status","حالة التواصل"],["settings","إعدادات واتساب"]] as const).map(([key,label])=><button key={key} type="button" onClick={()=>setSection(key)} className={`rounded-2xl border px-4 py-4 font-bold transition ${section===key?"bg-[#07377c] text-white shadow-lg border-[#07377c]":"bg-white text-[#15395c] hover:bg-blue-50"}`}>{label}</button>)}</nav>
+      <nav aria-label="أقسام التواصل" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">{([["send","إرسال الرسائل"],["reminders","تذكير الانضباط"],["settings","إعدادات واتساب"]] as const).map(([key,label])=><button key={key} type="button" onClick={()=>setSection(key)} className={`rounded-2xl border px-4 py-4 font-bold transition ${section===key?"bg-[#07377c] text-white shadow-lg border-[#07377c]":"bg-white text-[#15395c] hover:bg-blue-50"}`}>{label}</button>)}</nav>
       {section === "settings" && <div className="card p-5 mb-5 border border-emerald-100 bg-emerald-50/40">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div><h2 className="font-bold">ربط WhatsApp Business الحالي</h2><p className="text-sm text-gray-600 mt-1">التسجيل المضمّن عبر Meta مع الحفاظ على الرقم الحالي وعدم استخدام الترحيل أو إلغاء الربط.</p></div>
@@ -204,12 +204,6 @@ export default function WhatsAppSchoolsPage() {
         </div>}
       </section>}
 
-      {section === "status" && <div className="card p-5 mb-5 border border-slate-200 bg-white">
-        <h2 className="font-bold mb-2">حالة التواصل المباشر مع المدارس</h2>
-        <p className="text-sm text-gray-600 mb-3">مدارس ضمن نافذة 24 ساعة: {activeWindows} من {allRecipients.length}. تعتمد الحالة على آخر رسالة واردة مسجلة من رقم المدرسة، وليس على قبول طلب الإرسال.</p>
-        {windowError && <p className="text-sm text-red-700 mb-3">{windowError}</p>}
-        <div className="max-h-72 overflow-auto space-y-2">{schools.filter(s => s.is_active).map(s => <div key={s.id} className="flex flex-wrap justify-between gap-2 border rounded-lg px-3 py-2 text-sm"><span>{s.school_name}</span><span className={schoolStatus(s) === 'متاح الرد المباشر' ? 'text-emerald-700 font-semibold' : 'text-amber-700'}>{validMobile(s.contact_mobile) ? schoolStatus(s) : 'رقم غير صالح'}</span></div>)}</div>
-      </div>}
       {section === "send" && <div className="grid lg:grid-cols-3 gap-5">
         <div className="card p-5 lg:col-span-1">
           <h2 className="font-bold mb-4">جهة الإرسال</h2>
@@ -227,10 +221,10 @@ export default function WhatsAppSchoolsPage() {
           <h2 className="font-bold mb-4">محتوى الرسالة</h2>
           <label htmlFor="whatsapp-send-mode" className="block text-sm font-bold mb-2">طريقة الإرسال</label>
           <select id="whatsapp-send-mode" value={sendMode} onChange={e=>setSendMode(e.target.value as 'direct' | 'template')} className="w-full border rounded-xl px-4 py-3 mb-3">
-            <option value="direct">رسالة مباشرة</option>
-            <option value="template">قالب إشعار مهمة</option>
+            <option value="direct">رسالة حرة (داخل نافذة 24 ساعة فقط)</option>
+            <option value="template">إرسال دون رسالة مسبقة من المدرسة (قالب معتمد)</option>
           </select>
-          <div className="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">{sendMode === 'direct' ? 'للإرسال المباشر، يجب أن يرسل المستلم رسالة إلى رقم البوابة أولًا. يمكنك الرد خلال 24 ساعة من آخر رسالة منه. خارج هذه المدة يلزم قالب معتمد.' : 'يستخدم هذا الخيار قالب school_task_notification العربي بعد اعتماده في حساب واتساب المرتبط بالبوابة.'}</div>
+          <div className="mb-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">{sendMode === 'direct' ? 'الرسائل الحرة متاحة فقط خلال 24 ساعة من آخر رسالة واردة من المدرسة، وفق سياسة Meta.' : 'يستخدم قالب school_task_notification المعتمد لإرسال رسالة إلى مدرسة واحدة أو جميع المدارس دون الحاجة إلى رسالة مسبقة منها.'}</div>
           <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={10} placeholder="اكتب الإجراء أو المهمة المطلوبة من المدرسة…" className="w-full border rounded-xl px-4 py-3 resize-y" />
           {sendMode === 'template' && <div className="mt-3"><label className="block text-sm font-bold mb-2">الموعد المطلوب للتنفيذ</label><input value={dueDate} onChange={e=>setDueDate(e.target.value)} placeholder="مثال: الخميس 15 أكتوبر 2026" className="w-full border rounded-xl px-4 py-3"/></div>}
           <div className="mt-3 flex items-center gap-2 border rounded-xl px-4 py-3"><FileText size={18}/><input value={documentUrl} onChange={e=>setDocumentUrl(e.target.value)} placeholder="رابط ملف PDF أو مستند اختياري (رابط عام)" className="outline-none flex-1"/></div>
