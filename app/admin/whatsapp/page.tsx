@@ -162,7 +162,7 @@ export default function WhatsAppSchoolsPage() {
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="card p-10">جارٍ تحميل خدمة التواصل…</div></main>;
   if (!allowed) return <main className="min-h-screen flex items-center justify-center p-5"><div className="card p-10 text-center"><h1 className="text-xl font-bold text-red-700">غير مصرح بالدخول</h1><p className="text-gray-500 mt-2">الخدمة متاحة لمدير النظام فقط.</p></div></main>;
 
-  return <main dir="rtl" className="min-h-screen bg-slate-50 p-5 md:p-8">
+  return <main dir="rtl" className="rifad-unified-ui min-h-screen bg-slate-50 p-5 md:p-8">
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div><h1 className="text-2xl font-bold flex items-center gap-2"><MessageCircle/> التواصل مع المدارس عبر واتساب</h1><p className="text-gray-500 mt-1">إرسال التعاميم والخطابات لجميع المدارس أو لمدرسة محددة.</p></div>
