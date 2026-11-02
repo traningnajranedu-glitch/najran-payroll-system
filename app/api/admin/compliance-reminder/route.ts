@@ -4,7 +4,7 @@ export const runtime='nodejs';
 export async function POST(request:NextRequest){
  try{
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,pub=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_SERVICE_ROLE_KEY;
- const metaToken=process.env.META_WHATSAPP_ACCESS_TOKEN,phoneId=process.env.META_WHATSAPP_PHONE_NUMBER_ID,template=process.env.META_WHATSAPP_REMINDER_TEMPLATE;
+ const metaToken=(process.env.META_WHATSAPP_ACCESS_TOKEN||process.env.WHATSAPP_ACCESS_TOKEN),phoneId=(process.env.META_WHATSAPP_PHONE_NUMBER_ID||process.env.WHATSAPP_PHONE_NUMBER_ID),template=process.env.META_WHATSAPP_REMINDER_TEMPLATE;
  if(!url||!pub||!secret)return NextResponse.json({error:'إعدادات قاعدة البيانات غير مكتملة'},{status:503});
  const bearer=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'');
  if(!bearer)return NextResponse.json({error:'يلزم تسجيل الدخول'},{status:401});
