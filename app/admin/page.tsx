@@ -731,8 +731,17 @@ async function deletePeriod(p:Period){
         {message&&<div className="bg-green-50 text-green-800 border border-green-100 rounded-xl px-4 py-3">{message}</div>}
         {error&&<div className="bg-red-50 text-red-800 border border-red-100 rounded-xl px-4 py-3">{error}</div>}
 
-        {tab==='overview'&&<div className="space-y-4">
-          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {tab==='overview'&&<div className="rifad-overview space-y-4">
+          <div className="rifad-service-intro rounded-3xl p-5 md:p-7 text-white relative overflow-hidden">
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+              <div><div className="text-sm text-blue-100">الإدارة العامة للتعليم بمنطقة نجران</div><h2 className="text-2xl md:text-3xl font-black mt-2">مرحبًا بك في بوابة رفاد</h2><p className="mt-2 text-blue-100 text-sm">إدارة خدمات التعليم المستمر ومتابعة الإنجاز من لوحة واحدة</p></div>
+              <img src="/portal-brand.png.png?v=rifad-official-20261021" alt="شعار بوابة رفاد" className="h-20 w-20 object-contain drop-shadow-xl"/>
+            </div>
+          </div>
+          <div className="rifad-quick-services grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+            {([['schools','إدارة المدارس',Building2],['teachers','بيانات الموظفين',Users],['payroll','مسيرات الرواتب',ClipboardList],['activities','الأنشطة والفعاليات',PartyPopper],['kpi','مؤشرات الأداء',BarChart3],['whatsapp','التواصل مع المدارس',MessageCircle],['compliance','الالتزام والامتثال',ShieldCheck]] as const).map(([key,label,Icon],i)=><button key={key} type="button" onClick={()=>go(key)} className={`rifad-quick-tile rifad-quick-${i} rounded-2xl p-4 flex flex-col items-center gap-3 text-center text-white`}><Icon size={27} strokeWidth={1.8}/><span className="font-bold text-xs md:text-sm">{label}</span><span className="text-[#f5cf77] text-lg" aria-hidden="true">←</span></button>)}
+          </div>
+          <div className="rifad-stat-grid grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <button onClick={()=>setTab('schools')} className="bg-white border border-slate-200 rounded-2xl p-5 text-right shadow-sm hover:shadow-md transition"><div className="flex justify-between"><div><div className="font-bold">إجمالي المدارس</div><div className="text-4xl font-black mt-3 text-slate-900">{schools.length}</div><div className="text-xs text-slate-500 mt-2">مدرسة مسجلة في النظام</div></div><div className="w-14 h-14 rounded-2xl bg-violet-50 text-violet-700 flex items-center justify-center"><Building2 size={27}/></div></div></button>
             <button onClick={()=>setTab('teachers')} className="bg-white border border-slate-200 rounded-2xl p-5 text-right shadow-sm hover:shadow-md transition"><div className="flex justify-between"><div><div className="font-bold">الموظفون النشطون</div><div className="text-4xl font-black mt-3 text-slate-900">{activeTeachers}</div><div className="text-xs text-slate-500 mt-2">موظف نشط في جميع المدارس</div></div><div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center"><Users size={27}/></div></div></button>
             <button onClick={()=>setTab('periods')} className="bg-white border border-slate-200 rounded-2xl p-5 text-right shadow-sm hover:shadow-md transition"><div className="flex justify-between"><div><div className="font-bold">فترات المسيرات</div><div className="text-4xl font-black mt-3 text-slate-900">{periods.length}</div><div className="text-xs text-slate-500 mt-2">فترة مسيرة حالية وسابقة</div></div><div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center"><CalendarDays size={27}/></div></div></button>
