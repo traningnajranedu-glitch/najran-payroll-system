@@ -179,3 +179,9 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 .rifad-login-page .rifad-slogan-cursor{display:inline-block;color:#d69b00;margin-inline-start:2px;animation:rifad-cursor-blink .8s steps(1) infinite}
 @keyframes rifad-cursor-blink{50%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-slogan-cursor{display:none}.rifad-login-page .rifad-slogan{animation:none!important}}
+
+
+/* Final Arabic slogan readability fix */
+.rifad-login-page .rifad-slogan{font-family:Tahoma,Arial,sans-serif!important;font-size:15px!important;letter-spacing:normal!important;word-spacing:normal!important;line-height:2!important;color:#073b7c!important;text-align:center!important;direction:rtl!important;unicode-bidi:normal!important;white-space:normal!important;overflow-wrap:break-word!important;animation:rifad-slogan-glow 5s ease-in-out infinite!important;}
+.rifad-login-page .rifad-slogan>span:first-child{display:inline!important;opacity:1!important;animation:none!important;transform:none!important;color:#073b7c!important;letter-spacing:normal!important;white-space:normal!important;}
+.rifad-login-page .rifad-slogan-cursor{display:none!important;}
