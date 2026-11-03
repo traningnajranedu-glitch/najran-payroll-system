@@ -101,6 +101,7 @@ export async function fetchAssessments(
   for (let offset = 0; ; offset += 1000) {
     let query = sb
       .from("school_achievement_assessments")
+      .is("deleted_at", null)
       .select("*")
       .order("submitted_at", { ascending: false })
       .order("id")
