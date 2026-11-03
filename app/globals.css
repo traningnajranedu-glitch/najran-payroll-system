@@ -199,3 +199,7 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 @keyframes rifad-feature-text{0%,100%{color:#073b7c;opacity:1}50%{color:#0759aa;opacity:1}}
 @keyframes rifad-feature-arrow{0%,100%{transform:translateX(0);opacity:.7}50%{transform:translateX(3px);opacity:1}}
 @media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-feature-banner,.rifad-login-page .rifad-feature-message,.rifad-login-page .rifad-feature-arrow{animation:none!important}}
+
+.rifad-login-page .rifad-feature-message{background:linear-gradient(105deg,#073b7c 35%,#168ee5 44%,#ffd45a 49%,#ffffff 50%,#ffbf12 52%,#073b7c 65%);background-size:320% 100%;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:rifad-light-sweep 8s linear infinite!important}
+@keyframes rifad-light-sweep{from{background-position:100% 50%}to{background-position:-100% 50%}}
+@media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-feature-message{background:none!important;-webkit-text-fill-color:#073b7c!important;animation:none!important}}
