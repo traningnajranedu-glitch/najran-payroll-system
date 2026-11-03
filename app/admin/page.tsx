@@ -673,7 +673,7 @@ async function deletePeriod(p:Period){
   const toggleNavGroup=(title:string)=>setNavExpanded(previous=>previous.includes(title)?previous.filter(item=>item!==title):[...previous,title]);
   const school=schools.find(s=>s.id===schoolId), period=periods.find(p=>p.id===periodId);
 
-  function go(key:string){setTab(key);if(key==='change-password')location.href='/admin/change-password';if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report';if(key==='kpi')location.href='/admin/kpi';if(key==='madrasati-imported')location.href='/admin/madrasati-imported';if(key==='compliance')location.href='/admin/compliance'}
+  function go(key:string){setTab(key);if(key==='change-password')location.href='/admin/change-password';if(key==='accounts')location.href='/admin/accounts';if(key==='print')location.href='/admin/school-print';if(key==='whatsapp')location.href='/admin/whatsapp';if(key==='daily-report')location.href='/admin/daily-report';if(key==='kpi')location.href='/admin/kpi';if(key==='madrasati-imported')location.href='/admin/madrasati-imported';if(key==='compliance')location.href='/admin/compliance';if(key==='achievement-approvals')location.href='/admin/achievement-approvals'}
 
   const openPeriods=periods.filter(p=>periodIsOpen(p)).length;
   const activeTeachers=teachers.filter(t=>t.is_active).length;
