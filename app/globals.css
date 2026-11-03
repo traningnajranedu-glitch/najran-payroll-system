@@ -172,3 +172,10 @@ input:focus,select:focus,textarea:focus{border-color:#168ee5!important;box-shado
 @keyframes rifad-slogan-type{0%,2%{opacity:0;transform:translateY(7px);color:#0759aa}8%,73%{opacity:1;transform:translateY(0);color:#073b7c}35%{color:#d39b00}55%{color:#168ee5}88%,100%{opacity:0;transform:translateY(-3px);color:#0759aa}}
 @keyframes rifad-slogan-glow{0%,100%{box-shadow:0 0 15px #168ee52b,0 7px 22px #073b7c16}50%{box-shadow:0 0 23px #ffbf1255,0 7px 26px #168ee533}}
 @media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-slogan,.rifad-login-page .rifad-slogan-letter{animation:none!important;opacity:1!important;transform:none!important;color:#073b7c!important}}
+
+
+/* Readable Arabic typewriter: natural connected letters, steady contrast */
+.rifad-login-page .rifad-slogan{min-height:86px;display:block;direction:rtl;unicode-bidi:plaintext;font-size:clamp(14px,3.6vw,17px);font-weight:800;line-height:1.9;color:#073b7c!important;text-shadow:none;overflow-wrap:normal;word-break:normal;padding:12px 14px;background:linear-gradient(#f8fbff,#f8fbff) padding-box,linear-gradient(105deg,#0b64bc,#f3b51b,#0b64bc) border-box;animation:rifad-slogan-glow 5s ease-in-out infinite}
+.rifad-login-page .rifad-slogan-cursor{display:inline-block;color:#d69b00;margin-inline-start:2px;animation:rifad-cursor-blink .8s steps(1) infinite}
+@keyframes rifad-cursor-blink{50%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.rifad-login-page .rifad-slogan-cursor{display:none}.rifad-login-page .rifad-slogan{animation:none!important}}
