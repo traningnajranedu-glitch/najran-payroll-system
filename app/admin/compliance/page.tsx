@@ -8,7 +8,7 @@ type SchoolRow={id:string;school_name:string;manager_name?:string|null;is_active
 type Profile={school_id:string;stage?:string|null;gender?:string|null;manager_phone?:string|null;principal_phone?:string|null;contact_mobile?:string|null;address_text?:string|null;latitude?:number|null;longitude?:number|null};
 const initialTitles=['التخطيط والتنفيذ','الانضباط المدرسي','توثيق الأعمال والشواهد','تفعيل المنصات التعليمية','البيئة التعليمية','سلامة الإجراءات','متابعة الأداء','التواصل والشراكة','التحسين المستمر'];
 function isAttendanceIndicator(title:string){
- return /^رصد حضور (الطلبة|الطلاب)$/.test(title.replace(/[\u064b-\u065f\u0670ـ]/g,'').trim().replace(/\s+/g,' '));
+ return /^رصد حضور (?:الطلبة|الطلاب)(?: وغيابهم)?$/.test(title.replace(/[\u064b-\u065f\u0670ـ]/g,'').trim().replace(/\s+/g,' '));
 }
 
 function attendancePercentage(total:string,absent:string){
