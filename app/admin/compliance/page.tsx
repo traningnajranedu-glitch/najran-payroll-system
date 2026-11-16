@@ -7,6 +7,17 @@ import {ShieldCheck,School,CalendarDays,ClipboardCheck,CheckCircle2,ArrowLeft,Ar
 type SchoolRow={id:string;school_name:string;manager_name?:string|null;is_active:boolean;is_test?:boolean;whatsapp_number?:string|null};
 type Profile={school_id:string;stage?:string|null;gender?:string|null;manager_phone?:string|null;principal_phone?:string|null;contact_mobile?:string|null;address_text?:string|null;latitude?:number|null;longitude?:number|null};
 const initialTitles=['التخطيط والتنفيذ','الانضباط المدرسي','توثيق الأعمال والشواهد','تفعيل المنصات التعليمية','البيئة التعليمية','سلامة الإجراءات','متابعة الأداء','التواصل والشراكة','التحسين المستمر'];
+function isAttendanceIndicator(title:string){
+ return /^رصد حضور (الطلبة|الطلاب)$/.test(title.replace(/[\u064b-\u065f\u0670ـ]/g,'').trim().replace(/\s+/g,' '));
+}
+
+function attendancePercentage(total:string,absent:string){
+ if(!/^\d+$/.test(total)||!/^\d+$/.test(absent))return null;
+ const studentCount=Number(total),absenceCount=Number(absent);
+ if(!Number.isSafeInteger(studentCount)||!Number.isSafeInteger(absenceCount)||studentCount<1||absenceCount>studentCount)return null;
+ return Math.round(((studentCount-absenceCount)/studentCount)*10000)/100;
+}
+
 const steps=['بيانات المدرسة','بيانات الزيارة','تقييم المؤشرات','المراجعة والتأكيد'];
 export default function CompliancePage(){
  const [schools,setSchools]=useState<SchoolRow[]>([]);
@@ -18,7 +29,7 @@ export default function CompliancePage(){
  const [date,setDate]=useState(new Date().toISOString().slice(0,10));
  const [notes,setNotes]=useState('');
  const [titles,setTitles]=useState(initialTitles);
- const [scores,setScores]=useState<(number|null)[]>(Array(9).fill(null));
+ const [manualScores,setManualScores]=useState<(number|null)[]>(Array(9).fill(null));
  const [busy,setBusy]=useState(true);
  const [error,setError]=useState('');
  const [supervisorName,setSupervisorName]=useState('');
@@ -26,6 +37,22 @@ export default function CompliancePage(){
  const [editing,setEditing]=useState(false); const [supervisorId,setSupervisorId]=useState(''); const [sending,setSending]=useState(false); const [sent,setSent]=useState(false);
  const school=schools.find(s=>s.id===selected);
  const profile=profiles.find(p=>p.school_id===selected);
+ const [studentCount,setStudentCount]=useState('');
+ const [absenceCount,setAbsenceCount]=useState('');
+ const attendanceScore=attendancePercentage(studentCount,absenceCount);
+ const attendanceError=(studentCount!==''&&(!/^\d+$/.test(studentCount)||!Number.isSafeInteger(Number(studentCount))||Number(studentCount)<1))
+  ?'أدخل إجمالي عدد الطلاب كعدد صحيح أكبر من صفر.'
+  :absenceCount!==''&&(!/^\d+$/.test(absenceCount)||!Number.isSafeInteger(Number(absenceCount)))
+   ?'أدخل عدد الغياب كعدد صحيح لا يقل عن صفر.'
+   :studentCount!==''&&absenceCount!==''&&attendanceScore===null
+    ?'عدد الغياب لا يمكن أن يتجاوز إجمالي عدد الطلاب.'
+    :'';
+ const scores=manualScores.map((value,i)=>isAttendanceIndicator(titles[i])?attendanceScore:value);
+ function resetScores(){
+  setManualScores(Array(9).fill(null));
+  setStudentCount('');
+  setAbsenceCount('');
+ }
  const completed=scores.filter(v=>v!==null).length;
  const average=completed===9?scores.reduce<number>((a,b)=>a+(b??0),0)/9:null;
  useEffect(()=>{let active=true;(async()=>{try{
@@ -53,9 +80,35 @@ export default function CompliancePage(){
  <div className="rounded-2xl border border-blue-200 bg-white p-4 text-sm text-[#315579]"><LockKeyhole className="inline ml-2" size={17}/>بيانات المدارس للقراءة فقط. يستطيع المشرف إرسال تقييم المدارس المسندة إليه، وتبقى النتائج بانتظار اعتماد مدير النظام.</div>
  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{steps.map((label,i)=><div key={label} className={`rounded-2xl border p-3 text-center transition-all duration-500 ${i===step?'border-[#ffc226] bg-[#0b59a9] text-white shadow-lg':'border-blue-100 bg-white text-[#23558a]'}`}><span className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#ffc226] font-black text-[#123557]">{i+1}</span><b className="text-sm">{label}</b></div>)}</div>
  {busy?<div className="rounded-3xl bg-white p-12 text-center">جارٍ تحميل المدارس...</div>:(isAdmin||!!supervisorId)?<section className="rounded-[28px] border border-blue-100 bg-white p-5 md:p-8 shadow-[0_16px_40px_#09549a18] compliance-motion" style={{animation:'complianceGlow 4s ease-in-out infinite'}}>
- {step===0&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><School/> بيانات المدرسة</h2><p className="text-slate-500">الحقول مستوردة من بيانات المدرسة ومقفلة ضد التعديل.</p><label className="block font-bold">اختر المدرسة<select className="mt-2 w-full rounded-xl border border-blue-200 bg-[#f4f9ff] p-4" value={selected} onChange={e=>{setSelected(e.target.value);setScores(Array(9).fill(null));setSent(false);}}><option value="">اختر مدرسة...</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></label><div className="grid gap-3 md:grid-cols-2">{[['اسم المدرسة',school?.school_name],['المرحلة',profile?.stage],['الجنس',profile?.gender],['مدير المدرسة',school?.manager_name],['جوال المدير',school?.whatsapp_number||profile?.contact_mobile],['موقع المدرسة',profile?.address_text||((profile?.latitude!=null&&profile?.longitude!=null)?`${profile.latitude}, ${profile.longitude}`:null)]].map(([label,value])=><div key={label} className="rounded-xl border border-blue-100 bg-slate-50 p-4"><div className="text-xs text-slate-500">{label} 🔒</div><div className="mt-2 font-bold">{value||'غير متوفر في بيانات المدرسة'}</div></div>)}</div>{profile?.latitude!=null&&profile?.longitude!=null&&<a href={`https://www.google.com/maps?q=${encodeURIComponent(String(profile.latitude)+','+String(profile.longitude))}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-xl bg-blue-700 px-4 py-2 font-bold text-white">📍 فتح موقع المدرسة على الخريطة</a>}</div>}
+ {step===0&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><School/> بيانات المدرسة</h2><p className="text-slate-500">الحقول مستوردة من بيانات المدرسة ومقفلة ضد التعديل.</p><label className="block font-bold">اختر المدرسة<select className="mt-2 w-full rounded-xl border border-blue-200 bg-[#f4f9ff] p-4" value={selected} onChange={e=>{setSelected(e.target.value);resetScores();setSent(false);}}><option value="">اختر مدرسة...</option>{schools.map(s=><option key={s.id} value={s.id}>{s.school_name}</option>)}</select></label><div className="grid gap-3 md:grid-cols-2">{[['اسم المدرسة',school?.school_name],['المرحلة',profile?.stage],['الجنس',profile?.gender],['مدير المدرسة',school?.manager_name],['جوال المدير',school?.whatsapp_number||profile?.contact_mobile],['موقع المدرسة',profile?.address_text||((profile?.latitude!=null&&profile?.longitude!=null)?`${profile.latitude}, ${profile.longitude}`:null)]].map(([label,value])=><div key={label} className="rounded-xl border border-blue-100 bg-slate-50 p-4"><div className="text-xs text-slate-500">{label} 🔒</div><div className="mt-2 font-bold">{value||'غير متوفر في بيانات المدرسة'}</div></div>)}</div>{profile?.latitude!=null&&profile?.longitude!=null&&<a href={`https://www.google.com/maps?q=${encodeURIComponent(String(profile.latitude)+','+String(profile.longitude))}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block rounded-xl bg-blue-700 px-4 py-2 font-bold text-white">📍 فتح موقع المدرسة على الخريطة</a>}</div>}
  {step===1&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><CalendarDays/> بيانات الزيارة</h2><div className="grid gap-3 md:grid-cols-2">{(['حضوري','عن بعد'] as const).map(v=><button key={v} type="button" onClick={()=>{setType(v);play();}} className={`rounded-2xl border-2 p-6 text-xl font-bold transition-all ${type===v?'border-[#ffc226] bg-blue-700 text-white shadow-lg':'border-blue-100 bg-blue-50'}`}>{v==='حضوري'?'🏫':'💻'} {v}</button>)}</div><label className="block font-bold">تاريخ الزيارة<input type="date" value={date} onChange={e=>setDate(e.target.value)} className="mt-2 block w-full rounded-xl border border-blue-200 p-4"/></label><label className="block font-bold">ملاحظات الزيارة<textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} className="mt-2 block w-full rounded-xl border border-blue-200 p-4" placeholder="ملاحظات المشرف والشواهد"/></label></div>}
- {step===2&&<div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><ClipboardCheck/> تقييم المؤشرات التسعة</h2><button onClick={()=>setEditing(v=>!v)} disabled={!isAdmin} className="rounded-xl border border-blue-200 px-4 py-2 text-sm font-bold">{editing?'إغلاق تحرير المسميات':'تحرير المسميات (معاينة فقط)'}</button></div><p className="text-sm text-slate-500">المسميات الحالية مقترحة لحين اعتماد المؤشرات التسعة من مدير النظام. الدرجات من 0 إلى 100؛ عدم الإدخال لا يُحسب صفرًا.</p><div className="grid gap-4 md:grid-cols-2">{titles.map((title,i)=><div key={i} className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-[#f1f8ff] p-4 transition-all hover:shadow-lg"><div className="flex items-center justify-between gap-2"><span className="font-black text-[#0b448d]">{i+1}. {title}</span><b className="rounded-lg bg-[#e0f2ff] px-3 py-2 text-xl text-[#084b94]">{scores[i]===null?'—':scores[i]+'%'}</b></div>{editing&&<input value={title} onChange={e=>setTitles(old=>old.map((x,j)=>j===i?e.target.value:x))} className="mt-3 w-full rounded-lg border p-2" aria-label={'اسم المؤشر '+(i+1)}/>}<input aria-label={'درجة '+title} type="range" min="0" max="100" value={scores[i]??0} onChange={e=>setScores(old=>old.map((v,j)=>j===i?Number(e.target.value):v))} className="mt-5 w-full accent-[#0875d5]"/><div className="flex items-center gap-2"><input aria-label={'إدخال الدرجة الرقمية '+title} type="number" min="0" max="100" value={scores[i]??''} placeholder="الدرجة" onChange={e=>{const n=e.target.value;setScores(old=>old.map((v,j)=>j===i?(n===''?null:Math.max(0,Math.min(100,Number(n)))):v));}} className="w-24 rounded-lg border border-blue-200 p-2"/><span className="text-xs text-slate-500">من 100</span></div></div>)}</div><div className="rounded-xl bg-blue-50 p-4 font-bold">تم تقييم {completed} من 9 مؤشرات {average!==null&&'— المتوسط: '+average.toFixed(1)+'%'}</div></div>}
+ {step===2&&<div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><ClipboardCheck/> تقييم المؤشرات التسعة</h2><button onClick={()=>setEditing(v=>!v)} disabled={!isAdmin} className="rounded-xl border border-blue-200 px-4 py-2 text-sm font-bold">{editing?'إغلاق تحرير المسميات':'تحرير المسميات (معاينة فقط)'}</button></div><p className="text-sm text-slate-500">المسميات الحالية مقترحة لحين اعتماد المؤشرات التسعة من مدير النظام. الدرجات من 0 إلى 100؛ عدم الإدخال لا يُحسب صفرًا.</p><div className="grid gap-4 md:grid-cols-2">{titles.map((title,i)=><div key={i} className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-[#f1f8ff] p-4 transition-all hover:shadow-lg"><div className="flex items-center justify-between gap-2"><span className="font-black text-[#0b448d]">{i+1}. {title}</span>{!isAttendanceIndicator(title)&&<b className="rounded-lg bg-[#e0f2ff] px-3 py-2 text-xl text-[#084b94]">{scores[i]===null?'—':scores[i]+'%'}</b>}</div>{editing&&<input value={title} onChange={e=>setTitles(old=>old.map((x,j)=>j===i?e.target.value:x))} className="mt-3 w-full rounded-lg border p-2" aria-label={'اسم المؤشر '+(i+1)}/>}{isAttendanceIndicator(title)?(
+  <div className="mt-4 space-y-3">
+   <div className="grid gap-3 sm:grid-cols-2">
+    <label className="block text-sm font-bold">
+     إجمالي عدد الطلاب
+     <input type="number" inputMode="numeric" min="1" step="1" value={studentCount}
+      onChange={e=>setStudentCount(e.target.value)} aria-describedby="attendance-help"
+      className="mt-1 block w-full rounded-lg border border-blue-200 bg-white p-2"/>
+    </label>
+    <label className="block text-sm font-bold">
+     عدد الغياب
+     <input type="number" inputMode="numeric" min="0" step="1" max={studentCount||undefined} value={absenceCount}
+      onChange={e=>setAbsenceCount(e.target.value)} aria-describedby="attendance-help"
+      className="mt-1 block w-full rounded-lg border border-blue-200 bg-white p-2"/>
+    </label>
+   </div>
+   <div className="flex items-center justify-between gap-2 rounded-xl bg-[#e0f2ff] p-3 text-[#084b94]">
+    <span className="font-bold">نسبة الحضور</span>
+    <output aria-label="نسبة الحضور" aria-live="polite" className="text-xl font-black">
+     {attendanceScore===null?'—':attendanceScore+'%'}
+    </output>
+   </div>
+   <p id="attendance-help" className={attendanceError?'text-sm text-red-700':'text-xs text-slate-500'}>
+    {attendanceError||'تُحسب تلقائيًا من إجمالي عدد الطلاب وعدد الغياب.'}
+   </p>
+  </div>
+ ):<><input aria-label={'درجة '+title} type="range" min="0" max="100" value={scores[i]??0} onChange={e=>setManualScores(old=>old.map((v,j)=>j===i?Number(e.target.value):v))} className="mt-5 w-full accent-[#0875d5]"/><div className="flex items-center gap-2"><input aria-label={'إدخال الدرجة الرقمية '+title} type="number" min="0" max="100" value={scores[i]??''} placeholder="الدرجة" onChange={e=>{const n=e.target.value;setManualScores(old=>old.map((v,j)=>j===i?(n===''?null:Math.max(0,Math.min(100,Number(n)))):v));}} className="w-24 rounded-lg border border-blue-200 p-2"/><span className="text-xs text-slate-500">من 100</span></div></>}</div>)}</div><div className="rounded-xl bg-blue-50 p-4 font-bold">تم تقييم {completed} من 9 مؤشرات {average!==null&&'— المتوسط: '+average.toFixed(1)+'%'}</div></div>}
  {step===3&&<div className="space-y-5"><h2 className="flex items-center gap-2 text-2xl font-black text-[#083d83]"><CheckCircle2/> مراجعة مراحل التقييم</h2><div className="grid gap-3 md:grid-cols-2">{[['المدرسة',school?.school_name],['المرحلة والجنس',[profile?.stage,profile?.gender].filter(Boolean).join(' — ')],['نوع الزيارة',type],['التاريخ',date],['عدد المؤشرات',completed+'/9'],['المتوسط',average===null?'غير مكتمل':average.toFixed(1)+'%']].map(([label,value])=><div key={label} className="rounded-xl border bg-[#f6faff] p-4"><span className="text-sm text-slate-500">{label}</span><p className="mt-1 font-black">{value||'غير متوفر'}</p></div>)}</div><div className="grid gap-2">{titles.map((t,i)=><div key={i} className="flex justify-between rounded-xl bg-blue-50 p-3"><span>{t}</span><b>{scores[i]===null?'—':scores[i]+'%'}</b></div>)}</div><div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">{supervisorId?'بعد الإرسال تنتقل الزيارة إلى مدير النظام للمراجعة والاعتماد، ولن تظهر في المؤشرات المعتمدة قبل الموافقة.':'يمكن لمدير النظام معاينة النموذج؛ إرسال التقييم متاح لحسابات المشرفين المسندة.'}</div><button type="button" disabled={!supervisorId||sending||sent||completed!==9} onClick={submit} className="w-full rounded-xl bg-[#0764b6] p-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">{sent?"تم الإرسال لمدير النظام ✓":sending?"جارٍ الحفظ والإرسال...":supervisorId?"تأكيد وإرسال التقييم للاعتماد":"الإرسال متاح للمشرف فقط"}</button></div>}
 
  {step===4&&sent&&<div className="space-y-5 py-8 text-center">
@@ -67,7 +120,7 @@ export default function CompliancePage(){
  </div>
  <div className="flex flex-wrap justify-center gap-3">
  <button type="button" onClick={()=>document.getElementById('supervisor-visit-history')?.scrollIntoView({behavior:'smooth'})} className="rounded-xl bg-[#075eb7] px-5 py-3 font-bold text-white">عرض سجل الزيارات</button>
- <button type="button" onClick={()=>{setStep(0);setSelected('');setNotes('');setScores(Array(9).fill(null));setSent(false);setError('');}} className="rounded-xl border border-blue-200 px-5 py-3 font-bold text-[#075eb7]">تسجيل زيارة جديدة</button>
+ <button type="button" onClick={()=>{setStep(0);setSelected('');setNotes('');resetScores();setSent(false);setError('');}} className="rounded-xl border border-blue-200 px-5 py-3 font-bold text-[#075eb7]">تسجيل زيارة جديدة</button>
  </div></div>}
 
  <div className="mt-8 flex items-center justify-between border-t pt-5"><button type="button" onClick={prev} disabled={step===0} className="flex items-center gap-2 rounded-xl border px-5 py-3 disabled:opacity-40"><ArrowRight/> السابق</button>{step<3&&<button type="button" disabled={!valid} onClick={next} className="flex items-center gap-2 rounded-xl bg-[#075eb7] px-6 py-3 font-black text-white shadow-lg transition-all hover:bg-[#08488c] disabled:opacity-40">التالي <ArrowLeft/></button>}</div>
